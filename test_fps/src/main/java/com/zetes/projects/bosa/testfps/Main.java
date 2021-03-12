@@ -23,6 +23,9 @@ import io.minio.UploadObjectArgs;
 import io.minio.GetObjectArgs;
 import io.minio.RemoveObjectsArgs;
 import io.minio.messages.DeleteObject;
+import java.util.HashMap;
+import java.util.Map;
+import javax.activation.MimetypesFileTypeMap;
 
 /**
  * Test/sample code for an FPS service where users (citizens) can sign documents.
@@ -57,7 +60,10 @@ public class Main implements HttpHandler {
 
 	private MinioClient minioClient;
 
-	private static String sigProfile = "PADES_1";
+	private static final Map<String, String> sigProfiles = new HashMap<String, String>() {{
+            put("application/xml", "XADES_1");
+            put("application/pdf", "PADES_1");
+        }};
 	
 	private static final String UNSIGNED_DIR = "unsigned";
 	private static final String SIGNED_DIR = "signed";
@@ -107,6 +113,17 @@ public class Main implements HttpHandler {
 		System.out.println("Service started - press Ctrl-C to stop\n");
 		System.out.println("Surf with your browser to http://localhost:" + port);
 	}
+        
+        private String profileFor(String filename) {
+            MimetypesFileTypeMap map = new MimetypesFileTypeMap();
+            map.addMimeTypes("application/pdf pdf PDF");
+            map.addMimeTypes("application/xml xml XML docx");
+            String type = map.getContentType(filename);
+            if(sigProfiles.containsKey(type)) {
+                return sigProfiles.get(type);
+            }
+            return "CADES_1";
+        }
 
 	/**
 	 * We handle 3 endpoints:
@@ -203,7 +220,7 @@ public class Main implements HttpHandler {
 			"  \"pwd\":\""  + s3Passwd +   "\",\n" +
 			"  \"in\":\""   + inFileName + "\",\n" +
 			"  \"out\":\""  + outFileName + "\",\n" +
-			"  \"prof\":\"" + sigProfile + "\"\n" +
+			"  \"prof\":\"" + profileFor(inFileName) + "\"\n" +
 			"}";
 		System.out.println("JSON for the getToken call:\n" + json);
 		String token = postJson(getTokenUrl, json);
