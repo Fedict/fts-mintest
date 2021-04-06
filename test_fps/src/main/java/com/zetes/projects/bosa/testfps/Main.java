@@ -64,7 +64,9 @@ public class Main implements HttpHandler {
             put("application/xml", "XADES_1");
             put("application/pdf", "PADES_1");
         }};
-	
+
+	private static String LANGUAGE = "en"; // options: en, nl, fr, de
+
 	private static final String UNSIGNED_DIR = "unsigned";
 	private static final String SIGNED_DIR = "signed";
 
@@ -87,10 +89,8 @@ public class Main implements HttpHandler {
 		s3Url =        config.getProperty("s3Url");
 
 		filesDir =     new File(config.getProperty("fileDir"));
-		outFilesDir =  new File(config.getProperty("outFileDir"));
-		if(null == outFilesDir) {
-			outFilesDir = new File(filesDir, SIGNED_DIR);
-		}
+		String tmp  =  config.getProperty("outFileDir");
+		outFilesDir =  (null == tmp) ? new File(filesDir, SIGNED_DIR) : new File(tmp);
 
 		getTokenUrl =  config.getProperty("getTokenUrl");
 
@@ -197,7 +197,7 @@ public class Main implements HttpHandler {
 
 		System.out.println("\nUser wants to sign doc '" + inFileName + "'");
 
-		// 1. Upload the unsigned to to the S3 server
+		// 1. Upload the unsigned file to the S3 server
 		// Note: this could have been done in advance
 
 		System.out.println("1. Uploading the unsigned doc to the S3 server...");
@@ -228,12 +228,13 @@ public class Main implements HttpHandler {
 		System.out.println("  DONE, received token = " + token);
 
 		// 3. Do a redirect to the BOSA DSS front-end
+		// Format: https://{host:port}/sign/{token}?redirectURL={callbackURL}&language={language}
 
 		System.out.println("3. Redirect to the BOSA DSS front-end");
 		String callbackURL = localUrl + "/callback?filename=" + outFileName;
 		System.out.println("  Callback: " + callbackURL);
 		String redirectUrl = bosaDssFrontend + "/sign/" + URLEncoder.encode(token) +
-			"?redirectUrl=" + URLEncoder.encode(callbackURL);
+			"?redirectUrl=" + URLEncoder.encode(callbackURL) + "&language=" + LANGUAGE;
 		System.out.println("  URL: " + redirectUrl);
 		httpExch.getResponseHeaders().add("Location", redirectUrl);
 		httpExch.sendResponseHeaders(303, 0);
@@ -244,7 +245,7 @@ public class Main implements HttpHandler {
 	/**
 	 * In handleSign(), we specified a callback to this service after the signature process is done.
 	 * E.g. /callback?filename=signed_test.pdf&err=1&details=user_cancelled
-	 * The first part has been specified complete by us previously, only the 'err' and 'details'
+	 * The first part has been specified completely by us previously, only the 'err' and 'details'
 	 * have been added by the caller
 	 */
 	private void handleCallback(HttpExchange httpExch, String uri) throws Exception {
