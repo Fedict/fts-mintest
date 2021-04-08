@@ -200,7 +200,7 @@ public class Main implements HttpHandler {
 		// 1. Upload the unsigned file to the S3 server
 		// Note: this could have been done in advance
 
-		System.out.println("1. Uploading the unsigned doc to the S3 server...");
+		System.out.println("\n1. Uploading the unsigned doc to the S3 server...");
 		MinioClient minioClient = getClient();
 		minioClient.uploadObject(
 			UploadObjectArgs.builder()
@@ -213,7 +213,7 @@ public class Main implements HttpHandler {
 		// 2. Do a 'getToken' request to the BOSA DSS
 		// This is a HTTP POST containing a json
 
-		System.out.println("2. Doing a 'getToken' to the BOSA DSS");
+		System.out.println("\n2. Doing a 'getToken' to the BOSA DSS");
 		
 		String json = "{\n" +
 			"  \"name\":\"" + s3UserName + "\",\n" +
@@ -230,7 +230,7 @@ public class Main implements HttpHandler {
 		// 3. Do a redirect to the BOSA DSS front-end
 		// Format: https://{host:port}/sign/{token}?redirectURL={callbackURL}&language={language}
 
-		System.out.println("3. Redirect to the BOSA DSS front-end");
+		System.out.println("\n3. Redirect to the BOSA DSS front-end");
 		String callbackURL = localUrl + "/callback?filename=" + outFileName;
 		System.out.println("  Callback: " + callbackURL);
 		String redirectUrl = bosaDssFrontend + "/sign/" + URLEncoder.encode(token) +
@@ -239,7 +239,7 @@ public class Main implements HttpHandler {
 		httpExch.getResponseHeaders().add("Location", redirectUrl);
 		httpExch.sendResponseHeaders(303, 0);
 		httpExch.close();
-		System.out.println("  DONE, now waiting till we get a callback...\n");
+		System.out.println("  DONE, now waiting till we get a callback...");
 	}
 
 	/**
@@ -250,7 +250,7 @@ public class Main implements HttpHandler {
 	 */
 	private void handleCallback(HttpExchange httpExch, String uri) throws Exception {
 
-		System.out.println("Callback: " + uri);
+		System.out.println("\n4. Callback: " + uri);
 
 		// Parse the query parameters
 		int idx = uri.indexOf("/callback?") + "/callback?".length();
@@ -279,6 +279,9 @@ public class Main implements HttpHandler {
 			InputStream stream =
 				minioClient.getObject(
 					GetObjectArgs.builder().bucket(s3UserName).object(fileName).build());
+
+			if (!outFilesDir.exists())
+				outFilesDir.mkdirs();
 
 			File f = new File(outFilesDir, fileName);
 			FileOutputStream fos = new FileOutputStream(f);
