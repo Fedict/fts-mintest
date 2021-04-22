@@ -2,6 +2,7 @@ package com.zetes.projects.bosa.testfps;
 
 import java.net.URL;
 import java.net.URLEncoder;
+import java.net.URLDecoder;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.util.Properties;
@@ -256,22 +257,15 @@ public class Main implements HttpHandler {
 		int idx = uri.indexOf("/callback?") + "/callback?".length();
 		String query = uri.substring(idx);
 		String[] queryParams = query.split("&");
-		String fileName = getParam(queryParams, "filename");
-		String err_str = getParam(queryParams, "err");
-		int err;
-		if(err_str != null) {
-			err = Integer.parseInt(getParam(queryParams, "err"));
-		} else {
-			err = 0;
-		}
-		String details = getParam(queryParams, "details");
+		String fileName = getParam(queryParams, "filename"); // this one we specified ourselves in handleSign()
+
+		// These params were added by the BOSA DSS/front-end in case of an error
 		String ref = getParam(queryParams, "ref");
-		System.out.println("  Result: " + err + " = " + err2str(err) +
-			(null == details ? "" : ( ", detatils: " + details)) +
-			(null == ref ? "" : (", ref: " + ref)));
+		String err = getParam(queryParams, "err");
+		String details = getParam(queryParams, "details");
 
 		String htmlBody = "";
-		if (0 == err) {
+		if (null == err) {
 			// If the signing was successfull, download the signed file
 
 			System.out.println("  Downloading file " + fileName + " from the S3 server");
@@ -295,15 +289,23 @@ public class Main implements HttpHandler {
 
 			htmlBody = "Thank you for signing";
 		}
-		else if (1 == err) {
-			htmlBody = "Signing failed\n<br><br>Click <a href=\"/\">here</a> to try again\n";
+		else {
+			// Handle the errror. Here we just show the error info
+
+			System.out.println("  Error: " + err);
+			System.out.println("  Reference: " + ref);
+			System.out.println("  Details: " + details);
+
+			htmlBody = "Signing failed\n\n<br><br>\nReference: " + ref + "<br>\nError: " + err +
+				(null == details ? "" : ("\n<br>\nDetails: " + URLDecoder.decode(details))) +
+				"<br><br>\n\nClick <a href=\"/\">here</a> to try again\n";
 		}
 
-		// Delete the unsigned and signed docs from the S3 server (it's OK if the signed file doesn't exist)
+		// Delete the unsigned (and signed) doc from the S3 server
 		List<DeleteObject> filesToDelete = new LinkedList<DeleteObject>();
 		String unsignedFileName = fileName.substring(fileName.indexOf("signed_") + "signed_".length());
 		filesToDelete.add(new DeleteObject(unsignedFileName));
-		filesToDelete.add(new DeleteObject(fileName));
+		filesToDelete.add(new DeleteObject(fileName)); // it's OK if this file doesn't exist
 
 		MinioClient minioClient = getClient();
 		minioClient.removeObjects(
