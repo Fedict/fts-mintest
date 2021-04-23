@@ -61,10 +61,9 @@ public class Main implements HttpHandler {
 
 	private MinioClient minioClient;
 
-	private static final Map<String, String> sigProfiles = new HashMap<String, String>() {{
-            put("application/xml", "XADES_1");
-            put("application/pdf", "PADES_1");
-        }};
+	// Default profiles
+	private static String XADES_DEF_PROFILE = "XADES_1";
+	private static String PADES_DEF_PROFILE = "PADES_1";
 
 	private static String LANGUAGE = "en"; // options: en, nl, fr, de
 
@@ -76,7 +75,9 @@ public class Main implements HttpHandler {
 		"    <title>FPS test signing service</title>\n  </head>\n  <body>\n";
 	private static final String HTML_END = "  </body>\n</html>\n";
 
-	/* Start of the program */
+	private static final Map<String, String> sigProfiles = new HashMap<String, String>();
+
+	/** Start of the program */
 	public static final void main(String[] args) throws Exception {
 		// Read the config file
 
@@ -99,12 +100,18 @@ public class Main implements HttpHandler {
 
 		localUrl =     config.getProperty("localUrl");
 
+		String xadesProfile = config.getProperty("xadesProfile");
+		sigProfiles.put("application/xml", (null == xadesProfile) ? XADES_DEF_PROFILE : xadesProfile);
+
+		String padesProfile = config.getProperty("padesProfile");
+		sigProfiles.put("application/pdf", (null == padesProfile) ? PADES_DEF_PROFILE : padesProfile);
+
 		// Start the HTTP server
 
 		startService(port);
 	}
 
-	/* Start the HTTP server, incomming request will go to the handle() method below */
+	/** Start the HTTP server, incomming request will go to the handle() method below */
 	public static void startService(int port) throws Exception {
 		HttpServer server = HttpServer.create();
 		server.bind(new InetSocketAddress(port), 10);
@@ -114,7 +121,8 @@ public class Main implements HttpHandler {
 		System.out.println("Service started - press Ctrl-C to stop\n");
 		System.out.println("Surf with your browser to http://localhost:" + port);
 	}
-        
+
+	/** Map filename to profile name */
         private String profileFor(String filename) {
             MimetypesFileTypeMap map = new MimetypesFileTypeMap();
             map.addMimeTypes("application/pdf pdf PDF");
@@ -366,22 +374,12 @@ public class Main implements HttpHandler {
 		return minioClient;
 	}
 
-	/** 'param' consist of name=value pairs, we want the value for the requested name */
+	/** 'params' consist of name=value pairs, we want the value for the requested name */
 	private String getParam(String[] params, String name) throws Exception {
 		for (String p : params) {
 			if (p.startsWith(name))
 				return p.substring(p.indexOf("=") + 1);
 		}
 		return null;
-	}
-
-	private static String err2str(int err) {
-		switch(err) {
-			case 0: return "OK";
-			case 1: return "User cancelled";
-			case 2: return "Signature time has expired";
-			case 3: return "Server error";
-		}
-		return "Unknown error code";
 	}
 }
