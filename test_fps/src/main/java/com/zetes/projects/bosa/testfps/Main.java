@@ -2,6 +2,7 @@ package com.zetes.projects.bosa.testfps;
 
 import java.net.URL;
 import java.net.URLEncoder;
+import java.net.URLDecoder;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.util.Properties;
@@ -60,11 +61,12 @@ public class Main implements HttpHandler {
 
 	private MinioClient minioClient;
 
-	private static final Map<String, String> sigProfiles = new HashMap<String, String>() {{
-            put("application/xml", "XADES_1");
-            put("application/pdf", "PADES_1");
-        }};
-	
+	// Default profiles
+	private static String XADES_DEF_PROFILE = "XADES_1";
+	private static String PADES_DEF_PROFILE = "PADES_1";
+
+	private static String LANGUAGE = "en"; // options: en, nl, fr, de
+
 	private static final String UNSIGNED_DIR = "unsigned";
 	private static final String SIGNED_DIR = "signed";
 
@@ -73,7 +75,9 @@ public class Main implements HttpHandler {
 		"    <title>FPS test signing service</title>\n  </head>\n  <body>\n";
 	private static final String HTML_END = "  </body>\n</html>\n";
 
-	/* Start of the program */
+	private static final Map<String, String> sigProfiles = new HashMap<String, String>();
+
+	/** Start of the program */
 	public static final void main(String[] args) throws Exception {
 		// Read the config file
 
@@ -87,10 +91,8 @@ public class Main implements HttpHandler {
 		s3Url =        config.getProperty("s3Url");
 
 		filesDir =     new File(config.getProperty("fileDir"));
-		outFilesDir =  new File(config.getProperty("outFileDir"));
-		if(null == outFilesDir) {
-			outFilesDir = new File(filesDir, SIGNED_DIR);
-		}
+		String tmp  =  config.getProperty("outFileDir");
+		outFilesDir =  (null == tmp) ? new File(filesDir, SIGNED_DIR) : new File(tmp);
 
 		getTokenUrl =  config.getProperty("getTokenUrl");
 
@@ -98,12 +100,18 @@ public class Main implements HttpHandler {
 
 		localUrl =     config.getProperty("localUrl");
 
+		String xadesProfile = config.getProperty("xadesProfile");
+		sigProfiles.put("application/xml", (null == xadesProfile) ? XADES_DEF_PROFILE : xadesProfile);
+
+		String padesProfile = config.getProperty("padesProfile");
+		sigProfiles.put("application/pdf", (null == padesProfile) ? PADES_DEF_PROFILE : padesProfile);
+
 		// Start the HTTP server
 
 		startService(port);
 	}
 
-	/* Start the HTTP server, incomming request will go to the handle() method below */
+	/** Start the HTTP server, incomming request will go to the handle() method below */
 	public static void startService(int port) throws Exception {
 		HttpServer server = HttpServer.create();
 		server.bind(new InetSocketAddress(port), 10);
@@ -113,7 +121,8 @@ public class Main implements HttpHandler {
 		System.out.println("Service started - press Ctrl-C to stop\n");
 		System.out.println("Surf with your browser to http://localhost:" + port);
 	}
-        
+
+	/** Map filename to profile name */
         private String profileFor(String filename) {
             MimetypesFileTypeMap map = new MimetypesFileTypeMap();
             map.addMimeTypes("application/pdf pdf PDF");
@@ -197,10 +206,10 @@ public class Main implements HttpHandler {
 
 		System.out.println("\nUser wants to sign doc '" + inFileName + "'");
 
-		// 1. Upload the unsigned to to the S3 server
+		// 1. Upload the unsigned file to the S3 server
 		// Note: this could have been done in advance
 
-		System.out.println("1. Uploading the unsigned doc to the S3 server...");
+		System.out.println("\n1. Uploading the unsigned doc to the S3 server...");
 		MinioClient minioClient = getClient();
 		minioClient.uploadObject(
 			UploadObjectArgs.builder()
@@ -213,7 +222,7 @@ public class Main implements HttpHandler {
 		// 2. Do a 'getToken' request to the BOSA DSS
 		// This is a HTTP POST containing a json
 
-		System.out.println("2. Doing a 'getToken' to the BOSA DSS");
+		System.out.println("\n2. Doing a 'getToken' to the BOSA DSS");
 		
 		String json = "{\n" +
 			"  \"name\":\"" + s3UserName + "\",\n" +
@@ -228,49 +237,43 @@ public class Main implements HttpHandler {
 		System.out.println("  DONE, received token = " + token);
 
 		// 3. Do a redirect to the BOSA DSS front-end
+		// Format: https://{host:port}/sign/{token}?redirectURL={callbackURL}&language={language}
 
-		System.out.println("3. Redirect to the BOSA DSS front-end");
+		System.out.println("\n3. Redirect to the BOSA DSS front-end");
 		String callbackURL = localUrl + "/callback?filename=" + outFileName;
 		System.out.println("  Callback: " + callbackURL);
 		String redirectUrl = bosaDssFrontend + "/sign/" + URLEncoder.encode(token) +
-			"?redirectUrl=" + URLEncoder.encode(callbackURL);
+			"?redirectUrl=" + URLEncoder.encode(callbackURL) + "&language=" + LANGUAGE;
 		System.out.println("  URL: " + redirectUrl);
 		httpExch.getResponseHeaders().add("Location", redirectUrl);
 		httpExch.sendResponseHeaders(303, 0);
 		httpExch.close();
-		System.out.println("  DONE, now waiting till we get a callback...\n");
+		System.out.println("  DONE, now waiting till we get a callback...");
 	}
 
 	/**
 	 * In handleSign(), we specified a callback to this service after the signature process is done.
 	 * E.g. /callback?filename=signed_test.pdf&err=1&details=user_cancelled
-	 * The first part has been specified complete by us previously, only the 'err' and 'details'
+	 * The first part has been specified completely by us previously, only the 'err' and 'details'
 	 * have been added by the caller
 	 */
 	private void handleCallback(HttpExchange httpExch, String uri) throws Exception {
 
-		System.out.println("Callback: " + uri);
+		System.out.println("\n4. Callback: " + uri);
 
 		// Parse the query parameters
 		int idx = uri.indexOf("/callback?") + "/callback?".length();
 		String query = uri.substring(idx);
 		String[] queryParams = query.split("&");
-		String fileName = getParam(queryParams, "filename");
-		String err_str = getParam(queryParams, "err");
-		int err;
-		if(err_str != null) {
-			err = Integer.parseInt(getParam(queryParams, "err"));
-		} else {
-			err = 0;
-		}
-		String details = getParam(queryParams, "details");
+		String fileName = getParam(queryParams, "filename"); // this one we specified ourselves in handleSign()
+
+		// These params were added by the BOSA DSS/front-end in case of an error
 		String ref = getParam(queryParams, "ref");
-		System.out.println("  Result: " + err + " = " + err2str(err) +
-			(null == details ? "" : ( ", detatils: " + details)) +
-			(null == ref ? "" : (", ref: " + ref)));
+		String err = getParam(queryParams, "err");
+		String details = getParam(queryParams, "details");
 
 		String htmlBody = "";
-		if (0 == err) {
+		if (null == err) {
 			// If the signing was successfull, download the signed file
 
 			System.out.println("  Downloading file " + fileName + " from the S3 server");
@@ -278,6 +281,9 @@ public class Main implements HttpHandler {
 			InputStream stream =
 				minioClient.getObject(
 					GetObjectArgs.builder().bucket(s3UserName).object(fileName).build());
+
+			if (!outFilesDir.exists())
+				outFilesDir.mkdirs();
 
 			File f = new File(outFilesDir, fileName);
 			FileOutputStream fos = new FileOutputStream(f);
@@ -291,15 +297,23 @@ public class Main implements HttpHandler {
 
 			htmlBody = "Thank you for signing";
 		}
-		else if (1 == err) {
-			htmlBody = "Signing failed\n<br><br>Click <a href=\"/\">here</a> to try again\n";
+		else {
+			// Handle the errror. Here we just show the error info
+
+			System.out.println("  Error: " + err);
+			System.out.println("  Reference: " + ref);
+			System.out.println("  Details: " + details);
+
+			htmlBody = "Signing failed\n\n<br><br>\nReference: " + ref + "<br>\nError: " + err +
+				(null == details ? "" : ("\n<br>\nDetails: " + URLDecoder.decode(details))) +
+				"<br><br>\n\nClick <a href=\"/\">here</a> to try again\n";
 		}
 
-		// Delete the unsigned and signed docs from the S3 server (it's OK if the signed file doesn't exist)
+		// Delete the unsigned (and signed) doc from the S3 server
 		List<DeleteObject> filesToDelete = new LinkedList<DeleteObject>();
 		String unsignedFileName = fileName.substring(fileName.indexOf("signed_") + "signed_".length());
 		filesToDelete.add(new DeleteObject(unsignedFileName));
-		filesToDelete.add(new DeleteObject(fileName));
+		filesToDelete.add(new DeleteObject(fileName)); // it's OK if this file doesn't exist
 
 		MinioClient minioClient = getClient();
 		minioClient.removeObjects(
@@ -360,22 +374,12 @@ public class Main implements HttpHandler {
 		return minioClient;
 	}
 
-	/** 'param' consist of name=value pairs, we want the value for the requested name */
+	/** 'params' consist of name=value pairs, we want the value for the requested name */
 	private String getParam(String[] params, String name) throws Exception {
 		for (String p : params) {
 			if (p.startsWith(name))
 				return p.substring(p.indexOf("=") + 1);
 		}
 		return null;
-	}
-
-	private static String err2str(int err) {
-		switch(err) {
-			case 0: return "OK";
-			case 1: return "User cancelled";
-			case 2: return "Signature time has expired";
-			case 3: return "Server error";
-		}
-		return "Unknown error code";
 	}
 }

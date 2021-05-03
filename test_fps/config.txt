@@ -1,16 +1,23 @@
 # On which port to start this service
 port = 8080
 
-# Info to connect to the BOSA S3 server
-s3Url = https://s3.ta.fts.bosa.belgium.be/
-s3UserName = minfin
-s3Passwd = sdLE83fEL2N
+# Base URL of this service
+localUrl = http://localhost:8080
 
-# Where to get the unsigned file and to put the signed files
+
+# Info to connect to the BOSA S3 server
+s3Url = dp.ta.fts.bosa.belgium.be
+s3UserName = USERNAME_HERE
+s3Passwd = PASSWORD_HERE
+
+
+# Where to get the unsigned files and to put the signed files
 fileDir = files
 
+
 # The URL for the getToken request
-getTokenUrl = https://sign.ta.fts.bosa.belgium.be/getToken 
+getTokenUrl = https://validate.ta.fts.bosa.belgium.be/signandvalidation/signing/getTokenForDocument
+
 
 # The redirect URL to the BOSA DSS front-end
-bosaDssFrontend = https://sign.ta.fts.bosa.belgium.be/frontend
+bosaDssFrontend = https://sign.ta.fts.bosa.belgium.be
