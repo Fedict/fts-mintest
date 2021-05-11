@@ -151,7 +151,7 @@ public class Main implements HttpHandler {
 	 */
 	public void handle(HttpExchange httpExch) throws IOException {
 		try {
-			String uri = httpExch.getRequestURI().toString();   // e.g. /testpki/crl/citizenca.crl?badSig=true
+			String uri = httpExch.getRequestURI().toString();   // e.g. /sign?name=test.xml
 
 			if (uri.startsWith("/callback?")) {
 				handleCallback(httpExch, uri);
