@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<quotes>
+  <quote>
+    <text>Reality is that which, when you stop believing in it, doesn't go away</text>
+    <author>Philip K. Dick</author>
+  </quote>
+  <quote>
+    <text>Any sufficiently advanced bug is indistinguishable from a feature</text>
+    <author>Rich Kulawiec</author>
+  </quote>
+  <quote>
+    <text>Never put off till run-time what you can do at compile-time</text>
+    <author>D. Gries</author>
+  </quote>
+  <quote>
+    <text>Experience is a good teacher, but she sends in terrific bills</text>
+    <author>Minna Antrim</author>
+  </quote>
+  <quote>
+    <text>If a listener nods his head when you're explaining your program, wake him up</text>
+    <author>Alan Perlis</author>
+  </quote>
+</quotes>

@@ -6,7 +6,7 @@ localUrl = http://localhost:8080
 
 
 # Info to connect to the BOSA S3 server
-s3Url = dp.ta.fts.bosa.belgium.be
+s3Url = dp.qa.fts.bosa.belgium.be
 s3UserName = USERNAME_HERE
 s3Passwd = PASSWORD_HERE
 
@@ -16,8 +16,16 @@ fileDir = files
 
 
 # The URL for the getToken request
-getTokenUrl = https://validate.ta.fts.bosa.belgium.be/signandvalidation/signing/getTokenForDocument
+getTokenUrl = https://validate.qa.fts.bosa.belgium.be/signandvalidation/signing/getTokenForDocument
 
 
 # The redirect URL to the BOSA DSS front-end
-bosaDssFrontend = https://sign.ta.fts.bosa.belgium.be
+bosaDssFrontend = https://sign.qa.fts.bosa.belgium.be
+
+
+# Options: XADES_1, XADES_2, XADES_LTA, XADES_TLA_EXP_ALLOW
+xadesProfile = XADES_LTA
+
+# Options: PADES_1, PADES_LTA, PADES_LTA_EXP_ALLOW
+padesProfile = PADES_1
+

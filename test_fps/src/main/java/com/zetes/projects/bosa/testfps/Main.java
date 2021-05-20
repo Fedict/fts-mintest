@@ -33,10 +33,12 @@ import javax.activation.MimetypesFileTypeMap;
  * The flow is as follows:
  * <pre>
  * - the FPS creates an unsigned doc for a user and uploads it to the BOSA S3 server
- * - the FPS obtains a token (a string) for this doc from the BOSA DSS server
+ *      optionally, in case of an xml, a corresponding xslt can be uploaded
+ * - the FPS obtains a token (a string) for this doc (and xslt) from the BOSA DSS server
+         remark: this 'token' has nothing to do with OAuth or OpenID
  * - the FPS redirects the user to the BOSA DSS front-end server
  * - after a signed doc is created (and put on the BOSA S3 server), the user does a callback to the FPS
- * - the FPS retreives the signed doc from the BOSA S3 server and deletes the unsigned and signed docs
+ * - the FPS retreives the signed doc from the BOSA S3 server and deletes the unsigned and signed docs (and xslt)
  * </pre>
  * 
  * S3 info (to upload, download and delete files to/from an S3 server):
@@ -50,7 +52,7 @@ public class Main implements HttpHandler {
 	private static String s3Passwd;
 
 	private static File filesDir;
-
+	private static File inFilesDir;
 	private static File outFilesDir;
 
 	private static String getTokenUrl;
@@ -91,6 +93,7 @@ public class Main implements HttpHandler {
 		s3Url =        config.getProperty("s3Url");
 
 		filesDir =     new File(config.getProperty("fileDir"));
+		inFilesDir =   new File(filesDir, UNSIGNED_DIR);
 		String tmp  =  config.getProperty("outFileDir");
 		outFilesDir =  (null == tmp) ? new File(filesDir, SIGNED_DIR) : new File(tmp);
 
@@ -148,7 +151,7 @@ public class Main implements HttpHandler {
 	 */
 	public void handle(HttpExchange httpExch) throws IOException {
 		try {
-			String uri = httpExch.getRequestURI().toString();   // e.g. /testpki/crl/citizenca.crl?badSig=true
+			String uri = httpExch.getRequestURI().toString();   // e.g. /sign?name=test.xml
 
 			if (uri.startsWith("/callback?")) {
 				handleCallback(httpExch, uri);
@@ -171,11 +174,10 @@ public class Main implements HttpHandler {
 		}
 	}
 
-	/** Show a list of docs that can be signed. Normally this will be only 1 doc. */
+	/** Show a list of docs that can be signed. Typically this will be only 1 doc but here we show more. */
 	private void showHomePage(HttpExchange httpExch) throws Exception {
 		// Get the unsigned file names
-		File dir = new File(filesDir, UNSIGNED_DIR);
-		String[] fileNames = dir.list();
+		String[] fileNames = inFilesDir.list();
 
 		// Create an html that contains this filename list
 		StringBuilder html = new StringBuilder();
@@ -183,9 +185,14 @@ public class Main implements HttpHandler {
 			.append("    <h1>FPS test signing service</h1>\n")
 			.append("    <p>Welcome user, select a file to sign:</p>\n")
 			.append("    <ul>\n");
-		for (String fileName: fileNames)
-			html.append("      <li><a href=\"sign?name=").append(fileName)
-				.append("\">").append(fileName).append("</a>\n");
+		for (String fileName: fileNames) {
+			if (fileName.endsWith(".xslt"))
+				continue; // skip xslt files
+			html.append("      <li><a href=\"sign?name=").append(fileName).append("\">").append(fileName);
+			if (null != getXslt(fileName))
+				html.append(" (with xslt)");
+			html.append("</a>\n");
+		}
 		html.append("    </ul>\n").append(HTML_END);
 
 		// And return this html
@@ -201,8 +208,7 @@ public class Main implements HttpHandler {
 		String inFileName = uri.substring(idx + 1);
 		String outFileName = "signed_" + inFileName;
 
-		File dir = new File(filesDir, UNSIGNED_DIR);
-		File f = new File(dir, inFileName);
+		File f = new File(inFilesDir, inFileName);
 
 		System.out.println("\nUser wants to sign doc '" + inFileName + "'");
 
@@ -217,18 +223,32 @@ public class Main implements HttpHandler {
 				.object(inFileName)
 				.filename(f.getAbsolutePath())
 				.build());
+
+		File xsltFile = getXslt(inFileName);
+		if (null != xsltFile) {
+			System.out.println("   Uploading the corresponding xslt file the S3 server...");
+			minioClient.uploadObject(
+				UploadObjectArgs.builder()
+					.bucket(s3UserName)
+					.object(xsltFile.getName())
+					.filename(xsltFile.getAbsolutePath())
+					.build());
+		}
+
 		System.out.println("  DONE");
 
 		// 2. Do a 'getToken' request to the BOSA DSS
 		// This is a HTTP POST containing a json
 
 		System.out.println("\n2. Doing a 'getToken' to the BOSA DSS");
-		
+
 		String json = "{\n" +
 			"  \"name\":\"" + s3UserName + "\",\n" +
 			"  \"pwd\":\""  + s3Passwd +   "\",\n" +
-			"  \"in\":\""   + inFileName + "\",\n" +
-			"  \"out\":\""  + outFileName + "\",\n" +
+			"  \"in\":\""   + inFileName + "\",\n";
+		if (null != xsltFile)
+			json += ( "  \"xslt\":\""   + xsltFile.getName() + "\",\n" );
+ 		json += "  \"out\":\""  + outFileName + "\",\n" +
 			"  \"prof\":\"" + profileFor(inFileName) + "\"\n" +
 			"}";
 		System.out.println("JSON for the getToken call:\n" + json);
@@ -309,11 +329,14 @@ public class Main implements HttpHandler {
 				"<br><br>\n\nClick <a href=\"/\">here</a> to try again\n";
 		}
 
-		// Delete the unsigned (and signed) doc from the S3 server
+		// Delete the unsigned (and signed) docs (+ xslt) from the S3 server
 		List<DeleteObject> filesToDelete = new LinkedList<DeleteObject>();
 		String unsignedFileName = fileName.substring(fileName.indexOf("signed_") + "signed_".length());
 		filesToDelete.add(new DeleteObject(unsignedFileName));
 		filesToDelete.add(new DeleteObject(fileName)); // it's OK if this file doesn't exist
+		File xsltFile = getXslt(unsignedFileName);
+		if (null != xsltFile)
+			filesToDelete.add(new DeleteObject(xsltFile.getName()));
 
 		MinioClient minioClient = getClient();
 		minioClient.removeObjects(
@@ -343,7 +366,7 @@ public class Main implements HttpHandler {
 		return ret;
 	}
 		
-	/** Send back response to client */
+	/** Send back a response to the client */
 	private void respond(HttpExchange httpExch, int status, String contentType, byte[] data) {
 		try {
 			httpExch.getResponseHeaders().add("Content-Type", contentType);
@@ -381,5 +404,18 @@ public class Main implements HttpHandler {
 				return p.substring(p.indexOf("=") + 1);
 		}
 		return null;
+	}
+
+	/**
+	 * If 'fileName' is an xml file, then return the corresponding xslt file if it exists.
+	 * In this demo service, we assume that the xml and xslt file names only differ by their exention,
+	 *  e.g. quotes.xml and quotes.xslt
+	 */
+	private File getXslt(String fileName) throws Exception {
+		if (!fileName.endsWith(".xml"))
+			return null;
+		String xsltFileName = fileName.substring(0, fileName.length() - 3) + "xslt"; // replace "xml" by "xslt"
+		File xsltFile = new File(inFilesDir, xsltFileName);
+		return xsltFile.exists() ? xsltFile : null;
 	}
 }
