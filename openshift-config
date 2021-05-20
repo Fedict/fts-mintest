@@ -1,0 +1,9 @@
+port = 8080
+s3Url = http://minio:9000/
+s3UserName = mintest
+s3Passwd = 12345678
+fileDir = /srv/test_fps/files
+outFileDir = /tmp
+getTokenUrl = http://signvalidation-svc/signandvalidation/signing/getTokenForDocument
+bosaDssFrontend = https://sign.local.test.belgium.be
+localUrl = https://mintest.local.test.belgium.be
