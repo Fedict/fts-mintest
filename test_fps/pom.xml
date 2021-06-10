@@ -5,7 +5,7 @@
 
 	<groupId>com.zetes.projects.bosa</groupId>
 	<artifactId>test_fps</artifactId>
-	<version>0.0.3-SNAPSHOT</version>
+	<version>0.0.4-SNAPSHOT</version>
 
 	<properties>
 		<java.version>1.8</java.version>
@@ -17,7 +17,7 @@
 		<dependency>
 			<groupId>io.minio</groupId>
 			<artifactId>minio</artifactId>
-			<version>8.0.3</version>
+			<version>8.2.1</version>
 		</dependency>
 	</dependencies>
 
