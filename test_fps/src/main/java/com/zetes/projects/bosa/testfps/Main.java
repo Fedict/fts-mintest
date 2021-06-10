@@ -203,7 +203,7 @@ public class Main implements HttpHandler {
 			.append("    <p>Welcome user, select a file to sign:</p>\n")
 			.append("    <ul>\n");
 		for (String fileName: fileNames) {
-			if (fileName.endsWith(".xslt") || fileName.endsWith(".json"))
+			if (fileName.endsWith(".xslt") || fileName.endsWith(".psp"))
 				continue; // skip xslt and psp files
 			html.append("      <li><a href=\"sign?name=").append(fileName).append("\">").append(fileName);
 			if (null != getXslt(fileName))
