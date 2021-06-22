@@ -212,6 +212,8 @@ public class Main implements HttpHandler {
 				html.append(" (with PDF visible signature field named '" + PDF_SIG_FIELD_NAME + "')");
 			if (fileName.startsWith("psf1"))
 				html.append(" (with PDF visible signature field coords '" + PDF_SIG_FIELD_COORDS + "' and profile 'test1.psp')");
+			if (fileName.startsWith("psf2"))
+				html.append(" (with photo in the PDF visible signature and profile 'test2.psp')");
 			html.append("</a>\n");
 		}
 		html.append("    </ul>\n").append(HTML_END);
@@ -243,8 +245,9 @@ public class Main implements HttpHandler {
 			uploadFile(xsltFile);
 		}
 
-		if (inFileName.startsWith("psf1")) {
-			File pspFile = new File(inFilesDir, "test1.psp");
+		if (inFileName.startsWith("psf1") || inFileName.startsWith("psf2")) {
+			String pspFileName = inFileName.startsWith("psf1") ? "test1.psp" : "test2.psp";
+			File pspFile = new File(inFilesDir, pspFileName);
 			System.out.println("   Uploading test1.psp (PDF visible signature profile) to the S3 server...");
 			uploadFile(pspFile);
 		}
@@ -267,6 +270,11 @@ public class Main implements HttpHandler {
 		if (inFileName.startsWith("psf1")) {
 			json += "  \"psfC\":\"" + PDF_SIG_FIELD_COORDS + "\",\n";
 			json += "  \"psp\":\"test1.psp\",\n";
+		}
+		if (inFileName.startsWith("psf2")) {
+			json += "  \"psfC\":\"" + PDF_SIG_FIELD_COORDS + "\",\n";
+			json += "  \"psfP\":true,\n";
+			json += "  \"psp\":\"test2.psp\",\n";
 		}
 		json += "  \"out\":\""  + outFileName + "\",\n" +
 			"  \"lang\":\""  + LANGUAGE + "\",\n" +        // used for the text in PDF visible signatures
