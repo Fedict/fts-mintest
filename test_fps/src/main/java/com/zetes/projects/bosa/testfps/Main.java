@@ -358,14 +358,16 @@ public class Main implements HttpHandler {
 				"<br><br>\n\nClick <a href=\"/\">here</a> to try again\n";
 		}
 
-		// Delete the unsigned (and signed) docs (+ xslt) from the S3 server
+		// Delete everything the S3 server
 		List<DeleteObject> filesToDelete = new LinkedList<DeleteObject>();
 		String unsignedFileName = fileName.substring(fileName.indexOf("signed_") + "signed_".length());
 		filesToDelete.add(new DeleteObject(unsignedFileName));
-		filesToDelete.add(new DeleteObject(fileName)); // it's OK if this file doesn't exist
+		filesToDelete.add(new DeleteObject(fileName));                            // it's OK if this file doesn't exist
+		filesToDelete.add(new DeleteObject(fileName + ".validationreport.json")); // it's OK if this file doesn't exist
 		File xsltFile = getXslt(unsignedFileName);
 		if (null != xsltFile)
 			filesToDelete.add(new DeleteObject(xsltFile.getName()));
+		// (we could also delete the PSP file if no longer needed)
 
 		MinioClient minioClient = getClient();
 		minioClient.removeObjects(
