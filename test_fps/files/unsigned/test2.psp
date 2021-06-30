@@ -1,0 +1,18 @@
+{
+  "bgColor" : "#D0D0D0",
+  "texts" : {
+    "en": "%gn% %sn%",
+    "nl": "%gn% %sn%",
+    "fr": "%gn% %sn%",
+    "de": "%gn% %sn%"
+  },
+  "font": "freescpt",
+  "textSize" : 14,
+  "textPadding" : 20,
+  "textAlignH" : "CENTER",
+  "textAlignV" : "MIDDLE",
+  "textPos" : "LEFT",
+  "textColor" : "#0000FF",
+  "defaultCoordinates" : "1,30,20,120,60",
+  "imageDpi" : 400
+}

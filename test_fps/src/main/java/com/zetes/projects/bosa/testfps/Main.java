@@ -20,8 +20,8 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
 
 import io.minio.MinioClient;
-import io.minio.UploadObjectArgs;
 import io.minio.GetObjectArgs;
+import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectsArgs;
 import io.minio.messages.DeleteObject;
 import java.util.HashMap;
@@ -33,13 +33,16 @@ import javax.activation.MimetypesFileTypeMap;
  * The flow is as follows:
  * <pre>
  * - the FPS creates an unsigned doc for a user and uploads it to the BOSA S3 server
- *      optionally, in case of an xml, a corresponding xslt can be uploaded
- * - the FPS obtains a token (a string) for this doc (and xslt) from the BOSA DSS server
+ *      optionally, in case of an xml, a corresponding .xslt file can be uploaded
+ *      optionally, in case of PDF visible signature, a .psp file can be uploaded
+ * - the FPS obtains a token (a string) for this doc from the BOSA DSS server
          remark: this 'token' has nothing to do with OAuth or OpenID
  * - the FPS redirects the user to the BOSA DSS front-end server
  * - after a signed doc is created (and put on the BOSA S3 server), the user does a callback to the FPS
- * - the FPS retreives the signed doc from the BOSA S3 server and deletes the unsigned and signed docs (and xslt)
+ * - the FPS retreives the signed doc from the BOSA S3 server and deletes the unsigned and signed docs (and xslt, psp)
  * </pre>
+ *
+ * Documentation: https://github.com/Fedict/fts-documentation
  * 
  * S3 info (to upload, download and delete files to/from an S3 server):
  *   https://docs.min.io/docs/minio-quickstart-guide.html
@@ -72,11 +75,17 @@ public class Main implements HttpHandler {
 	private static final String UNSIGNED_DIR = "unsigned";
 	private static final String SIGNED_DIR = "signed";
 
+	private static final String PDF_SIG_FIELD_NAME = "signature_1";
+	private static final String PDF_SIG_FIELD_COORDS = "1,30,20,180,60";
+
 	private static final String HTML_START =
 		"<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\">\n" +
 		"    <title>FPS test signing service</title>\n  </head>\n  <body>\n";
 	private static final String HTML_END = "  </body>\n</html>\n";
 
+	// This is defined by the firewall settings, don't change!
+	private static int S3_PART_SIZE = 5 * 1024 * 1024;
+	
 	private static final Map<String, String> sigProfiles = new HashMap<String, String>();
 
 	/** Start of the program */
@@ -110,7 +119,6 @@ public class Main implements HttpHandler {
 		sigProfiles.put("application/pdf", (null == padesProfile) ? PADES_DEF_PROFILE : padesProfile);
 
 		// Start the HTTP server
-
 		startService(port);
 	}
 
@@ -166,6 +174,7 @@ public class Main implements HttpHandler {
 		catch (Exception e) {
 			try {
 				System.out.println("ERR in Standalone.handle(): " + e.toString());
+				e.printStackTrace();
 				respond(httpExch, 500, "text/plain", e.toString().getBytes());
 			}
 			catch (Exception x) {
@@ -174,7 +183,15 @@ public class Main implements HttpHandler {
 		}
 	}
 
-	/** Show a list of docs that can be signed. Typically this will be only 1 doc but here we show more. */
+	/**
+	 * Show a list of docs that can be signed. Typically this will be only 1 doc but here we show more.
+	 * To keep the code short, we also use some conventions for the file names:
+	 * - if there's a .xslt file with the same name as an .xml file, that .xslt is used to visualise the xls
+	 * - if the file starts with 'psf0' then we'll add 'psfN=signature_0' in the getTokenForDocument call
+	 *      and we assume the document is a PDF that contains a visible signature field called 'signature_0'
+	 * - if the file starts with 'psf1' then we'll add 'coordinates' and a psp to the getTokenForDocument call
+	 *      and we'll upload the test1.psp file to the S3 server
+	 */
 	private void showHomePage(HttpExchange httpExch) throws Exception {
 		// Get the unsigned file names
 		String[] fileNames = inFilesDir.list();
@@ -186,11 +203,17 @@ public class Main implements HttpHandler {
 			.append("    <p>Welcome user, select a file to sign:</p>\n")
 			.append("    <ul>\n");
 		for (String fileName: fileNames) {
-			if (fileName.endsWith(".xslt"))
-				continue; // skip xslt files
+			if (fileName.endsWith(".xslt") || fileName.endsWith(".psp"))
+				continue; // skip xslt and psp files
 			html.append("      <li><a href=\"sign?name=").append(fileName).append("\">").append(fileName);
 			if (null != getXslt(fileName))
 				html.append(" (with xslt)");
+			if (fileName.startsWith("psf0"))
+				html.append(" (with PDF visible signature field named '" + PDF_SIG_FIELD_NAME + "')");
+			if (fileName.startsWith("psf1"))
+				html.append(" (with PDF visible signature field coords '" + PDF_SIG_FIELD_COORDS + "' and profile 'test1.psp')");
+			if (fileName.startsWith("psf2"))
+				html.append(" (with photo in the PDF visible signature and profile 'test2.psp')");
 			html.append("</a>\n");
 		}
 		html.append("    </ul>\n").append(HTML_END);
@@ -208,31 +231,25 @@ public class Main implements HttpHandler {
 		String inFileName = uri.substring(idx + 1);
 		String outFileName = "signed_" + inFileName;
 
-		File f = new File(inFilesDir, inFileName);
-
 		System.out.println("\nUser wants to sign doc '" + inFileName + "'");
 
 		// 1. Upload the unsigned file to the S3 server
 		// Note: this could have been done in advance
 
-		System.out.println("\n1. Uploading the unsigned doc to the S3 server...");
-		MinioClient minioClient = getClient();
-		minioClient.uploadObject(
-			UploadObjectArgs.builder()
-				.bucket(s3UserName)
-				.object(inFileName)
-				.filename(f.getAbsolutePath())
-				.build());
+		System.out.println("\n1. Uploading the unsigned doc (+ xslt, psp) to the S3 server...");
+		uploadFile(new File(inFilesDir, inFileName));
 
 		File xsltFile = getXslt(inFileName);
 		if (null != xsltFile) {
-			System.out.println("   Uploading the corresponding xslt file the S3 server...");
-			minioClient.uploadObject(
-				UploadObjectArgs.builder()
-					.bucket(s3UserName)
-					.object(xsltFile.getName())
-					.filename(xsltFile.getAbsolutePath())
-					.build());
+			System.out.println("   Uploading the corresponding xslt file to the S3 server...");
+			uploadFile(xsltFile);
+		}
+
+		if (inFileName.startsWith("psf1") || inFileName.startsWith("psf2")) {
+			String pspFileName = inFileName.startsWith("psf1") ? "test1.psp" : "test2.psp";
+			File pspFile = new File(inFilesDir, pspFileName);
+			System.out.println("   Uploading test1.psp (PDF visible signature profile) to the S3 server...");
+			uploadFile(pspFile);
 		}
 
 		System.out.println("  DONE");
@@ -240,7 +257,7 @@ public class Main implements HttpHandler {
 		// 2. Do a 'getToken' request to the BOSA DSS
 		// This is a HTTP POST containing a json
 
-		System.out.println("\n2. Doing a 'getToken' to the BOSA DSS");
+		System.out.println("\n2. Doing a 'getTokenForDocument' to the BOSA DSS");
 
 		String json = "{\n" +
 			"  \"name\":\"" + s3UserName + "\",\n" +
@@ -248,7 +265,19 @@ public class Main implements HttpHandler {
 			"  \"in\":\""   + inFileName + "\",\n";
 		if (null != xsltFile)
 			json += ( "  \"xslt\":\""   + xsltFile.getName() + "\",\n" );
- 		json += "  \"out\":\""  + outFileName + "\",\n" +
+		if (inFileName.startsWith("psf0"))
+			json += "  \"psfN\":\"" + PDF_SIG_FIELD_NAME + "\",\n";
+		if (inFileName.startsWith("psf1")) {
+			json += "  \"psfC\":\"" + PDF_SIG_FIELD_COORDS + "\",\n";
+			json += "  \"psp\":\"test1.psp\",\n";
+		}
+		if (inFileName.startsWith("psf2")) {
+			json += "  \"psfC\":\"" + PDF_SIG_FIELD_COORDS + "\",\n";
+			json += "  \"psfP\":true,\n";
+			json += "  \"psp\":\"test2.psp\",\n";
+		}
+		json += "  \"out\":\""  + outFileName + "\",\n" +
+			"  \"lang\":\""  + LANGUAGE + "\",\n" +        // used for the text in PDF visible signatures
 			"  \"prof\":\"" + profileFor(inFileName) + "\"\n" +
 			"}";
 		System.out.println("JSON for the getToken call:\n" + json);
@@ -329,14 +358,16 @@ public class Main implements HttpHandler {
 				"<br><br>\n\nClick <a href=\"/\">here</a> to try again\n";
 		}
 
-		// Delete the unsigned (and signed) docs (+ xslt) from the S3 server
+		// Delete everything the S3 server
 		List<DeleteObject> filesToDelete = new LinkedList<DeleteObject>();
 		String unsignedFileName = fileName.substring(fileName.indexOf("signed_") + "signed_".length());
 		filesToDelete.add(new DeleteObject(unsignedFileName));
-		filesToDelete.add(new DeleteObject(fileName)); // it's OK if this file doesn't exist
+		filesToDelete.add(new DeleteObject(fileName));                            // it's OK if this file doesn't exist
+		filesToDelete.add(new DeleteObject(fileName + ".validationreport.json")); // it's OK if this file doesn't exist
 		File xsltFile = getXslt(unsignedFileName);
 		if (null != xsltFile)
 			filesToDelete.add(new DeleteObject(xsltFile.getName()));
+		// (we could also delete the PSP file if no longer needed)
 
 		MinioClient minioClient = getClient();
 		minioClient.removeObjects(
@@ -417,5 +448,16 @@ public class Main implements HttpHandler {
 		String xsltFileName = fileName.substring(0, fileName.length() - 3) + "xslt"; // replace "xml" by "xslt"
 		File xsltFile = new File(inFilesDir, xsltFileName);
 		return xsltFile.exists() ? xsltFile : null;
+	}
+
+	private void uploadFile(File f) throws Exception {
+		FileInputStream fis = new FileInputStream(f);
+
+		getClient().putObject(
+			PutObjectArgs.builder()
+				.bucket(s3UserName)
+				.object(f.getName())
+				.stream(fis, f.length(), S3_PART_SIZE)
+			.build());
 	}
 }
