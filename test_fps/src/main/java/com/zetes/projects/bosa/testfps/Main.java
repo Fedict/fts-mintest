@@ -70,6 +70,8 @@ public class Main implements HttpHandler {
 	private static String XADES_DEF_PROFILE = "XADES_1";
 	private static String PADES_DEF_PROFILE = "PADES_1";
 
+	private static String NAME = "FPS XXX"; // is displayed in user's browser
+
 	private static String LANGUAGE = "en"; // options: en, nl, fr, de
 
 	private static final String UNSIGNED_DIR = "unsigned";
@@ -286,13 +288,13 @@ public class Main implements HttpHandler {
 		System.out.println("  DONE, received token = " + token);
 
 		// 3. Do a redirect to the BOSA DSS front-end
-		// Format: https://{host:port}/sign/{token}?redirectURL={callbackURL}&language={language}
+		// Format: https://{host:port}/sign/{token}?redirectURL={callbackURL}&language={language}&name={name}
 
 		System.out.println("\n3. Redirect to the BOSA DSS front-end");
 		String callbackURL = localUrl + "/callback?filename=" + outFileName;
 		System.out.println("  Callback: " + callbackURL);
 		String redirectUrl = bosaDssFrontend + "/sign/" + URLEncoder.encode(token) +
-			"?redirectUrl=" + URLEncoder.encode(callbackURL) + "&language=" + LANGUAGE;
+			"?redirectUrl=" + URLEncoder.encode(callbackURL) + "&language=" + LANGUAGE + "&name=" + NAME;
 		System.out.println("  URL: " + redirectUrl);
 		httpExch.getResponseHeaders().add("Location", redirectUrl);
 		httpExch.sendResponseHeaders(303, 0);

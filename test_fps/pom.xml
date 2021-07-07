@@ -5,7 +5,7 @@
 
 	<groupId>com.zetes.projects.bosa</groupId>
 	<artifactId>test_fps</artifactId>
-	<version>0.0.5-SNAPSHOT</version>
+	<version>0.0.6-SNAPSHOT</version>
 
 	<properties>
 		<java.version>1.8</java.version>
