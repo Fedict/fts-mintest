@@ -294,7 +294,8 @@ public class Main implements HttpHandler {
 		String callbackURL = localUrl + "/callback?filename=" + outFileName;
 		System.out.println("  Callback: " + callbackURL);
 		String redirectUrl = bosaDssFrontend + "/sign/" + URLEncoder.encode(token) +
-			"?redirectUrl=" + URLEncoder.encode(callbackURL) + "&language=" + LANGUAGE + "&name=" + NAME;
+			"?redirectUrl=" + URLEncoder.encode(callbackURL) + "&language=" + LANGUAGE +
+			"&name=" + URLEncoder.encode(NAME);
 		System.out.println("  URL: " + redirectUrl);
 		httpExch.getResponseHeaders().add("Location", redirectUrl);
 		httpExch.sendResponseHeaders(303, 0);
