@@ -216,6 +216,8 @@ public class Main implements HttpHandler {
 				html.append(" (with PDF visible signature field coords '" + PDF_SIG_FIELD_COORDS + "' and profile 'test1.psp')");
 			if (fileName.startsWith("psf2"))
 				html.append(" (with photo in the PDF visible signature and profile 'test2.psp')");
+                        if (fileName.startsWith("nd_"))
+                                html.append(" (download disabled)");
 			html.append("</a>\n");
 		}
 		html.append("    </ul>\n").append(HTML_END);
@@ -278,6 +280,9 @@ public class Main implements HttpHandler {
 			json += "  \"psfP\":true,\n";
 			json += "  \"psp\":\"test2.psp\",\n";
 		}
+                if (inFileName.startsWith("nd_")) {
+                        json += "  \"noDownload\": true,\n";
+                }
 		json += "  \"out\":\""  + outFileName + "\",\n" +
 			"  \"lang\":\""  + LANGUAGE + "\",\n" +        // used for the text in PDF visible signatures
 			"  \"prof\":\"" + profileFor(inFileName) + "\"\n" +
