@@ -70,6 +70,8 @@ public class Main implements HttpHandler {
 	private static String XADES_DEF_PROFILE = "XADES_1";
 	private static String PADES_DEF_PROFILE = "PADES_1";
 
+	private static String NAME = "FPS XXX"; // is displayed in user's browser
+
 	private static String LANGUAGE = "en"; // options: en, nl, fr, de
 
 	private static final String UNSIGNED_DIR = "unsigned";
@@ -214,6 +216,8 @@ public class Main implements HttpHandler {
 				html.append(" (with PDF visible signature field coords '" + PDF_SIG_FIELD_COORDS + "' and profile 'test1.psp')");
 			if (fileName.startsWith("psf2"))
 				html.append(" (with photo in the PDF visible signature and profile 'test2.psp')");
+                        if (fileName.startsWith("nd_"))
+                                html.append(" (download disabled)");
 			html.append("</a>\n");
 		}
 		html.append("    </ul>\n").append(HTML_END);
@@ -276,6 +280,9 @@ public class Main implements HttpHandler {
 			json += "  \"psfP\":true,\n";
 			json += "  \"psp\":\"test2.psp\",\n";
 		}
+                if (inFileName.startsWith("nd_")) {
+                        json += "  \"noDownload\": true,\n";
+                }
 		json += "  \"out\":\""  + outFileName + "\",\n" +
 			"  \"lang\":\""  + LANGUAGE + "\",\n" +        // used for the text in PDF visible signatures
 			"  \"prof\":\"" + profileFor(inFileName) + "\"\n" +
@@ -286,13 +293,14 @@ public class Main implements HttpHandler {
 		System.out.println("  DONE, received token = " + token);
 
 		// 3. Do a redirect to the BOSA DSS front-end
-		// Format: https://{host:port}/sign/{token}?redirectURL={callbackURL}&language={language}
+		// Format: https://{host:port}/sign/{token}?redirectURL={callbackURL}&language={language}&name={name}
 
 		System.out.println("\n3. Redirect to the BOSA DSS front-end");
 		String callbackURL = localUrl + "/callback?filename=" + outFileName;
 		System.out.println("  Callback: " + callbackURL);
 		String redirectUrl = bosaDssFrontend + "/sign/" + URLEncoder.encode(token) +
-			"?redirectUrl=" + URLEncoder.encode(callbackURL) + "&language=" + LANGUAGE;
+			"?redirectUrl=" + URLEncoder.encode(callbackURL) + "&language=" + LANGUAGE +
+			"&name=" + URLEncoder.encode(NAME);
 		System.out.println("  URL: " + redirectUrl);
 		httpExch.getResponseHeaders().add("Location", redirectUrl);
 		httpExch.sendResponseHeaders(303, 0);
