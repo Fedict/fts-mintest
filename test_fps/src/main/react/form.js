@@ -25,24 +25,21 @@ class NameForm extends React.Component {
         psfP: false,
         lang: 'en',
         noDownload: false,
-        allowedToSign: [],
+        allowedToSign: '',
         policyId: '',
         policyDescription: 'Policy Description',
         policyDigestAlgorithm: 'SHA512',
         requestDocumentReadConfirm: false,
+
         profilesForInputType: this.profilePerType.pdf,
         inputFiles: [],
         pspFiles: [],
-        xsltFiles: []
+        xsltFiles: [],
+        reasonForNoSubmit: null
         };
 
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleChange = this.handleChange.bind(this);
-    this.handleChangeName = this.handleChangeName.bind(this);
-  }
-
-  hasPolicy() {
-     return this.state.policyId !=null && this.state.policyId.trim().length != 0;
   }
 
   inFileExt() {
@@ -52,15 +49,34 @@ class NameForm extends React.Component {
 
   handleChange(event) {
     target = event.target;
-    this.setState({ [target.id]: target.type === 'checkbox' ? target.checked : target.value });
+    this.setState({
+        [target.id]: target.type === 'checkbox' ? target.checked : target.value }, this.adaptToChanges);
   }
 
-  handleChangeName(event) {
-    target = event.target;
-    this.setState({ [target.id]: target.value }, this.adaptToNameChanges);
-  }
+  adaptToChanges() {
+    reasonForNoSubmit = null;
+    if (!reasonForNoSubmit && this.state.out.length < 5) {
+         reasonForNoSubmit = "The output file name must be > 5 character (was : '" + this.state.out + "')";
+    }
+    if (!reasonForNoSubmit && this.inFileExt() == 'pdf') {
+        if (this.state.psfC) {
+            if (/^[0-9]+,[0-9]+,[0-9]+,[0-9]+,[0-9]+$/.test(this.state.psfC)) {
+                coord = this.state.psfC.split(',');
+                if (parseInt(coord[1]) >= parseInt(coord[3]) || parseInt(coord[2]) >= parseInt(coord[4])) {
+                    reasonForNoSubmit = "the 'PDF signature field coordinates' must look like 'page#, top,left,bottom,right (was : '" + this.state.psfC + "')";
+                }
+            } else reasonForNoSubmit = "the 'PDF signature field coordinates' must look like '3, 10,10,30,30' (was : '" + this.state.psfC + "')";
+        } else {
+            if (!this.state.psfN) {
+                reasonForNoSubmit = "you must provide either a 'PDF signature field name' or 'PDF signature field coordinates'";
+            }
+        }
+    if (reasonForNoSubmit) reasonForNoSubmit = "For PDF input file " + reasonForNoSubmit;
+    }
+    if (reasonForNoSubmit != this.state.reasonForNoSubmit) {
+        this.setState( { reasonForNoSubmit: reasonForNoSubmit } );
+    }
 
-  adaptToNameChanges() {
     bitsName = this.state.name.toLowerCase().split(".");
     ext = bitsName[bitsName.length - 1];
     bitsOut = this.state.out.toLowerCase().split(".");
@@ -87,7 +103,7 @@ class NameForm extends React.Component {
         cleanState.psp = null;
     }
 
-    if (cleanState.policyId == null || cleanState.policyId.length == 0) {
+    if (!cleanState.policyId) {
         cleanState.policyDescription = cleanState.policyDigestAlgorithm = null;
     }
 
@@ -98,7 +114,7 @@ class NameForm extends React.Component {
   serialize(obj) {
     var str = [];
     for (var p in obj)
-        if (obj.hasOwnProperty(p) && obj[p] != null && obj[p].length != 0) {
+        if (obj.hasOwnProperty(p) && obj[p]) {
           str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
         }
     return str.join("&");
@@ -137,14 +153,14 @@ class NameForm extends React.Component {
       <form onSubmit={this.handleSubmit}>
           <table style={{ border: '1px solid', width: '600px' }}>
             <tbody>
-                <tr><td colspan="2"><b>General parameters</b></td></tr>
+                <tr><td colSpan="2"><b>General parameters</b></td></tr>
                 <tr><td><label>Input file name :</label></td>
-                <td><select id="name" value={this.state.name} onChange={this.handleChangeName}>
+                <td><select id="name" value={this.state.name} onChange={this.handleChange}>
                                     {this.state.inputFiles.map((inputFile) => <option key={inputFile}>{inputFile}</option>)}
                 </select></td></tr>
 
                 <tr><td><label>Output file name:</label></td>
-                <td><input id="out" type="text" value={this.state.out} onChange={this.handleChangeName}/></td></tr>
+                <td><input id="out" type="text" value={this.state.out} onChange={this.handleChange}/></td></tr>
 
                 <tr><td><label>Signing profile :</label></td>
                 <td><select id="prof" value={this.state.prof} onChange={this.handleChange}>
@@ -167,8 +183,8 @@ class NameForm extends React.Component {
                 <tr><td><label>Request read confirmation</label></td><td><input id="requestDocumentReadConfirm" type="checkbox" value={this.state.requestDocumentReadConfirm} onChange={this.handleChange}/></td>
                 </tr>
 
-                <tr><td colspan="2"><hr/></td></tr>
-                <tr><td colspan="2"><b>PDF parameters</b></td></tr>
+                <tr><td colSpan="2"><hr/></td></tr>
+                <tr><td colSpan="2"><b>PDF parameters</b></td></tr>
                 <tr><td><label>PDF signature parameters file name: </label></td>
                 <td><select id="psp" type="text" value={this.state.psp} disabled={this.inFileExt() != 'pdf'} onChange={this.handleChange}>
                                         {this.state.pspFiles.map((pspFile) => <option key={pspFile}>{pspFile}</option>)}
@@ -182,8 +198,8 @@ class NameForm extends React.Component {
 
                 <tr><td><label>Include eID photo as icon in the PDF signature field</label></td><td><input id="psfP" type="checkbox" value={this.state.psfP} disabled={this.inFileExt() != 'pdf'}  onChange={this.handleChange}/></td>
                 </tr>
-                <tr><td colspan="2"><hr/></td></tr>
-                <tr><td colspan="2"><b>Non PDF parameters</b></td></tr>
+                <tr><td colSpan="2"><hr/></td></tr>
+                <tr><td colSpan="2"><b>Non PDF parameters</b></td></tr>
                 <tr><td><label>XSLT file name:</label></td>
                 <td><select id="xslt" value={this.state.xslt} disabled={this.inFileExt() != 'xml'} onChange={this.handleChange}>
                                         {this.state.xsltFiles.map((xsltFile) => <option key={xsltFile}>{xsltFile}</option>)}
@@ -195,14 +211,16 @@ class NameForm extends React.Component {
                 </select></td></tr>
 
                 <tr><td><label>Policiy description (Optional):</label></td>
-                <td><input id="policyDescription" type="text" value={this.state.policyDescription} onChange={this.handleChange} disabled={!this.hasPolicy() || this.inFileExt() == 'pdf'} /></td></tr>
+                <td><input id="policyDescription" type="text" value={this.state.policyDescription} onChange={this.handleChange} disabled={this.inFileExt() == 'pdf' || !this.state.policyId} /></td></tr>
 
                 <tr><td><label>Policy Digest Algorithm :</label></td>
-                <td><select id="policyDigestAlgorithm" value={this.state.policyDigestAlgorithm} onChange={this.handleChange} disabled={!this.hasPolicy() || this.inFileExt() == 'pdf'} >
+                <td><select id="policyDigestAlgorithm" value={this.state.policyDigestAlgorithm} onChange={this.handleChange} disabled={this.inFileExt() == 'pdf' || !this.state.policyId } >
                                         {this.policyDigestAlgorithms.map((algo) => <option key={algo}>{algo}</option>)}
                 </select></td></tr>
-                <tr><td colspan="2"><hr/></td></tr>
-                <tr><td colspan="2"><input type="submit" value="Submit" /></td></tr>
+                <tr><td colSpan="2"><hr/></td></tr>
+                <tr><td colSpan="2"><input type="submit" value="Submit" disabled={this.state.reasonForNoSubmit}/>
+                { this.state.reasonForNoSubmit && <label><br/>Submit is disabled because : { this.state.reasonForNoSubmit }</label> }
+                </td></tr>
             </tbody>
           </table>
       </form>
