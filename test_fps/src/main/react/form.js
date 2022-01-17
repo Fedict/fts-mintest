@@ -39,8 +39,6 @@ class NameForm extends React.Component {
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleChange = this.handleChange.bind(this);
     this.handleChangeName = this.handleChangeName.bind(this);
-
-//    this.forceUpdate();
   }
 
   hasPolicy() {
@@ -137,84 +135,76 @@ class NameForm extends React.Component {
   render() {
     return (
       <form onSubmit={this.handleSubmit}>
-        <ul>
-            <li>
-                <label>Input file name :</label>
-                <select id="name" value={this.state.name} onChange={this.handleChangeName}>
-                    {this.state.inputFiles.map((inputFile) => <option key={inputFile}>{inputFile}</option>)}
-                </select>
-            </li>
-            <li>
-                <label>XSLT file name:</label>
-                <select id="xslt" value={this.state.xslt} disabled={this.inFileExt() != 'xml'} onChange={this.handleChange}>
-                    {this.state.xsltFiles.map((xsltFile) => <option key={xsltFile}>{xsltFile}</option>)}
-                </select>
-            </li>
-            <li>
-                <label>Output file name:</label>
-                <input id="out" type="text" value={this.state.out} onChange={this.handleChangeName}/>
-            </li>
-            <li>
-                <label>Signing profile :</label>
-                <select id="prof" value={this.state.prof} onChange={this.handleChange}>
-                    {this.state.profilesForInputType.map((profile) => <option key={profile}>{profile}</option>)}
-                </select>
-            </li>
-            <li>
-                <label>PDF signature parameters file name: </label>
-                <select id="psp" type="text" value={this.state.psp} disabled={this.inFileExt() != 'pdf'} onChange={this.handleChange}>
-                    {this.state.pspFiles.map((pspFile) => <option key={pspFile}>{pspFile}</option>)}
-                </select>
-            </li>
-            <li>
-                <label>PDF signature field name: </label>
-                <input id="psfN" type="text" value={this.state.psfN} disabled={this.inFileExt() != 'pdf'}  onChange={this.handleChange}/>
-            </li>
-            <li>
-                <label>PDF signature field coordinates: </label>
-                <input id="psfC" type="text" value={this.state.psfC} disabled={this.inFileExt() != 'pdf'}  onChange={this.handleChange}/>
-            </li>
-            <li>
-                <label><input id="psfP" type="checkbox" value={this.state.psfP} disabled={this.inFileExt() != 'pdf'}  onChange={this.handleChange}/> Include eID photo as icon in the PDF signature field</label>
-            </li>
-            <li>
-                <label>Language: </label>
-                <select id="lang" value={this.state.lang} onChange={this.handleChange}>
-                    <option value="de">Deutsch</option>
-                    <option value="en">English</option>
-                    <option value="fr">Français</option>
-                    <option value="nl">Nerderlands</option>
-                </select>
-            </li>
-            <li>
-                <label>Allowed to Sign: </label>
-                <input id="allowedToSign" type="text" value={this.state.allowedToSign} onChange={this.handleChange}/>
-            </li>
-            <li>
-                <label><input id="noDownload" type="checkbox" value={this.state.noDownload} onChange={this.handleChange}/> Allow output file download</label>
-            </li>
-            <li>
-                <label><input id="requestDocumentReadConfirm" type="checkbox" value={this.state.requestDocumentReadConfirm} onChange={this.handleChange}/> Request read confirmation</label>
-            </li>
-            <li>
-                <label>Policy Id:</label>
-                <select id="policyId" value={this.state.policyId} disabled={this.inFileExt() == 'pdf'} onChange={this.handleChange}>
-                    <option></option>
-                    <option>http://signinfo.eda.just.fgov.be/SignaturePolicy/pdf/Notary/BE_Justice_Signature_Policy_Notary_eID_Hum_v0.10_202109_Fr.pdf</option>
-                </select>
-            </li>
-            <li>
-                <label>Policiy description (Optional):</label>
-                <input id="policyDescription" type="text" value={this.state.policyDescription} onChange={this.handleChange} disabled={!this.hasPolicy() || this.inFileExt() == 'pdf'} />
-            </li>
-            <li>
-                <label>Policy Digest Algorithm :</label>
-                <select id="policyDigestAlgorithm" value={this.state.policyDigestAlgorithm} onChange={this.handleChange} disabled={!this.hasPolicy() || this.inFileExt() == 'pdf'} >
-                    {this.policyDigestAlgorithms.map((algo) => <option key={algo}>{algo}</option>)}
-                </select>
-            </li>
-        </ul>
-        <input type="submit" value="Submit" />
+          <table style={{ border: '1px solid', width: '600px' }}>
+            <tbody>
+                <tr><td colspan="2"><b>General parameters</b></td></tr>
+                <tr><td><label>Input file name :</label></td>
+                <td><select id="name" value={this.state.name} onChange={this.handleChangeName}>
+                                    {this.state.inputFiles.map((inputFile) => <option key={inputFile}>{inputFile}</option>)}
+                </select></td></tr>
+
+                <tr><td><label>Output file name:</label></td>
+                <td><input id="out" type="text" value={this.state.out} onChange={this.handleChangeName}/></td></tr>
+
+                <tr><td><label>Signing profile :</label></td>
+                <td><select id="prof" value={this.state.prof} onChange={this.handleChange}>
+                                        {this.state.profilesForInputType.map((profile) => <option key={profile}>{profile}</option>)}
+                </select></td></tr>
+                <tr><td><label>Language: </label></td>
+                <td><select id="lang" value={this.state.lang} onChange={this.handleChange}>
+                                        <option value="de">Deutsch</option>
+                                        <option value="en">English</option>
+                                        <option value="fr">Français</option>
+                                        <option value="nl">Nerderlands</option>
+                </select></td></tr>
+
+                <tr><td><label>NN Allowed to Sign (Comma separated): </label></td>
+                <td><input id="allowedToSign" type="text" value={this.state.allowedToSign} onChange={this.handleChange}/></td></tr>
+
+                <tr><td><label>Allow output file download</label></td><td><input id="noDownload" type="checkbox" value={this.state.noDownload} onChange={this.handleChange}/></td>
+                </tr>
+
+                <tr><td><label>Request read confirmation</label></td><td><input id="requestDocumentReadConfirm" type="checkbox" value={this.state.requestDocumentReadConfirm} onChange={this.handleChange}/></td>
+                </tr>
+
+                <tr><td colspan="2"><hr/></td></tr>
+                <tr><td colspan="2"><b>PDF parameters</b></td></tr>
+                <tr><td><label>PDF signature parameters file name: </label></td>
+                <td><select id="psp" type="text" value={this.state.psp} disabled={this.inFileExt() != 'pdf'} onChange={this.handleChange}>
+                                        {this.state.pspFiles.map((pspFile) => <option key={pspFile}>{pspFile}</option>)}
+                </select></td></tr>
+
+                <tr><td><label>PDF signature field name: </label></td>
+                <td><input id="psfN" type="text" value={this.state.psfN} disabled={this.inFileExt() != 'pdf'}  onChange={this.handleChange}/></td></tr>
+
+                <tr><td><label>PDF signature field coordinates: </label></td>
+                <td><input id="psfC" type="text" value={this.state.psfC} disabled={this.inFileExt() != 'pdf'}  onChange={this.handleChange}/></td></tr>
+
+                <tr><td><label>Include eID photo as icon in the PDF signature field</label></td><td><input id="psfP" type="checkbox" value={this.state.psfP} disabled={this.inFileExt() != 'pdf'}  onChange={this.handleChange}/></td>
+                </tr>
+                <tr><td colspan="2"><hr/></td></tr>
+                <tr><td colspan="2"><b>Non PDF parameters</b></td></tr>
+                <tr><td><label>XSLT file name:</label></td>
+                <td><select id="xslt" value={this.state.xslt} disabled={this.inFileExt() != 'xml'} onChange={this.handleChange}>
+                                        {this.state.xsltFiles.map((xsltFile) => <option key={xsltFile}>{xsltFile}</option>)}
+                </select></td></tr>
+                <tr><td><label>Policy Id:</label></td>
+                <td><select id="policyId" value={this.state.policyId} disabled={this.inFileExt() == 'pdf'} onChange={this.handleChange}>
+                                        <option></option>
+                                        <option>http://signinfo.eda.just.fgov.be/SignaturePolicy/pdf/Notary/BE_Justice_Signature_Policy_Notary_eID_Hum_v0.10_202109_Fr.pdf</option>
+                </select></td></tr>
+
+                <tr><td><label>Policiy description (Optional):</label></td>
+                <td><input id="policyDescription" type="text" value={this.state.policyDescription} onChange={this.handleChange} disabled={!this.hasPolicy() || this.inFileExt() == 'pdf'} /></td></tr>
+
+                <tr><td><label>Policy Digest Algorithm :</label></td>
+                <td><select id="policyDigestAlgorithm" value={this.state.policyDigestAlgorithm} onChange={this.handleChange} disabled={!this.hasPolicy() || this.inFileExt() == 'pdf'} >
+                                        {this.policyDigestAlgorithms.map((algo) => <option key={algo}>{algo}</option>)}
+                </select></td></tr>
+                <tr><td colspan="2"><hr/></td></tr>
+                <tr><td colspan="2"><input type="submit" value="Submit" /></td></tr>
+            </tbody>
+          </table>
       </form>
     );
   }

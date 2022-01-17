@@ -7,11 +7,24 @@
     <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js">
     </script><script src="/static/form.js"></script>
+    <style>
+        input {
+            width : 200px;
+            padding: 2px;
+            margin: 2px;
+        }
+        select {
+            width : 200px;
+            padding: 2px;
+            margin: 6px;
+        }
+    </style>
 </head>
 <body>
 <h1>FPS test signing service</h1>
 <p>Welcome user, select a file to sign:</p>
 <ul>
+
     <li><a href="/sign?name=nd_test.pdf&noDownload=true&out=signed_nd_test.pdf&lang=en&prof=PADES_1">PDF (download disabled)</a></li>
     <li><a href="/sign?name=psf0_visible_sigfields.pdf&psfN=signature_1&out=signed_psf0_visible_sigfields.pdf&lang=en&prof=PADES_1">PDF visible signature field named 'signature_1'</a></li>
     <li><a href="/sign?name=psf1_test.pdf&psp=test1.psp&psfC=1%2C30%2C20%2C180%2C60&out=signed_psf1_test.pdf&lang=en&prof=PADES_1">PDF visible signature field coords '1,30,20,180,60' and profile 'test1.psp'</a></li>
@@ -21,6 +34,7 @@
     <li><a href="/sign?name=test.xml&out=signed_test.xml&lang=en&prof=XADES_LTA">test.xml</a></li>
 </ul>
 
+<p>Create you own test case:</p>
 <div id="form_container"></div>
 <script>ReactDOM.render(React.createElement(NameForm), document.querySelector('#form_container'));</script>
 </body>
