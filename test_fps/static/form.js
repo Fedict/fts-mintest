@@ -117,7 +117,7 @@ var NameForm = function (_React$Component) {
                 cleanState.xslt = null;
                 cleanState.policyId = null;
             } else if (lowerName.endsWith(".xml")) {
-                cleanState.psp = null;
+                cleanState.psp = cleanState.psfC = cleanState.psfN = cleanState.psfP = null;
             }
 
             if (!cleanState.policyId) {
@@ -157,13 +157,21 @@ var NameForm = function (_React$Component) {
                         if (ext == "pdf" || ext == "xml") inputFiles.push(fileName);else if (ext == "psp") pspFiles.push(fileName);else if (ext == "xslt") xsltFiles.push(fileName);
                     }
                 });
-                _this2.setState({
+
+                bitsName = inputFiles[0].toLowerCase().split(".");
+                ext = bitsName[bitsName.length - 1];
+                bitsOut = _this2.state.out.toLowerCase().split(".");
+                bitsOut[bitsOut.length - 1] = ext;
+                out = bitsOut.join("."), _this2.setState({
                     pspFiles: pspFiles,
                     psp: pspFiles[0],
                     xsltFiles: xsltFiles,
                     xslt: xsltFiles[0],
                     inputFiles: inputFiles,
-                    name: inputFiles[0]
+                    name: inputFiles[0],
+                    profilesForInputType: _this2.profilePerType[ext],
+                    prof: _this2.profilePerType[ext][0],
+                    out: out
                 });
             });
         }

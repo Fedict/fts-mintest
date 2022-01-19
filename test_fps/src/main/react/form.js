@@ -100,7 +100,7 @@ class NameForm extends React.Component {
         cleanState.xslt = null;
         cleanState.policyId = null;
     } else if (lowerName.endsWith(".xml")) {
-        cleanState.psp = null;
+        cleanState.psp = cleanState.psfC = cleanState.psfN = cleanState.psfP = null;
     }
 
     if (!cleanState.policyId) {
@@ -137,13 +137,23 @@ class NameForm extends React.Component {
                     else if (ext == "xslt") xsltFiles.push(fileName);
                   }
               });
+
+          bitsName = inputFiles[0].toLowerCase().split(".");
+          ext = bitsName[bitsName.length - 1];
+          bitsOut = this.state.out.toLowerCase().split(".");
+          bitsOut[bitsOut.length - 1] = ext;
+          out = bitsOut.join("."),
+
           this.setState( {
                 pspFiles: pspFiles,
                 psp: pspFiles[0],
                 xsltFiles: xsltFiles,
                 xslt: xsltFiles[0],
                 inputFiles: inputFiles,
-                name: inputFiles[0]
+                name: inputFiles[0],
+                profilesForInputType: this.profilePerType[ext],
+                prof: this.profilePerType[ext][0],
+                out: out
           })
       });
   }
