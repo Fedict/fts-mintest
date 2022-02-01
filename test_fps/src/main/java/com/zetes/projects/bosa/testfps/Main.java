@@ -6,6 +6,7 @@ import com.nimbusds.jose.crypto.*;
 import java.net.*;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.io.File;
@@ -21,7 +22,6 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
 
 import io.minio.*;
-import io.minio.messages.DeleteObject;
 import org.json.JSONObject;
 
 import javax.activation.MimetypesFileTypeMap;
@@ -205,9 +205,12 @@ public class Main implements HttpHandler {
 		uri = uri.substring(1);
 		if (uri.length() == 0) uri = "static/index.html";
 
+		Path path = Paths.get(uri);
+		String contentType = MimetypesFileTypeMap.getDefaultFileTypeMap().getContentType(path.getFileName().toString());
+
 		System.out.println("Reading static file: " + uri);
 		try {
-			bytes = Files.readAllBytes(Paths.get(uri));
+			bytes = Files.readAllBytes(path);
 		} catch(NoSuchFileException e) {
 			httpStatus = 404;
 			bytes = "File not found".getBytes();
@@ -215,7 +218,7 @@ public class Main implements HttpHandler {
 			httpStatus = 500;
 			bytes = "Error".getBytes();
 		}
-		respond(httpExch, httpStatus, "text/html", bytes);
+		respond(httpExch, httpStatus, contentType, bytes);
 	}
 
 	/**
@@ -403,7 +406,7 @@ public class Main implements HttpHandler {
 			fos.close();
 			System.out.println("    File is downloaded to " + f.getAbsolutePath());
 
-			htmlBody = "Thank you for signing";
+			htmlBody = "Thank you for signing<br><A href=\"/files/signed/" + f.getName() + "\">Download signed file</A>";
 		}
 		else {
 			// Handle the errror. Here we just show the error info

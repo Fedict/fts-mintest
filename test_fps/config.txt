@@ -28,7 +28,7 @@ getTokenUrl = http://localhost:8080/signing/getTokenForDocument
 # The redirect URL to the BOSA DSS front-end
 #bosaDssFrontend = https://sign.qa.fts.bosa.belgium.be
 
-bosaDssFrontend = http://localhost:3000
+bosaDssFrontend = http://localhost:5000
 
 # Options: XADES_1, XADES_2, XADES_LTA, XADES_TLA_EXP_ALLOW
 xadesProfile = XADES_LTA

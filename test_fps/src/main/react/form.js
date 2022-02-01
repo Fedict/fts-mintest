@@ -10,7 +10,7 @@ class NameForm extends React.Component {
 
     this.profilePerType = {
         pdf: ["PADES_1", "PADES_LTA", "PADES_LTA_EXP_ALLOW"],
-        xml: ["XADES_1", "XADES_2", "XADES_LTA", "XADES_LTA_DABS", "XADES_TA_EXP_ALLOW", "XADES_LTA_PTTSS"],
+        xml: ["XADES_1", "XADES_2", "XADES_LT", "XADES_LTA"],
         bin: ["CADES_1", "CADES_2", "CADES_LTA", "CADES_LTA_ENVELOPING"]
     }
 
@@ -25,6 +25,7 @@ class NameForm extends React.Component {
         psfP: false,
         lang: 'en',
         noDownload: false,
+        signTimeout: 120,
         allowedToSign: '',
         policyId: '',
         policyDescription: 'Policy Description',
@@ -176,20 +177,12 @@ class NameForm extends React.Component {
                 <td><select id="prof" value={this.state.prof} onChange={this.handleChange}>
                                         {this.state.profilesForInputType.map((profile) => <option key={profile}>{profile}</option>)}
                 </select></td></tr>
-                <tr><td><label>Language: </label></td>
-                <td><select id="lang" value={this.state.lang} onChange={this.handleChange}>
-                                        <option value="de">Deutsch</option>
-                                        <option value="en">English</option>
-                                        <option value="fr">Français</option>
-                                        <option value="nl">Nerderlands</option>
-                </select></td></tr>
-
                 <tr><td><label>NN Allowed to Sign (Comma separated): </label></td>
                 <td><input id="allowedToSign" type="text" value={this.state.allowedToSign} onChange={this.handleChange}/></td></tr>
-
+                <tr><td><label>Sign timeout</label></td><td><input id="signTimeout" type="text" value={this.state.signTimeout} onChange={this.handleChange}/></td>
+                </tr>
                 <tr><td><label>Allow output file download</label></td><td><input id="noDownload" type="checkbox" value={this.state.noDownload} onChange={this.handleChange}/></td>
                 </tr>
-
                 <tr><td><label>Request read confirmation</label></td><td><input id="requestDocumentReadConfirm" type="checkbox" value={this.state.requestDocumentReadConfirm} onChange={this.handleChange}/></td>
                 </tr>
 
@@ -198,6 +191,13 @@ class NameForm extends React.Component {
                 <tr><td><label>PDF signature parameters file name: </label></td>
                 <td><select id="psp" type="text" value={this.state.psp} disabled={this.inFileExt() != 'pdf'} onChange={this.handleChange}>
                                         {this.state.pspFiles.map((pspFile) => <option key={pspFile}>{pspFile}</option>)}
+                </select></td></tr>
+                <tr><td><label>Language of the signature (Acroform): </label></td>
+                <td><select id="lang" value={this.state.lang} onChange={this.handleChange}>
+                                        <option value="de">Deutsch</option>
+                                        <option value="en">English</option>
+                                        <option value="fr">Français</option>
+                                        <option value="nl">Nerderlands</option>
                 </select></td></tr>
 
                 <tr><td><label>PDF signature field name: </label></td>
