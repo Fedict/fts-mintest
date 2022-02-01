@@ -22,7 +22,7 @@ var NameForm = function (_React$Component) {
 
         _this.profilePerType = {
             pdf: ["PADES_1", "PADES_LTA", "PADES_LTA_EXP_ALLOW"],
-            xml: ["XADES_1", "XADES_2", "XADES_LTA", "XADES_LTA_DABS", "XADES_TA_EXP_ALLOW", "XADES_LTA_PTTSS"],
+            xml: ["XADES_1", "XADES_2", "XADES_LT", "XADES_LTA"],
             bin: ["CADES_1", "CADES_2", "CADES_LTA", "CADES_LTA_ENVELOPING"]
         };
 
@@ -37,6 +37,7 @@ var NameForm = function (_React$Component) {
             psfP: false,
             lang: 'en',
             noDownload: false,
+            signTimeout: 120,
             allowedToSign: '',
             policyId: '',
             policyDescription: 'Policy Description',
@@ -283,36 +284,13 @@ var NameForm = function (_React$Component) {
                                 React.createElement(
                                     "label",
                                     null,
-                                    "Language: "
+                                    "NN Allowed to Sign (Comma separated): "
                                 )
                             ),
                             React.createElement(
                                 "td",
                                 null,
-                                React.createElement(
-                                    "select",
-                                    { id: "lang", value: this.state.lang, onChange: this.handleChange },
-                                    React.createElement(
-                                        "option",
-                                        { value: "de" },
-                                        "Deutsch"
-                                    ),
-                                    React.createElement(
-                                        "option",
-                                        { value: "en" },
-                                        "English"
-                                    ),
-                                    React.createElement(
-                                        "option",
-                                        { value: "fr" },
-                                        "Fran\xE7ais"
-                                    ),
-                                    React.createElement(
-                                        "option",
-                                        { value: "nl" },
-                                        "Nerderlands"
-                                    )
-                                )
+                                React.createElement("input", { id: "allowedToSign", type: "text", value: this.state.allowedToSign, onChange: this.handleChange })
                             )
                         ),
                         React.createElement(
@@ -324,13 +302,13 @@ var NameForm = function (_React$Component) {
                                 React.createElement(
                                     "label",
                                     null,
-                                    "NN Allowed to Sign (Comma separated): "
+                                    "Sign timeout"
                                 )
                             ),
                             React.createElement(
                                 "td",
                                 null,
-                                React.createElement("input", { id: "allowedToSign", type: "text", value: this.state.allowedToSign, onChange: this.handleChange })
+                                React.createElement("input", { id: "signTimeout", type: "text", value: this.state.signTimeout, onChange: this.handleChange })
                             )
                         ),
                         React.createElement(
@@ -416,6 +394,47 @@ var NameForm = function (_React$Component) {
                                             pspFile
                                         );
                                     })
+                                )
+                            )
+                        ),
+                        React.createElement(
+                            "tr",
+                            null,
+                            React.createElement(
+                                "td",
+                                null,
+                                React.createElement(
+                                    "label",
+                                    null,
+                                    "Language of the signature (Acroform): "
+                                )
+                            ),
+                            React.createElement(
+                                "td",
+                                null,
+                                React.createElement(
+                                    "select",
+                                    { id: "lang", value: this.state.lang, onChange: this.handleChange },
+                                    React.createElement(
+                                        "option",
+                                        { value: "de" },
+                                        "Deutsch"
+                                    ),
+                                    React.createElement(
+                                        "option",
+                                        { value: "en" },
+                                        "English"
+                                    ),
+                                    React.createElement(
+                                        "option",
+                                        { value: "fr" },
+                                        "Fran\xE7ais"
+                                    ),
+                                    React.createElement(
+                                        "option",
+                                        { value: "nl" },
+                                        "Nerderlands"
+                                    )
                                 )
                             )
                         ),
