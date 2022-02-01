@@ -244,6 +244,7 @@ public class Main implements HttpHandler {
 		String xslt =  getParam(queryParams, "xslt");;
 		String name = getParam(queryParams, "name");
 		String out = getParam(queryParams, "out");
+		String signTimeout = getParam(queryParams, "signTimeout");
 		String allowedToSign = getParam(queryParams, "allowedToSign");
 		String policyId = getParam(queryParams, "policyId");
 		String policyDescription = getParam(queryParams, "policyDescription");
@@ -311,6 +312,7 @@ public class Main implements HttpHandler {
 		if (null != psp) json += "  \"psp\":\"" + psp + "\",\n";
 		if (null != psfN) json += "  \"psfN\":\"" + psfN + "\",\n";
 		if (null != psfC) json += "  \"psfC\":\"" + psfC + "\",\n";
+		if (null != signTimeout) json += "  \"signTimeout\": " + signTimeout + ",\n";
 		if (null != psfP) json += "  \"psfP\":\"" + psfP + "\",\n";
 		if (null != noDownload) json += "  \"noDownload\": " + noDownload + ",\n";
 		if (null != requestDocumentReadConfirm) json += "  \"requestDocumentReadConfirm\": " + requestDocumentReadConfirm + ",\n";
