@@ -94,10 +94,13 @@ class NameForm extends React.Component {
   handleSubmit(event) {
     cleanState = Object.assign({}, this.state);
 
+    // Cleanup transient state
     cleanState.profilesForInputType = cleanState.inputFiles = cleanState.pspFiles = cleanState.xsltFiles = null;
 
+    // Cleanup state based on file type
     lowerName = cleanState.name.toLowerCase();
     if (lowerName.endsWith(".pdf")) {
+        cleanState.lang = null;
         cleanState.xslt = null;
         cleanState.policyId = null;
     } else if (lowerName.endsWith(".xml")) {
@@ -193,7 +196,7 @@ class NameForm extends React.Component {
                                         {this.state.pspFiles.map((pspFile) => <option key={pspFile}>{pspFile}</option>)}
                 </select></td></tr>
                 <tr><td><label>Language of the signature (Acroform): </label></td>
-                <td><select id="lang" value={this.state.lang} onChange={this.handleChange}>
+                <td><select id="lang" value={this.state.lang} onChange={this.handleChange}  disabled={this.inFileExt() != 'pdf'}>
                                         <option value="de">Deutsch</option>
                                         <option value="en">English</option>
                                         <option value="fr">Français</option>
@@ -201,10 +204,10 @@ class NameForm extends React.Component {
                 </select></td></tr>
 
                 <tr><td><label>PDF signature field name: </label></td>
-                <td><input id="psfN" type="text" value={this.state.psfN} disabled={this.inFileExt() != 'pdf'}  onChange={this.handleChange}/></td></tr>
+                <td><input id="psfN" type="text" value={this.state.psfN} disabled={this.inFileExt() != 'pdf'} onChange={this.handleChange}/></td></tr>
 
                 <tr><td><label>PDF signature field coordinates: </label></td>
-                <td><input id="psfC" type="text" value={this.state.psfC} disabled={this.inFileExt() != 'pdf'}  onChange={this.handleChange}/></td></tr>
+                <td><input id="psfC" type="text" value={this.state.psfC} disabled={this.inFileExt() != 'pdf'} onChange={this.handleChange}/></td></tr>
 
                 <tr><td><label>Include eID photo as icon in the PDF signature field</label></td><td><input id="psfP" type="checkbox" value={this.state.psfP} disabled={this.inFileExt() != 'pdf'}  onChange={this.handleChange}/></td>
                 </tr>

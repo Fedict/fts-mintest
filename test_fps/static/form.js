@@ -111,10 +111,13 @@ var NameForm = function (_React$Component) {
         value: function handleSubmit(event) {
             cleanState = Object.assign({}, this.state);
 
+            // Cleanup transient state
             cleanState.profilesForInputType = cleanState.inputFiles = cleanState.pspFiles = cleanState.xsltFiles = null;
 
+            // Cleanup state based on file type
             lowerName = cleanState.name.toLowerCase();
             if (lowerName.endsWith(".pdf")) {
+                cleanState.lang = null;
                 cleanState.xslt = null;
                 cleanState.policyId = null;
             } else if (lowerName.endsWith(".xml")) {
@@ -414,7 +417,7 @@ var NameForm = function (_React$Component) {
                                 null,
                                 React.createElement(
                                     "select",
-                                    { id: "lang", value: this.state.lang, onChange: this.handleChange },
+                                    { id: "lang", value: this.state.lang, onChange: this.handleChange, disabled: this.inFileExt() != 'pdf' },
                                     React.createElement(
                                         "option",
                                         { value: "de" },
