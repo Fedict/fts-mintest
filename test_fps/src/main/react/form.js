@@ -25,7 +25,7 @@ class NameForm extends React.Component {
         psfP: false,
         lang: 'en',
         noDownload: false,
-        signTimeout: 120,
+        signTimeout: '',
         allowedToSign: '',
         policyId: '',
         policyDescription: 'Policy Description',
@@ -182,7 +182,7 @@ class NameForm extends React.Component {
                 </select></td></tr>
                 <tr><td><label>NN Allowed to Sign (Comma separated): </label></td>
                 <td><input id="allowedToSign" type="text" value={this.state.allowedToSign} onChange={this.handleChange}/></td></tr>
-                <tr><td><label>Sign timeout</label></td><td><input id="signTimeout" type="text" value={this.state.signTimeout} onChange={this.handleChange}/></td>
+                <tr><td><label>Sign timeout (in seconds)</label></td><td><input id="signTimeout" type="text" value={this.state.signTimeout} onChange={this.handleChange}/></td>
                 </tr>
                 <tr><td><label>Allow output file download</label></td><td><input id="noDownload" type="checkbox" value={this.state.noDownload} onChange={this.handleChange}/></td>
                 </tr>

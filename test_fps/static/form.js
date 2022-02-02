@@ -37,7 +37,7 @@ var NameForm = function (_React$Component) {
             psfP: false,
             lang: 'en',
             noDownload: false,
-            signTimeout: 120,
+            signTimeout: '',
             allowedToSign: '',
             policyId: '',
             policyDescription: 'Policy Description',
@@ -305,7 +305,7 @@ var NameForm = function (_React$Component) {
                                 React.createElement(
                                     "label",
                                     null,
-                                    "Sign timeout"
+                                    "Sign timeout (in seconds)"
                                 )
                             ),
                             React.createElement(

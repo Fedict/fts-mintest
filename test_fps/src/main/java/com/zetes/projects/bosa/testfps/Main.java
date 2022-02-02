@@ -75,20 +75,9 @@ public class Main implements HttpHandler {
 	private static final String UNSIGNED_DIR = "unsigned";
 	private static final String SIGNED_DIR = "signed";
 
-	private static final String PDF_SIG_FIELD_NAME = "signature_1";
-	private static final String PDF_SIG_FIELD_COORDS = "1,30,20,180,60";
-
 	private static final String HTML_START =
 		"<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\">\n" +
 		"<title>FPS test signing service</title>\n  </head>\n  <body>\n";
-
-	private static final String REACT_FORM =
-		"<script src=\"https://unpkg.com/react@17/umd/react.development.js\" crossorigin></script>" +
-		"<script src=\"https://unpkg.com/react-dom@17/umd/react-dom.development.js\" crossorigin></script>" +
-		"<script src=\"https://unpkg.com/babel-standalone@6/babel.min.js\"></script>" +
-		"<script src=\"/static/form.js\"></script>\n" +
-		"<div id=\"form_container\"></div>\n" +
-		"<script>ReactDOM.render(React.createElement(NameForm), document.querySelector('#form_container'));</script>\n";
 
 	private static final String HTML_END = "</body>\n</html>\n";
 
@@ -202,15 +191,18 @@ public class Main implements HttpHandler {
 		int httpStatus = 200;
 		byte[] bytes = null;
 
-		uri = uri.substring(1);
-		if (uri.length() == 0) uri = "static/index.html";
-
-		Path path = Paths.get(uri);
-		String contentType = MimetypesFileTypeMap.getDefaultFileTypeMap().getContentType(path.getFileName().toString());
-
-		System.out.println("Reading static file: " + uri);
 		try {
+			uri = uri.substring(1);
+			if (uri.length() == 0) uri = "static/index.html";
+			else if (!uri.startsWith("static")) throw new IOException("Not so fast here !");
+
+			Path path = Paths.get(uri);
+			String contentType = MimetypesFileTypeMap.getDefaultFileTypeMap().getContentType(path.getFileName().toString());
+
+			System.out.println("Reading static file: " + uri);
 			bytes = Files.readAllBytes(path);
+			respond(httpExch, httpStatus, contentType, bytes);
+
 		} catch(NoSuchFileException e) {
 			httpStatus = 404;
 			bytes = "File not found".getBytes();
@@ -218,7 +210,6 @@ public class Main implements HttpHandler {
 			httpStatus = 500;
 			bytes = "Error".getBytes();
 		}
-		respond(httpExch, httpStatus, contentType, bytes);
 	}
 
 	/**
@@ -408,7 +399,7 @@ public class Main implements HttpHandler {
 			fos.close();
 			System.out.println("    File is downloaded to " + f.getAbsolutePath());
 
-			htmlBody = "Thank you for signing<br><A href=\"/files/signed/" + f.getName() + "\">Download signed file</A>";
+			htmlBody = "Thank you for signing<br>";
 		}
 		else {
 			// Handle the errror. Here we just show the error info
