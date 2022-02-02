@@ -78,7 +78,8 @@ class NameForm extends React.Component {
         this.setState( { reasonForNoSubmit: reasonForNoSubmit } );
     }
 
-    bitsName = this.state.name.toLowerCase().split(".");
+    inFileName = this.state.name;
+    bitsName = inFileName.toLowerCase().split(".");
     ext = bitsName[bitsName.length - 1];
     bitsOut = this.state.out.toLowerCase().split(".");
     if (ext != bitsOut[bitsOut.length - 1]) {
@@ -89,7 +90,20 @@ class NameForm extends React.Component {
             prof: this.profilePerType[ext][0]
         });
     }
+
+    this.setState( {
+       psfN: this.extractAcroformName(inFileName)
+       });
   }
+
+    extractAcroformName(inFileName) {
+        start = inFileName.indexOf('~');
+        if (start >= 0) {
+            end = inFileName.indexOf('.', ++start);
+            if (end >= 0) return inFileName.substring(start, end);
+        }
+        return '';
+    }
 
   handleSubmit(event) {
     cleanState = Object.assign({}, this.state);
@@ -157,7 +171,8 @@ class NameForm extends React.Component {
                 name: inputFiles[0],
                 profilesForInputType: this.profilePerType[ext],
                 prof: this.profilePerType[ext][0],
-                out: out
+                out: out,
+                psfN: this.extractAcroformName(inputFiles[0])
           })
       });
   }
