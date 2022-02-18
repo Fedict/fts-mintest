@@ -242,6 +242,79 @@ public class Main implements HttpHandler {
 		String policyDigestAlgorithm = getParam(queryParams, "policyDigestAlgorithm");
 		String requestDocumentReadConfirm = getParam(queryParams, "requestDocumentReadConfirm");
 
+		String names[] = name.split(",");
+		if (names.length == 1) {
+			signOneFile(noDownload, requestDocumentReadConfirm, out, name, psfP, lang, profile, xslt, psp, psfN, psfC, signTimeout, allowedToSign, policyId, policyDescription, policyDigestAlgorithm, httpExch);
+		} else {
+			signMultiFile(names, out, profile, xslt, signTimeout, noDownload,requestDocumentReadConfirm, allowedToSign, policyId, policyDescription, policyDigestAlgorithm, httpExch);
+		}
+	}
+
+	private void signMultiFile(String[] names, String out, String profile, String xslt, String signTimeout, String noDownload, String requestDocumentReadConfirm, String allowedToSign, String policyId, String policyDescription, String policyDigestAlgorithm, HttpExchange httpExch) throws Exception {
+
+		String filesToDelete = "";
+		for(String name : names) {
+			System.out.println("\n1. Uploading the unsigned doc to the S3 server..." + name);
+			uploadFile(new File(inFilesDir, name));
+			filesToDelete += name + ",";
+		}
+		if (xslt != null) {
+			uploadFile(new File(inFilesDir, xslt));
+			filesToDelete += xslt;
+		} else {
+			filesToDelete = filesToDelete.substring(0, filesToDelete.length() - 1);
+		}
+
+		String json = "{";
+		json = addStrItem(json, "bucket", s3UserName);
+		json = addStrItem(json, "password", s3Passwd);
+		String outDownload = makeBool(noDownload, "noDownload").compareTo("true") == 0 ? "false" : "true" ;
+		if (outDownload != null) json = addItem(json, "outDownload", outDownload);
+		json = addStrItem(json, "outFileName", out);
+		if (xslt != null) json = addStrItem(json, "outXslt", xslt);
+		json = addStrItem(json, "signProfile", profile);
+		if (signTimeout != null) json = addItem(json, "signTimeout", signTimeout);
+		if (policyId != null) {
+			json += "\"policy\": {";
+			json = addStrItem(json, "policyId", policyId);
+			json = addStrItem(json, "policyDigestAlgorithm", policyDigestAlgorithm);
+			json = addStrItem(json, "policyDescription", policyDescription);
+			json += "},";
+		}
+		int eltId = 0;
+		json += "\"inputs\": [ ";
+		for(String name : names) {
+			json += "{";
+			json = addStrItem(json, "display", "NO");
+			json = addStrItem(json, "fileName", name);
+			json = addItem(json, "readConfirm", makeBool(requestDocumentReadConfirm, "requestDocumentReadConfirm"));
+			json = addStrItem(json, "xmlEltId", "ID_" + Integer.toString(eltId++));
+			json = json.substring(0, json.length() - 1);
+			json += "},";
+		}
+		json = json.substring(0, json.length() - 1);
+		json += "]";
+		if (allowedToSign != null) {
+			json += ",\"nnAllowedToSign\": [" + allowedToSign + "]";
+		}
+		json += "}";
+
+		if (!profile.contains("XADES")) {
+			System.out.println("\nWARNING : other than XADES selected for a .xml file. was :"+ profile);
+		}
+
+		createTokenAndRedirect(getTokenUrl + "s", json, out, filesToDelete, httpExch);
+	}
+
+	private String addStrItem(String json, String name, String value) {
+		return addItem(json, name, "\"" + value + "\"");
+	}
+
+	private String addItem(String json, String name, String value) {
+		return json + "\"" + name + "\": " + value + ",";
+	}
+
+	private void signOneFile(String noDownload, String requestDocumentReadConfirm, String out, String name, String psfP, String lang, String profile, String xslt, String psp, String psfN, String psfC, String signTimeout, String allowedToSign, String policyId, String policyDescription, String policyDigestAlgorithm, HttpExchange httpExch) throws Exception {
 		if (out == null) out = "signed_" + name;
 		String nameFileExtentsion = getExtension(name);
 
@@ -249,16 +322,10 @@ public class Main implements HttpHandler {
 		if (! nameFileExtentsion.equals(getExtension(out))) {
 			System.out.println("\nWARNING : IN & OUT extensions must be the same !!!!");
 		}
-		psfP = makeBool(psfP, "psfP");
-		noDownload = makeBool(noDownload, "noDownload");
-		requestDocumentReadConfirm = makeBool(requestDocumentReadConfirm, "requestDocumentReadConfirm");
 
-		if (lang == null) {
-			lang = LANGUAGE;
-		}
-		if (profile == null) {
-			profile = profileFor(name);
-		}
+		if (lang == null) lang = LANGUAGE;
+
+		if (profile == null) profile = profileFor(name);
 
 		// 1. Upload the unsigned file to the S3 server
 		// Note: this could have been done in advance
@@ -296,17 +363,17 @@ public class Main implements HttpHandler {
 		System.out.println("\n2. Doing a 'getTokenForDocument' to the BOSA DSS");
 
 		String json = "{\n" +
-			"  \"name\":\"" + s3UserName + "\",\n" +
-			"  \"pwd\":\""  + s3Passwd +   "\",\n" +
-			"  \"in\":\""   + name + "\",\n";
+				"  \"name\":\"" + s3UserName + "\",\n" +
+				"  \"pwd\":\""  + s3Passwd +   "\",\n" +
+				"  \"in\":\""   + name + "\",\n";
 		if (null != xslt) json += ( "  \"xslt\":\""   + xslt + "\",\n" );
 		if (null != psp) json += "  \"psp\":\"" + psp + "\",\n";
 		if (null != psfN) json += "  \"psfN\":\"" + psfN + "\",\n";
 		if (null != psfC) json += "  \"psfC\":\"" + psfC + "\",\n";
 		if (null != signTimeout) json += "  \"signTimeout\": " + signTimeout + ",\n";
-		if (null != psfP) json += "  \"psfP\":\"" + psfP + "\",\n";
-		if (null != noDownload) json += "  \"noDownload\": " + noDownload + ",\n";
-		if (null != requestDocumentReadConfirm) json += "  \"requestDocumentReadConfirm\": " + requestDocumentReadConfirm + ",\n";
+		if (null != psfP) json += "  \"psfP\":\"" + makeBool(psfP, "psfP") + "\",\n";
+		if (null != noDownload) json += "  \"noDownload\": " + makeBool(noDownload, "noDownload") + ",\n";
+		if (null != requestDocumentReadConfirm) json += "  \"requestDocumentReadConfirm\": " + makeBool(requestDocumentReadConfirm, "requestDocumentReadConfirm") + ",\n";
 		if (null != allowedToSign) {
 			json += "  \"allowedToSign\": [\n";
 			for(String allowed : allowedToSign.split(",")) {
@@ -322,11 +389,16 @@ public class Main implements HttpHandler {
 			json += "  \"policyDigestAlgorithm\": \"" + policyDigestAlgorithm + "\",\n";
 		}
 		json += "  \"out\":\""  + out + "\",\n" +
-			"  \"lang\":\""  + lang + "\",\n" +        // used for the text in PDF visible signatures
-			"  \"prof\":\"" + profile + "\"\n" +
-			"}";
+				"  \"lang\":\""  + lang + "\",\n" +        // used for the text in PDF visible signatures
+				"  \"prof\":\"" + profile + "\"\n" +
+				"}";
+
+		createTokenAndRedirect(getTokenUrl, json, out, filesToDelete, httpExch);
+	}
+
+	private void createTokenAndRedirect(String url, String json, String out, String filesToDelete, HttpExchange httpExch) throws Exception {
 		System.out.println("JSON for the getToken call:\n" + json);
-		String token = postJson(getTokenUrl, json);
+		String token = postJson(url, json);
 
 		System.out.println("  DONE, received token = " + token);
 
@@ -337,8 +409,8 @@ public class Main implements HttpHandler {
 		String callbackURL = localUrl + "/callback?out=" + out + "&toDelete=" + filesToDelete;
 		System.out.println("  Callback: " + callbackURL);
 		String redirectUrl = bosaDssFrontend + "/sign/" + URLEncoder.encode(token) +
-			"?redirectUrl=" + URLEncoder.encode(callbackURL) + "&language=" + LANGUAGE +
-			"&name=" + URLEncoder.encode(NAME);
+				"?redirectUrl=" + URLEncoder.encode(callbackURL) + "&language=" + LANGUAGE +
+				"&name=" + URLEncoder.encode(NAME);
 		System.out.println("  URL: " + redirectUrl);
 		httpExch.getResponseHeaders().add("Location", redirectUrl);
 		httpExch.sendResponseHeaders(303, 0);
@@ -347,11 +419,9 @@ public class Main implements HttpHandler {
 	}
 
 	private String makeBool(String value, String name) {
-		if (value != null && !("true".equals(value) || "false".equals(value))) {
-			System.out.println("\n" + name + " must be 'true' or 'false' (was " + value + ")");
-			value = "false";
-		}
-		return value;
+		if ("true".equals(value)) return value;
+		System.out.println("\n" + name + " must be 'true' or 'false' (was " + value + ")");
+		return "false";
 	}
 
 	private String getExtension(String fileName) {
