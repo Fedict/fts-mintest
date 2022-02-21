@@ -280,6 +280,7 @@ public class Main implements HttpHandler {
 			json = addStrItem(json, "policyId", policyId);
 			json = addStrItem(json, "policyDigestAlgorithm", policyDigestAlgorithm);
 			json = addStrItem(json, "policyDescription", policyDescription);
+			json = json.substring(0, json.length() - 1);
 			json += "},";
 		}
 		int eltId = 0;
