@@ -27,7 +27,7 @@ var NameForm = function (_React$Component) {
         };
 
         _this.state = {
-            name: '',
+            name: [],
             xslt: '',
             out: 'out.pdf',
             prof: 'PADES_1',
@@ -59,14 +59,20 @@ var NameForm = function (_React$Component) {
     _createClass(NameForm, [{
         key: "inFileExt",
         value: function inFileExt() {
-            bits = this.state.name.toLowerCase().split(".");
-            return bits[bits.length - 1];
+            if (this.state.name.length != 1) return "xml";
+            return this.state.name[0].toLowerCase().split(".").pop();
         }
     }, {
         key: "handleChange",
         value: function handleChange(event) {
             target = event.target;
-            this.setState(_defineProperty({}, target.id, target.type === 'checkbox' ? target.checked : target.value), this.adaptToChanges);
+            value = target.value;
+            if (target.type === 'checkbox') value = target.checked;else if (target.type === 'select-multiple') {
+                value = Array.from(target.selectedOptions, function (item) {
+                    return item.value;
+                });
+            }
+            this.setState(_defineProperty({}, target.id, value), this.adaptToChanges);
         }
     }, {
         key: "adaptToChanges",
@@ -94,30 +100,32 @@ var NameForm = function (_React$Component) {
                 this.setState({ reasonForNoSubmit: reasonForNoSubmit });
             }
 
-            inFileName = this.state.name;
-            bitsName = inFileName.toLowerCase().split(".");
-            ext = bitsName[bitsName.length - 1];
+            inFileExt = this.inFileExt();
             bitsOut = this.state.out.toLowerCase().split(".");
-            if (ext != bitsOut[bitsOut.length - 1]) {
-                bitsOut[bitsOut.length - 1] = ext;
+            outFileExt = bitsOut.pop();
+            if (inFileExt != outFileExt) {
+                bitsOut.push(inFileExt);
                 this.setState({
                     out: bitsOut.join("."),
-                    profilesForInputType: this.profilePerType[ext],
-                    prof: this.profilePerType[ext][0]
+                    profilesForInputType: this.profilePerType[inFileExt],
+                    prof: this.profilePerType[inFileExt][0]
                 });
             }
 
             this.setState({
-                psfN: this.extractAcroformName(inFileName)
+                psfN: this.extractAcroformName()
             });
         }
     }, {
         key: "extractAcroformName",
-        value: function extractAcroformName(inFileName) {
-            start = inFileName.indexOf('~');
-            if (start >= 0) {
-                end = inFileName.indexOf('.', ++start);
-                if (end >= 0) return inFileName.substring(start, end);
+        value: function extractAcroformName() {
+            if (this.state.name.length == 1) {
+                inFileName = this.state.name[0];
+                start = inFileName.indexOf('~');
+                if (start >= 0) {
+                    end = inFileName.indexOf('.', ++start);
+                    if (end >= 0) return inFileName.substring(start, end);
+                }
             }
             return '';
         }
@@ -130,12 +138,11 @@ var NameForm = function (_React$Component) {
             cleanState.profilesForInputType = cleanState.inputFiles = cleanState.pspFiles = cleanState.xsltFiles = null;
 
             // Cleanup state based on file type
-            lowerName = cleanState.name.toLowerCase();
-            if (lowerName.endsWith(".pdf")) {
-                cleanState.lang = null;
+            extension = this.inFileExt();
+            if (extension == "pdf") {
                 cleanState.xslt = null;
                 cleanState.policyId = null;
-            } else if (lowerName.endsWith(".xml")) {
+            } else if (extension == "xml") {
                 cleanState.psp = cleanState.psfC = cleanState.psfN = cleanState.psfP = null;
             }
 
@@ -143,7 +150,8 @@ var NameForm = function (_React$Component) {
                 cleanState.policyDescription = cleanState.policyDigestAlgorithm = null;
             }
 
-            window.location = "sign?" + this.serialize(cleanState);
+            params = this.serialize(cleanState);
+            window.location = "sign?" + params;
             event.preventDefault();
         }
     }, {
@@ -177,8 +185,8 @@ var NameForm = function (_React$Component) {
                     }
                 });
 
-                bitsName = inputFiles[0].toLowerCase().split(".");
-                ext = bitsName[bitsName.length - 1];
+                selectedFilename = inputFiles[0];
+                ext = selectedFilename.toLowerCase().split(".").pop();
                 bitsOut = _this2.state.out.toLowerCase().split(".");
                 bitsOut[bitsOut.length - 1] = ext;
                 out = bitsOut.join("."), _this2.setState({
@@ -187,11 +195,11 @@ var NameForm = function (_React$Component) {
                     xsltFiles: xsltFiles,
                     xslt: xsltFiles[0],
                     inputFiles: inputFiles,
-                    name: inputFiles[0],
+                    name: [selectedFilename],
                     profilesForInputType: _this2.profilePerType[ext],
                     prof: _this2.profilePerType[ext][0],
                     out: out,
-                    psfN: _this2.extractAcroformName(inputFiles[0])
+                    psfN: _this2.extractAcroformName()
                 });
             });
         }
@@ -237,7 +245,7 @@ var NameForm = function (_React$Component) {
                                 null,
                                 React.createElement(
                                     "select",
-                                    { id: "name", value: this.state.name, onChange: this.handleChange },
+                                    { id: "name", multiple: "true", value: this.state.name, onChange: this.handleChange },
                                     this.state.inputFiles.map(function (inputFile) {
                                         return React.createElement(
                                             "option",
@@ -339,7 +347,7 @@ var NameForm = function (_React$Component) {
                                 React.createElement(
                                     "label",
                                     null,
-                                    "Allow output file download"
+                                    "Disable output file download"
                                 )
                             ),
                             React.createElement(

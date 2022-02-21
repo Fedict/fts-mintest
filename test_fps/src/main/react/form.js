@@ -15,7 +15,7 @@ class NameForm extends React.Component {
     }
 
     this.state = {
-        name: '',
+        name: [],
         xslt: '',
         out: 'out.pdf',
         prof: 'PADES_1',
@@ -44,14 +44,18 @@ class NameForm extends React.Component {
   }
 
   inFileExt() {
-    bits = this.state.name.toLowerCase().split(".");
-    return bits[bits.length - 1];
+    if (this.state.name.length != 1) return "xml";
+    return this.state.name[0].toLowerCase().split(".").pop();
   }
 
   handleChange(event) {
     target = event.target;
-    this.setState({
-        [target.id]: target.type === 'checkbox' ? target.checked : target.value }, this.adaptToChanges);
+    value = target.value;
+    if (target.type === 'checkbox') value = target.checked;
+    else if (target.type === 'select-multiple') {
+        value = Array.from(target.selectedOptions, (item) => item.value)
+    }
+    this.setState({ [target.id]: value }, this.adaptToChanges);
   }
 
   adaptToChanges() {
@@ -78,29 +82,31 @@ class NameForm extends React.Component {
         this.setState( { reasonForNoSubmit: reasonForNoSubmit } );
     }
 
-    inFileName = this.state.name;
-    bitsName = inFileName.toLowerCase().split(".");
-    ext = bitsName[bitsName.length - 1];
+    inFileExt = this.inFileExt();
     bitsOut = this.state.out.toLowerCase().split(".");
-    if (ext != bitsOut[bitsOut.length - 1]) {
-        bitsOut[bitsOut.length - 1] = ext;
+    outFileExt = bitsOut.pop();
+    if (inFileExt != outFileExt) {
+        bitsOut.push(inFileExt);
         this.setState( {
             out: bitsOut.join("."),
-            profilesForInputType: this.profilePerType[ext],
-            prof: this.profilePerType[ext][0]
+            profilesForInputType: this.profilePerType[inFileExt],
+            prof: this.profilePerType[inFileExt][0]
         });
     }
 
-    this.setState( {
-       psfN: this.extractAcroformName(inFileName)
+   this.setState( {
+       psfN: this.extractAcroformName()
        });
   }
 
-    extractAcroformName(inFileName) {
-        start = inFileName.indexOf('~');
-        if (start >= 0) {
-            end = inFileName.indexOf('.', ++start);
-            if (end >= 0) return inFileName.substring(start, end);
+    extractAcroformName() {
+        if (this.state.name.length == 1) {
+            inFileName = this.state.name[0];
+            start = inFileName.indexOf('~');
+            if (start >= 0) {
+                end = inFileName.indexOf('.', ++start);
+                if (end >= 0) return inFileName.substring(start, end);
+            }
         }
         return '';
     }
@@ -112,12 +118,11 @@ class NameForm extends React.Component {
     cleanState.profilesForInputType = cleanState.inputFiles = cleanState.pspFiles = cleanState.xsltFiles = null;
 
     // Cleanup state based on file type
-    lowerName = cleanState.name.toLowerCase();
-    if (lowerName.endsWith(".pdf")) {
-        cleanState.lang = null;
+    extension = this.inFileExt();
+    if (extension == "pdf") {
         cleanState.xslt = null;
         cleanState.policyId = null;
-    } else if (lowerName.endsWith(".xml")) {
+    } else if (extension == "xml") {
         cleanState.psp = cleanState.psfC = cleanState.psfN = cleanState.psfP = null;
     }
 
@@ -125,7 +130,8 @@ class NameForm extends React.Component {
         cleanState.policyDescription = cleanState.policyDigestAlgorithm = null;
     }
 
-    window.location="sign?" + this.serialize(cleanState);
+    params = this.serialize(cleanState);
+    window.location="sign?" + params;
     event.preventDefault();
   }
 
@@ -156,8 +162,8 @@ class NameForm extends React.Component {
                   }
               });
 
-          bitsName = inputFiles[0].toLowerCase().split(".");
-          ext = bitsName[bitsName.length - 1];
+          selectedFilename = inputFiles[0]
+          ext = selectedFilename.toLowerCase().split(".").pop();
           bitsOut = this.state.out.toLowerCase().split(".");
           bitsOut[bitsOut.length - 1] = ext;
           out = bitsOut.join("."),
@@ -168,11 +174,11 @@ class NameForm extends React.Component {
                 xsltFiles: xsltFiles,
                 xslt: xsltFiles[0],
                 inputFiles: inputFiles,
-                name: inputFiles[0],
+                name: [selectedFilename],
                 profilesForInputType: this.profilePerType[ext],
                 prof: this.profilePerType[ext][0],
                 out: out,
-                psfN: this.extractAcroformName(inputFiles[0])
+                psfN: this.extractAcroformName()
           })
       });
   }
@@ -184,7 +190,7 @@ class NameForm extends React.Component {
             <tbody>
                 <tr><td colSpan="2"><b>General parameters</b></td></tr>
                 <tr><td><label>Input file name :</label></td>
-                <td><select id="name" value={this.state.name} onChange={this.handleChange}>
+                <td><select id="name" multiple="true" value={this.state.name} onChange={this.handleChange}>
                                     {this.state.inputFiles.map((inputFile) => <option key={inputFile}>{inputFile}</option>)}
                 </select></td></tr>
 
@@ -199,7 +205,7 @@ class NameForm extends React.Component {
                 <td><input id="allowedToSign" type="text" value={this.state.allowedToSign} onChange={this.handleChange}/></td></tr>
                 <tr><td><label>Sign timeout (in seconds)</label></td><td><input id="signTimeout" type="text" value={this.state.signTimeout} onChange={this.handleChange}/></td>
                 </tr>
-                <tr><td><label>Allow output file download</label></td><td><input id="noDownload" type="checkbox" value={this.state.noDownload} onChange={this.handleChange}/></td>
+                <tr><td><label>Disable output file download</label></td><td><input id="noDownload" type="checkbox" value={this.state.noDownload} onChange={this.handleChange}/></td>
                 </tr>
                 <tr><td><label>Request read confirmation</label></td><td><input id="requestDocumentReadConfirm" type="checkbox" value={this.state.requestDocumentReadConfirm} onChange={this.handleChange}/></td>
                 </tr>
