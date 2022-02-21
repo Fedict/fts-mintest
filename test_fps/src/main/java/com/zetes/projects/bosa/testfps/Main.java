@@ -259,6 +259,7 @@ public class Main implements HttpHandler {
 			filesToDelete += name + ",";
 		}
 		if (xslt != null) {
+			System.out.println("\n2. Uploading the 'out' xslt doc to the S3 server..." + xslt);
 			uploadFile(new File(inFilesDir, xslt));
 			filesToDelete += xslt;
 		} else {
