@@ -140,7 +140,6 @@ var NameForm = function (_React$Component) {
             // Cleanup state based on file type
             extension = this.inFileExt();
             if (extension == "pdf") {
-                cleanState.lang = null;
                 cleanState.xslt = null;
                 cleanState.policyId = null;
             } else if (extension == "xml") {
