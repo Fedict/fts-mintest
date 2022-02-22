@@ -12,6 +12,8 @@ var NameForm = function (_React$Component) {
     _inherits(NameForm, _React$Component);
 
     function NameForm(props) {
+        var _this$state;
+
         _classCallCheck(this, NameForm);
 
         var _this = _possibleConstructorReturn(this, (NameForm.__proto__ || Object.getPrototypeOf(NameForm)).call(this, props));
@@ -26,7 +28,7 @@ var NameForm = function (_React$Component) {
             bin: ["CADES_1", "CADES_2", "CADES_LTA", "CADES_LTA_ENVELOPING"]
         };
 
-        _this.state = {
+        _this.state = (_this$state = {
             name: [],
             xslt: '',
             out: 'out.pdf',
@@ -39,17 +41,8 @@ var NameForm = function (_React$Component) {
             noDownload: false,
             signTimeout: '',
             allowedToSign: '',
-            policyId: '',
-            policyDescription: 'Policy Description',
-            policyDigestAlgorithm: 'SHA512',
-            requestDocumentReadConfirm: false,
-
-            profilesForInputType: _this.profilePerType.pdf,
-            inputFiles: [],
-            pspFiles: [],
-            xsltFiles: [],
-            reasonForNoSubmit: null
-        };
+            policyId: ''
+        }, _defineProperty(_this$state, "policyId", ''), _defineProperty(_this$state, "policyDescription", 'Policy Description'), _defineProperty(_this$state, "policyDigestAlgorithm", 'SHA512'), _defineProperty(_this$state, "requestDocumentReadConfirm", false), _defineProperty(_this$state, "profilesForInputType", _this.profilePerType.pdf), _defineProperty(_this$state, "inputFiles", []), _defineProperty(_this$state, "pspFiles", []), _defineProperty(_this$state, "xsltFiles", []), _defineProperty(_this$state, "reasonForNoSubmit", null), _this$state);
 
         _this.handleSubmit = _this.handleSubmit.bind(_this);
         _this.handleChange = _this.handleChange.bind(_this);
@@ -59,8 +52,13 @@ var NameForm = function (_React$Component) {
     _createClass(NameForm, [{
         key: "inFileExt",
         value: function inFileExt() {
-            if (this.state.name.length != 1) return "xml";
+            if (this.isXadesMultifile()) return "xml";
             return this.state.name[0].toLowerCase().split(".").pop();
+        }
+    }, {
+        key: "isXadesMultifile",
+        value: function isXadesMultifile() {
+            return this.state.name.length != 1;
         }
     }, {
         key: "handleChange",
@@ -119,7 +117,7 @@ var NameForm = function (_React$Component) {
     }, {
         key: "extractAcroformName",
         value: function extractAcroformName() {
-            if (this.state.name.length == 1) {
+            if (!this.isXadesMultifile()) {
                 inFileName = this.state.name[0];
                 start = inFileName.indexOf('~');
                 if (start >= 0) {
@@ -659,11 +657,25 @@ var NameForm = function (_React$Component) {
                                 { colSpan: "2" },
                                 React.createElement("input", { type: "submit", value: "Submit", disabled: this.state.reasonForNoSubmit }),
                                 this.state.reasonForNoSubmit && React.createElement(
-                                    "label",
+                                    "p",
                                     null,
-                                    React.createElement("br", null),
-                                    "Submit is disabled because : ",
-                                    this.state.reasonForNoSubmit
+                                    React.createElement(
+                                        "label",
+                                        { style: { color: 'red' } },
+                                        "Submit is disabled because : ",
+                                        this.state.reasonForNoSubmit
+                                    )
+                                ),
+                                this.isXadesMultifile() && React.createElement(
+                                    "p",
+                                    null,
+                                    React.createElement(
+                                        "label",
+                                        null,
+                                        "This will produce a XADES Multifile signature.",
+                                        React.createElement("br", null),
+                                        "Policies are allowed, XSLT will be used to produce a custom output XML format"
+                                    )
                                 )
                             )
                         )

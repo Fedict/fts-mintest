@@ -28,6 +28,7 @@ class NameForm extends React.Component {
         signTimeout: '',
         allowedToSign: '',
         policyId: '',
+        policyId: '',
         policyDescription: 'Policy Description',
         policyDigestAlgorithm: 'SHA512',
         requestDocumentReadConfirm: false,
@@ -44,8 +45,12 @@ class NameForm extends React.Component {
   }
 
   inFileExt() {
-    if (this.state.name.length != 1) return "xml";
+    if (this.isXadesMultifile()) return "xml";
     return this.state.name[0].toLowerCase().split(".").pop();
+  }
+
+  isXadesMultifile() {
+    return this.state.name.length != 1;
   }
 
   handleChange(event) {
@@ -100,7 +105,7 @@ class NameForm extends React.Component {
   }
 
     extractAcroformName() {
-        if (this.state.name.length == 1) {
+        if (!this.isXadesMultifile()) {
             inFileName = this.state.name[0];
             start = inFileName.indexOf('~');
             if (start >= 0) {
@@ -253,7 +258,8 @@ class NameForm extends React.Component {
                 </select></td></tr>
                 <tr><td colSpan="2"><hr/></td></tr>
                 <tr><td colSpan="2"><input type="submit" value="Submit" disabled={this.state.reasonForNoSubmit}/>
-                { this.state.reasonForNoSubmit && <label><br/>Submit is disabled because : { this.state.reasonForNoSubmit }</label> }
+                { this.state.reasonForNoSubmit && <p><label style={{ color: 'red' }}>Submit is disabled because : { this.state.reasonForNoSubmit }</label></p> }
+                { this.isXadesMultifile() && <p><label>This will produce a XADES Multifile signature.<br/>Policies are allowed, XSLT will be used to produce a custom output XML format</label></p> }
                 </td></tr>
             </tbody>
           </table>
