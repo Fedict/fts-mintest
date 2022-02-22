@@ -277,9 +277,9 @@ public class Main implements HttpHandler {
 		if (signTimeout != null) json = addItem(json, "signTimeout", signTimeout);
 		if (policyId != null) {
 			json += "\"policy\": {";
-			json = addStrItem(json, "policyId", policyId);
-			json = addStrItem(json, "policyDigestAlgorithm", policyDigestAlgorithm);
-			json = addStrItem(json, "policyDescription", policyDescription);
+			json = addStrItem(json, "id", policyId);
+			json = addStrItem(json, "digestAlgorithm", policyDigestAlgorithm);
+			json = addStrItem(json, "description", policyDescription);
 			json = json.substring(0, json.length() - 1);
 			json += "},";
 		}
