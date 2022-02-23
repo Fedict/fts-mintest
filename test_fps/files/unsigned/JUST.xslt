@@ -4,7 +4,7 @@
         <xsl:comment> Created By BosaSign 1.0 </xsl:comment>
         <just:SignedDoc xmlns:just="http://signinfo.eda.just.fgov.be/XSignInfo/2008/07/just#">
             <xsl:for-each select="root/file">
-                <just:DataFile ContentType="EMBEDDED_BASE64" id="{@id}" FileName="{@name}" MimeType="pdf" Size="{@size}" />
+                <just:DataFile ContentType="EMBEDDED_BASE64" id="{@id}" FileName="{tokenize(@name, '/')[last()]}" MimeType="{tokenize(@name, '\.')[last()]}" Size="{@size}" />
             </xsl:for-each>
         </just:SignedDoc>
     </xsl:template>
