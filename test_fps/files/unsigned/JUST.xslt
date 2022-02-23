@@ -2,10 +2,10 @@
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
     <xsl:template match="/">
         <xsl:comment> Created By BosaSign 1.0 </xsl:comment>
-        <SignedDoc>
+        <just:SignedDoc xmlns:just="http://signinfo.eda.just.fgov.be/XSignInfo/2008/07/just#">
             <xsl:for-each select="root/file">
-                <DataFile id="{@id}" FileName="{@name}"/>
+                <just:DataFile ContentType="EMBEDDED_BASE64" id="{@id}" FileName="{tokenize(@name, '/')[last()]}"/>
             </xsl:for-each>
-        </SignedDoc>
+        </just:SignedDoc>
     </xsl:template>
 </xsl:stylesheet>

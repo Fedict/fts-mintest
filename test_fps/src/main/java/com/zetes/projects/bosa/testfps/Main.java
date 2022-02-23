@@ -287,7 +287,7 @@ public class Main implements HttpHandler {
 		json += "\"inputs\": [ ";
 		for(String name : names) {
 			json += "{";
-			json = addStrItem(json, "display", "NO");
+			json = addStrItem(json, "display", "No");
 			json = addStrItem(json, "fileName", name);
 			json = addItem(json, "readConfirm", makeBool(requestDocumentReadConfirm, "requestDocumentReadConfirm"));
 			json = addStrItem(json, "xmlEltId", "ID_" + Integer.toString(eltId++));
