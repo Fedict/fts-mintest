@@ -247,6 +247,7 @@ class NameForm extends React.Component {
                 <td><select id="policyId" value={this.state.policyId} disabled={this.inFileExt() == 'pdf'} onChange={this.handleChange}>
                                         <option></option>
                                         <option>http://signinfo.eda.just.fgov.be/SignaturePolicy/pdf/Notary/BE_Justice_Signature_Policy_Notary_eID_Hum_v0.10_202109_Fr.pdf</option>
+                                        <option>http://signinfo.eda.just.fgov.be/SignaturePolicy/pdf/PrivateSeal/BE_Justice_Signature_Policy_PrivateSeal_Hum_v0.5_201512_Nl.pdf</option>
                 </select></td></tr>
 
                 <tr><td><label>Policiy description (Optional):</label></td>
