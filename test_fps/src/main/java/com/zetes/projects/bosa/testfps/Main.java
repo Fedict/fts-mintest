@@ -598,7 +598,7 @@ public class Main implements HttpHandler {
 		String names[] = filenames.split(",");
 		for(String name : names) {
 			Input input = new Input("NOFILE.xml", "ID_" + count++, true, "Content", null);
-			String bits[] = name.split("~");
+			String bits[] = name.split("!");
 			switch(bits.length) {
 				case 5:
 					input.setXmlEltId(bits[4]);
