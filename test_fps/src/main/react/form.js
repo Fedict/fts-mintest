@@ -195,7 +195,7 @@ class NameForm extends React.Component {
             <tbody>
                 <tr><td colSpan="2"><b>General parameters</b></td></tr>
                 <tr><td><label>Input file name :</label></td>
-                <td><select id="name" multiple="true" value={this.state.name} onChange={this.handleChange}>
+                <td><select id="name" multiple={true} value={this.state.name} onChange={this.handleChange}>
                                     {this.state.inputFiles.map((inputFile) => <option key={inputFile}>{inputFile}</option>)}
                 </select></td></tr>
 

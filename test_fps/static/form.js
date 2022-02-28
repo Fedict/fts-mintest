@@ -243,7 +243,7 @@ var NameForm = function (_React$Component) {
                                 null,
                                 React.createElement(
                                     "select",
-                                    { id: "name", multiple: "true", value: this.state.name, onChange: this.handleChange },
+                                    { id: "name", multiple: true, value: this.state.name, onChange: this.handleChange },
                                     this.state.inputFiles.map(function (inputFile) {
                                         return React.createElement(
                                             "option",
