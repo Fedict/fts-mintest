@@ -595,6 +595,11 @@ var NameForm = function (_React$Component) {
                                         "option",
                                         null,
                                         "http://signinfo.eda.just.fgov.be/SignaturePolicy/pdf/PrivateSeal/BE_Justice_Signature_Policy_PrivateSeal_Hum_v0.5_201512_Nl.pdf"
+                                    ),
+                                    React.createElement(
+                                        "option",
+                                        null,
+                                        "http://signinfo.eda.just.fgov.be/SignaturePolicy/pdf/PrivateSeal/BE_Justice_Signature_Policy_PrivateSeal_Hum_v0.11_202111_Fr.pdf"
                                     )
                                 )
                             )
