@@ -1,5 +1,6 @@
 package com.zetes.projects.bosa.testfps;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.crypto.*;
 
 
@@ -15,6 +16,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.util.List;
 
 import com.nimbusds.jose.JWEObject;
 import com.sun.net.httpserver.HttpServer;
@@ -22,6 +24,8 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
 
 import io.minio.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import org.json.JSONObject;
 
 import javax.activation.MimetypesFileTypeMap;
@@ -242,23 +246,29 @@ public class Main implements HttpHandler {
 		String policyDigestAlgorithm = getParam(queryParams, "policyDigestAlgorithm");
 		String requestDocumentReadConfirm = getParam(queryParams, "requestDocumentReadConfirm");
 
-		String names[] = name.split(",");
-		if (names.length == 1) {
+		List<Input> inputs = getFromFileNames(name);
+		if (inputs.size() == 1) {
 			signOneFile(noDownload, requestDocumentReadConfirm, out, name, psfP, lang, profile, xslt, psp, psfN, psfC, signTimeout, allowedToSign, policyId, policyDescription, policyDigestAlgorithm, httpExch);
 		} else {
-			signMultiFile(names, out, profile, xslt, signTimeout, noDownload,requestDocumentReadConfirm, allowedToSign, policyId, policyDescription, policyDigestAlgorithm, httpExch);
+			signMultiFile(inputs, out, profile, xslt, signTimeout, noDownload, allowedToSign, policyId, policyDescription, policyDigestAlgorithm, httpExch);
 		}
 	}
 
-	private void signMultiFile(String[] names, String out, String profile, String xslt, String signTimeout, String noDownload, String requestDocumentReadConfirm, String allowedToSign, String policyId, String policyDescription, String policyDigestAlgorithm, HttpExchange httpExch) throws Exception {
-
+	private void signMultiFile(List<Input> inputs, String out, String profile, String xslt, String signTimeout, String noDownload, String allowedToSign, String policyId, String policyDescription, String policyDigestAlgorithm, HttpExchange httpExch) throws Exception {
 		String filesToDelete = "";
-		for(String name : names) {
-			System.out.println("\n1. Uploading the unsigned doc to the S3 server..." + name);
-			uploadFile(new File(inFilesDir, name));
-			filesToDelete += name + ",";
+		for(Input input : inputs) {
+			System.out.println("\n1. Uploading the unsigned doc to the S3 server..." + input.getFileName());
+			uploadFile(new File(inFilesDir, input.getFileName()));
+			filesToDelete += input.getFileName() + ",";
+			if (input.getDisplayXslt() != null) {
+				System.out.println("\n1. Uploading the XSLT doc to the S3 server..." + input.getDisplayXslt());
+				uploadFile(new File(inFilesDir, input.getDisplayXslt()));
+				filesToDelete += input.getDisplayXslt() + ",";
+			}
 		}
+
 		if (xslt != null) {
+			System.out.println("\n2. Uploading the 'out' xslt doc to the S3 server..." + xslt);
 			uploadFile(new File(inFilesDir, xslt));
 			filesToDelete += xslt;
 		} else {
@@ -276,24 +286,14 @@ public class Main implements HttpHandler {
 		if (signTimeout != null) json = addItem(json, "signTimeout", signTimeout);
 		if (policyId != null) {
 			json += "\"policy\": {";
-			json = addStrItem(json, "policyId", policyId);
-			json = addStrItem(json, "policyDigestAlgorithm", policyDigestAlgorithm);
-			json = addStrItem(json, "policyDescription", policyDescription);
-			json += "},";
-		}
-		int eltId = 0;
-		json += "\"inputs\": [ ";
-		for(String name : names) {
-			json += "{";
-			json = addStrItem(json, "display", "NO");
-			json = addStrItem(json, "fileName", name);
-			json = addItem(json, "readConfirm", makeBool(requestDocumentReadConfirm, "requestDocumentReadConfirm"));
-			json = addStrItem(json, "xmlEltId", "ID_" + Integer.toString(eltId++));
+			json = addStrItem(json, "id", policyId);
+			json = addStrItem(json, "digestAlgorithm", policyDigestAlgorithm);
+			json = addStrItem(json, "description", policyDescription);
 			json = json.substring(0, json.length() - 1);
 			json += "},";
 		}
-		json = json.substring(0, json.length() - 1);
-		json += "]";
+		json += "\"inputs\": ";
+		json+= new ObjectMapper().writeValueAsString(inputs);
 		if (allowedToSign != null) {
 			json += ",\"nnAllowedToSign\": [" + allowedToSign + "]";
 		}
@@ -582,4 +582,37 @@ public class Main implements HttpHandler {
 		return new JSONObject(new String(java.util.Base64.getDecoder().decode(parts[1])));
 	}
 
+	@Data
+	@AllArgsConstructor
+	public class Input {
+		private String fileName;
+		private String xmlEltId;
+		private boolean readConfirm;
+		private String display;
+		private String displayXslt;
+	}
+
+	private List<Input> getFromFileNames(String filenames) {
+		List<Input> inputs = new ArrayList<>();
+		int count = 0;
+		String names[] = filenames.split(",");
+		for(String name : names) {
+			Input input = new Input("NOFILE.xml", "ID_" + count++, true, "Content", null);
+			String bits[] = name.split("!");
+			switch(bits.length) {
+				case 5:
+					input.setXmlEltId(bits[4]);
+				case 4:
+					if (bits[3].length() != 0) input.setDisplay(bits[3]);
+				case 3:
+					if (bits[2].length() != 0) input.setReadConfirm("t".compareTo(bits[2]) == 0);
+				case 2:
+					if (bits[1].length() != 0) input.setDisplayXslt(bits[1]);
+				case 1:
+					input.setFileName(bits[0]);
+			}
+			inputs.add(input);
+		}
+		return inputs;
+	}
 }

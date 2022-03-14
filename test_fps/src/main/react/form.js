@@ -28,6 +28,7 @@ class NameForm extends React.Component {
         signTimeout: '',
         allowedToSign: '',
         policyId: '',
+        policyId: '',
         policyDescription: 'Policy Description',
         policyDigestAlgorithm: 'SHA512',
         requestDocumentReadConfirm: false,
@@ -44,8 +45,12 @@ class NameForm extends React.Component {
   }
 
   inFileExt() {
-    if (this.state.name.length != 1) return "xml";
+    if (this.isXadesMultifile()) return "xml";
     return this.state.name[0].toLowerCase().split(".").pop();
+  }
+
+  isXadesMultifile() {
+    return this.state.name.length != 1;
   }
 
   handleChange(event) {
@@ -100,7 +105,7 @@ class NameForm extends React.Component {
   }
 
     extractAcroformName() {
-        if (this.state.name.length == 1) {
+        if (!this.isXadesMultifile()) {
             inFileName = this.state.name[0];
             start = inFileName.indexOf('~');
             if (start >= 0) {
@@ -190,7 +195,7 @@ class NameForm extends React.Component {
             <tbody>
                 <tr><td colSpan="2"><b>General parameters</b></td></tr>
                 <tr><td><label>Input file name :</label></td>
-                <td><select id="name" multiple="true" value={this.state.name} onChange={this.handleChange}>
+                <td><select id="name" multiple={true} value={this.state.name} onChange={this.handleChange}>
                                     {this.state.inputFiles.map((inputFile) => <option key={inputFile}>{inputFile}</option>)}
                 </select></td></tr>
 
@@ -242,6 +247,8 @@ class NameForm extends React.Component {
                 <td><select id="policyId" value={this.state.policyId} disabled={this.inFileExt() == 'pdf'} onChange={this.handleChange}>
                                         <option></option>
                                         <option>http://signinfo.eda.just.fgov.be/SignaturePolicy/pdf/Notary/BE_Justice_Signature_Policy_Notary_eID_Hum_v0.10_202109_Fr.pdf</option>
+                                        <option>http://signinfo.eda.just.fgov.be/SignaturePolicy/pdf/PrivateSeal/BE_Justice_Signature_Policy_PrivateSeal_Hum_v0.5_201512_Nl.pdf</option>
+                                        <option>http://signinfo.eda.just.fgov.be/SignaturePolicy/pdf/PrivateSeal/BE_Justice_Signature_Policy_PrivateSeal_Hum_v0.11_202111_Fr.pdf</option>
                 </select></td></tr>
 
                 <tr><td><label>Policiy description (Optional):</label></td>
@@ -253,7 +260,8 @@ class NameForm extends React.Component {
                 </select></td></tr>
                 <tr><td colSpan="2"><hr/></td></tr>
                 <tr><td colSpan="2"><input type="submit" value="Submit" disabled={this.state.reasonForNoSubmit}/>
-                { this.state.reasonForNoSubmit && <label><br/>Submit is disabled because : { this.state.reasonForNoSubmit }</label> }
+                { this.state.reasonForNoSubmit && <p><label style={{ color: 'red' }}>Submit is disabled because : { this.state.reasonForNoSubmit }</label></p> }
+                { this.isXadesMultifile() && <p><label>This will produce a XADES Multifile signature.<br/>Policies are allowed, XSLT will be used to produce a custom output XML format</label></p> }
                 </td></tr>
             </tbody>
           </table>
