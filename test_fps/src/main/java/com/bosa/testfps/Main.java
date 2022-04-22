@@ -1,4 +1,4 @@
-package com.zetes.projects.bosa.testfps;
+package com.bosa.testfps;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.crypto.*;
