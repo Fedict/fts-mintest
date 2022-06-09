@@ -279,7 +279,9 @@ public class Main implements HttpHandler {
 		String json = "{";
 		json = addStrItem(json, "bucket", s3UserName);
 		json = addStrItem(json, "password", s3Passwd);
-		json = addBool(json, noDownload, "noDownload");
+
+		String outDownload = noDownload == null ? null : makeBool(noDownload, "noDownload").equals("true") ? "false" : "true";
+		json = addBool(json, outDownload, "outDownload");
 		json = addBool(json, previewDocuments, "previewDocuments");
 		json = addBool(json, requestDocumentReadConfirm, "requestDocumentReadConfirm");
 		json = addStrItem(json, "outFilePath", out);
@@ -425,7 +427,7 @@ public class Main implements HttpHandler {
 	}
 
 	private String makeBool(String value, String name) {
-		if ("true".equals(value)) return value;
+		if ("true".equals(value) || "false".equals(value)) return value;
 		System.out.println("\n" + name + " must be 'true' or 'false' (was " + value + ")");
 		return "false";
 	}
