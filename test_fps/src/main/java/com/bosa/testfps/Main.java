@@ -280,7 +280,7 @@ public class Main implements HttpHandler {
 		json = addStrItem(json, "bucket", s3UserName);
 		json = addStrItem(json, "password", s3Passwd);
 
-		String outDownload = noDownload == null ? null : makeBool(noDownload, "noDownload").equals("true") ? "false" : "true";
+		String outDownload = noDownload == null || makeBool(noDownload, "noDownload").equals("false") ? "true" : "false";
 		json = addBool(json, outDownload, "outDownload");
 		json = addBool(json, previewDocuments, "previewDocuments");
 		json = addBool(json, requestDocumentReadConfirm, "requestDocumentReadConfirm");
