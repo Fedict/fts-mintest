@@ -32,6 +32,7 @@ class NameForm extends React.Component {
         policyDescription: 'Policy Description',
         policyDigestAlgorithm: 'SHA512',
         requestDocumentReadConfirm: false,
+        previewDocuments: true,
 
         profilesForInputType: this.profilePerType.pdf,
         inputFiles: [],
@@ -208,12 +209,10 @@ class NameForm extends React.Component {
                 </select></td></tr>
                 <tr><td><label>NN Allowed to Sign (Comma separated): </label></td>
                 <td><input id="allowedToSign" type="text" value={this.state.allowedToSign} onChange={this.handleChange}/></td></tr>
-                <tr><td><label>Sign timeout (in seconds)</label></td><td><input id="signTimeout" type="text" value={this.state.signTimeout} onChange={this.handleChange}/></td>
-                </tr>
-                <tr><td><label>Disable output file download</label></td><td><input id="noDownload" type="checkbox" value={this.state.noDownload} onChange={this.handleChange}/></td>
-                </tr>
-                <tr><td><label>Request read confirmation</label></td><td><input id="requestDocumentReadConfirm" type="checkbox" value={this.state.requestDocumentReadConfirm} onChange={this.handleChange}/></td>
-                </tr>
+                <tr><td><label>Sign timeout (in seconds)</label></td><td><input id="signTimeout" type="text" value={this.state.signTimeout} onChange={this.handleChange}/></td></tr>
+                <tr><td><label>Disable output file download</label></td><td><input id="noDownload" type="checkbox" value={this.state.noDownload} onChange={this.handleChange}/></td></tr>
+                <tr><td><label>Request read confirmation</label></td><td><input id="requestDocumentReadConfirm" type="checkbox" value={this.state.requestDocumentReadConfirm} onChange={this.handleChange}/></td></tr>
+                <tr><td><label>Preview documents</label></td><td><input id="previewDocuments" type="checkbox" value={this.state.previewDocuments} onChange={this.handleChange}/></td></tr>
 
                 <tr><td colSpan="2"><hr/></td></tr>
                 <tr><td colSpan="2"><b>PDF parameters</b></td></tr>

@@ -1,4 +1,4 @@
-package com.zetes.projects.bosa.testfps;
+package com.bosa.testfps;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.crypto.*;
@@ -240,30 +240,31 @@ public class Main implements HttpHandler {
 		String name = getParam(queryParams, "name");
 		String out = getParam(queryParams, "out");
 		String signTimeout = getParam(queryParams, "signTimeout");
+		String requestDocumentReadConfirm = getParam(queryParams, "requestDocumentReadConfirm");
+		String previewDocuments = getParam(queryParams, "previewDocuments");
 		String allowedToSign = getParam(queryParams, "allowedToSign");
 		String policyId = getParam(queryParams, "policyId");
 		String policyDescription = getParam(queryParams, "policyDescription");
 		String policyDigestAlgorithm = getParam(queryParams, "policyDigestAlgorithm");
-		String requestDocumentReadConfirm = getParam(queryParams, "requestDocumentReadConfirm");
 
 		List<Input> inputs = getFromFileNames(name);
 		if (inputs.size() == 1) {
 			signOneFile(noDownload, requestDocumentReadConfirm, out, name, psfP, lang, profile, xslt, psp, psfN, psfC, signTimeout, allowedToSign, policyId, policyDescription, policyDigestAlgorithm, httpExch);
 		} else {
-			signMultiFile(inputs, out, profile, xslt, signTimeout, noDownload, allowedToSign, policyId, policyDescription, policyDigestAlgorithm, httpExch);
+			signMultiFile(inputs, out, profile, xslt, signTimeout, noDownload, allowedToSign, policyId, policyDescription, policyDigestAlgorithm, requestDocumentReadConfirm, previewDocuments, httpExch);
 		}
 	}
 
-	private void signMultiFile(List<Input> inputs, String out, String profile, String xslt, String signTimeout, String noDownload, String allowedToSign, String policyId, String policyDescription, String policyDigestAlgorithm, HttpExchange httpExch) throws Exception {
+	private void signMultiFile(List<Input> inputs, String out, String profile, String xslt, String signTimeout, String noDownload, String allowedToSign, String policyId, String policyDescription, String policyDigestAlgorithm, String requestDocumentReadConfirm, String previewDocuments, HttpExchange httpExch) throws Exception {
 		String filesToDelete = "";
 		for(Input input : inputs) {
-			System.out.println("\n1. Uploading the unsigned doc to the S3 server..." + input.getFileName());
-			uploadFile(new File(inFilesDir, input.getFileName()));
-			filesToDelete += input.getFileName() + ",";
-			if (input.getDisplayXslt() != null) {
-				System.out.println("\n1. Uploading the XSLT doc to the S3 server..." + input.getDisplayXslt());
-				uploadFile(new File(inFilesDir, input.getDisplayXslt()));
-				filesToDelete += input.getDisplayXslt() + ",";
+			System.out.println("\n1. Uploading the unsigned doc to the S3 server..." + input.getFilePath());
+			uploadFile(new File(inFilesDir, input.getFilePath()));
+			filesToDelete += input.getFilePath() + ",";
+			if (input.getDisplayXsltPath() != null) {
+				System.out.println("\n1. Uploading the XSLT doc to the S3 server..." + input.getDisplayXsltPath());
+				uploadFile(new File(inFilesDir, input.getDisplayXsltPath()));
+				filesToDelete += input.getDisplayXsltPath() + ",";
 			}
 		}
 
@@ -278,10 +279,13 @@ public class Main implements HttpHandler {
 		String json = "{";
 		json = addStrItem(json, "bucket", s3UserName);
 		json = addStrItem(json, "password", s3Passwd);
-		String outDownload = makeBool(noDownload, "noDownload").compareTo("true") == 0 ? "false" : "true" ;
-		if (outDownload != null) json = addItem(json, "outDownload", outDownload);
-		json = addStrItem(json, "outFileName", out);
-		if (xslt != null) json = addStrItem(json, "outXslt", xslt);
+
+		String outDownload = noDownload == null || makeBool(noDownload, "noDownload").equals("false") ? "true" : "false";
+		json = addBool(json, outDownload, "outDownload");
+		json = addBool(json, previewDocuments, "previewDocuments");
+		json = addBool(json, requestDocumentReadConfirm, "requestDocumentReadConfirm");
+		json = addStrItem(json, "outFilePath", out);
+		if (xslt != null) json = addStrItem(json, "outXsltPath", xslt);
 		json = addStrItem(json, "signProfile", profile);
 		if (signTimeout != null) json = addItem(json, "signTimeout", signTimeout);
 		if (policyId != null) {
@@ -371,9 +375,9 @@ public class Main implements HttpHandler {
 		if (null != psfN) json += "  \"psfN\":\"" + psfN + "\",\n";
 		if (null != psfC) json += "  \"psfC\":\"" + psfC + "\",\n";
 		if (null != signTimeout) json += "  \"signTimeout\": " + signTimeout + ",\n";
+		json = addBool(json, noDownload, "noDownload");
+		json = addBool(json, requestDocumentReadConfirm, "requestDocumentReadConfirm");
 		if (null != psfP) json += "  \"psfP\":\"" + makeBool(psfP, "psfP") + "\",\n";
-		if (null != noDownload) json += "  \"noDownload\": " + makeBool(noDownload, "noDownload") + ",\n";
-		if (null != requestDocumentReadConfirm) json += "  \"requestDocumentReadConfirm\": " + makeBool(requestDocumentReadConfirm, "requestDocumentReadConfirm") + ",\n";
 		if (null != allowedToSign) {
 			json += "  \"allowedToSign\": [\n";
 			for(String allowed : allowedToSign.split(",")) {
@@ -418,8 +422,12 @@ public class Main implements HttpHandler {
 		System.out.println("  DONE, now waiting till we get a callback...");
 	}
 
+	private String addBool(String json, String value, String name) {
+		return value == null ? json : json + "  \"" + name + "\": " + makeBool(value, name) + ",\n";
+	}
+
 	private String makeBool(String value, String name) {
-		if ("true".equals(value)) return value;
+		if ("true".equals(value) || "false".equals(value)) return value;
 		System.out.println("\n" + name + " must be 'true' or 'false' (was " + value + ")");
 		return "false";
 	}
@@ -585,11 +593,9 @@ public class Main implements HttpHandler {
 	@Data
 	@AllArgsConstructor
 	public class Input {
-		private String fileName;
+		private String filePath;
 		private String xmlEltId;
-		private boolean readConfirm;
-		private String display;
-		private String displayXslt;
+		private String displayXsltPath;
 	}
 
 	private List<Input> getFromFileNames(String filenames) {
@@ -597,19 +603,15 @@ public class Main implements HttpHandler {
 		int count = 0;
 		String names[] = filenames.split(",");
 		for(String name : names) {
-			Input input = new Input("NOFILE.xml", "ID_" + count++, true, "Content", null);
+			Input input = new Input("NOFILE.xml", "ID_" + count++, null);
 			String bits[] = name.split("!");
 			switch(bits.length) {
-				case 5:
-					input.setXmlEltId(bits[4]);
-				case 4:
-					if (bits[3].length() != 0) input.setDisplay(bits[3]);
 				case 3:
-					if (bits[2].length() != 0) input.setReadConfirm("t".compareTo(bits[2]) == 0);
+					input.setXmlEltId(bits[2]);
 				case 2:
-					if (bits[1].length() != 0) input.setDisplayXslt(bits[1]);
+					if (bits[1].length() != 0) input.setDisplayXsltPath(bits[1]);
 				case 1:
-					input.setFileName(bits[0]);
+					input.setFilePath(bits[0]);
 			}
 			inputs.add(input);
 		}
