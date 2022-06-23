@@ -71,12 +71,9 @@ class NameForm extends React.Component {
     }
     if (!reasonForNoSubmit && this.inFileExt() == 'pdf') {
         if (this.state.psfC) {
-            if (/^[0-9]+,[0-9]+,[0-9]+,[0-9]+,[0-9]+$/.test(this.state.psfC)) {
-                coord = this.state.psfC.split(',');
-                if (parseInt(coord[1]) >= parseInt(coord[3]) || parseInt(coord[2]) >= parseInt(coord[4])) {
-                    reasonForNoSubmit = "the 'PDF signature field coordinates' must look like 'page#, top,left,bottom,right (was : '" + this.state.psfC + "')";
-                }
-            } else reasonForNoSubmit = "the 'PDF signature field coordinates' must look like '3, 10,10,30,30' (was : '" + this.state.psfC + "')";
+            if (! /^[0-9]+,[0-9]+,[0-9]+,[0-9]+,[0-9]+$/.test(this.state.psfC)) {
+                reasonForNoSubmit = "the 'PDF signature field coordinates' (PDF page#,x,y,width,height) must look like '3,10,10,30,30' (was : '" + this.state.psfC + "')";
+            }
         } else {
             if (!this.state.psfN) {
                 reasonForNoSubmit = "you must provide either a 'PDF signature field name' or 'PDF signature field coordinates'";
