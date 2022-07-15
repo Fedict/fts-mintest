@@ -194,6 +194,7 @@ public class Main implements HttpHandler {
 	private void handleStatic(HttpExchange httpExch, String uri) {
 		int httpStatus = 200;
 		byte[] bytes = null;
+		String contentType = "text/plain";
 
 		try {
 			uri = uri.substring(1);
@@ -201,11 +202,10 @@ public class Main implements HttpHandler {
 			else if (!uri.startsWith("static")) throw new IOException("Not so fast here !");
 
 			Path path = Paths.get(uri);
-			String contentType = MimetypesFileTypeMap.getDefaultFileTypeMap().getContentType(path.getFileName().toString());
 
 			System.out.println("Reading static file: " + uri);
 			bytes = Files.readAllBytes(path);
-			respond(httpExch, httpStatus, contentType, bytes);
+			contentType = MimetypesFileTypeMap.getDefaultFileTypeMap().getContentType(path.getFileName().toString());
 
 		} catch(NoSuchFileException e) {
 			httpStatus = 404;
@@ -214,6 +214,8 @@ public class Main implements HttpHandler {
 			httpStatus = 500;
 			bytes = "Error".getBytes();
 		}
+		System.out.println("Returning : " + httpStatus + " - " + contentType + " - " + bytes.length);
+		respond(httpExch, httpStatus, contentType, bytes);
 	}
 
 	/**
