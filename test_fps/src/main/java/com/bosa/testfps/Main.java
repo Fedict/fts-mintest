@@ -359,7 +359,7 @@ public class Main implements HttpHandler {
 
 		System.out.println("\n4. Callback");
 
-		String out = getParam(queryParams, "out"); // this one we specified ourselves in handleSign()
+		String outFiles = getParam(queryParams, "out"); // this one we specified ourselves in handleSign()
 
 		// These params were added by the BOSA DSS/front-end in case of an error
 		String ref = getParam(queryParams, "ref");
@@ -370,24 +370,23 @@ public class Main implements HttpHandler {
 		if (null == err) {
 			// If the signing was successfull, download the signed file
 
-			System.out.println("  Downloading file " + out + " from the S3 server");
-			MinioClient minioClient = getClient();
-			InputStream stream =
-				minioClient.getObject(
-					GetObjectArgs.builder().bucket(s3UserName).object(out).build());
+			for(String out : outFiles.split(",")) {
+				System.out.println("  Downloading file " + out + " from the S3 server");
+				MinioClient minioClient = getClient();
+				InputStream stream = minioClient.getObject(GetObjectArgs.builder().bucket(s3UserName).object(out).build());
 
-			if (!outFilesDir.exists())
-				outFilesDir.mkdirs();
+				if (!outFilesDir.exists()) outFilesDir.mkdirs();
 
-			File f = new File(outFilesDir, out);
-			FileOutputStream fos = new FileOutputStream(f);
-			byte[] buf = new byte[16384];
-			int bytesRead;
-			while ((bytesRead = stream.read(buf, 0, buf.length)) >= 0)
-				fos.write(buf, 0, bytesRead);
-			stream.close();
-			fos.close();
-			System.out.println("    File is downloaded to " + f.getAbsolutePath());
+				File f = new File(outFilesDir, out);
+				FileOutputStream fos = new FileOutputStream(f);
+				byte[] buf = new byte[16384];
+				int bytesRead;
+				while ((bytesRead = stream.read(buf, 0, buf.length)) >= 0)
+					fos.write(buf, 0, bytesRead);
+				stream.close();
+				fos.close();
+				System.out.println("    File is downloaded to " + f.getAbsolutePath());
+			}
 
 			htmlBody = "Thank you for signing<br>";
 		}
@@ -405,7 +404,7 @@ public class Main implements HttpHandler {
 
 		// Delete everything the S3 server
 		MinioClient minioClient = getClient();
-		for(String fileToDelete : (getParam(queryParams, "toDelete") + "," + out + "," + out + ".validationreport.json").split(",")) {
+		for(String fileToDelete : (getParam(queryParams, "toDelete") + "," + outFiles + "," + outFiles + ".validationreport.json").split(",")) {
 			System.out.println("    Deleting from the S3 server :" + fileToDelete);
 			minioClient.removeObject(RemoveObjectArgs.builder().bucket(s3UserName).object(fileToDelete).build());
 		}
