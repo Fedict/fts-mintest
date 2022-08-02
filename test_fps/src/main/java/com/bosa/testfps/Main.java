@@ -9,6 +9,8 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.io.File;
 import java.io.IOException;
@@ -24,8 +26,7 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
 
 import io.minio.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import io.minio.errors.*;
 import org.json.JSONObject;
 
 import javax.activation.MimetypesFileTypeMap;
@@ -368,24 +369,29 @@ public class Main implements HttpHandler {
 
 		String htmlBody = "";
 		if (null == err) {
-			// If the signing was successfull, download the signed file
+			// If the signing was successful, download the signed file
 
 			for(String out : outFiles.split(",")) {
-				System.out.println("  Downloading file " + out + " from the S3 server");
+				System.out.println("  Trying to downloading file " + out + " from the S3 server");
 				MinioClient minioClient = getClient();
-				InputStream stream = minioClient.getObject(GetObjectArgs.builder().bucket(s3UserName).object(out).build());
 
-				if (!outFilesDir.exists()) outFilesDir.mkdirs();
+				try {
+					InputStream stream = minioClient.getObject(GetObjectArgs.builder().bucket(s3UserName).object(out).build());
+					if (!outFilesDir.exists()) outFilesDir.mkdirs();
 
-				File f = new File(outFilesDir, out);
-				FileOutputStream fos = new FileOutputStream(f);
-				byte[] buf = new byte[16384];
-				int bytesRead;
-				while ((bytesRead = stream.read(buf, 0, buf.length)) >= 0)
-					fos.write(buf, 0, bytesRead);
-				stream.close();
-				fos.close();
-				System.out.println("    File is downloaded to " + f.getAbsolutePath());
+					File f = new File(outFilesDir, out);
+					FileOutputStream fos = new FileOutputStream(f);
+					byte[] buf = new byte[16384];
+					int bytesRead;
+					while ((bytesRead = stream.read(buf, 0, buf.length)) >= 0)
+						fos.write(buf, 0, bytesRead);
+					stream.close();
+					fos.close();
+					System.out.println("    File is downloaded to " + f.getAbsolutePath());
+				} catch(ErrorResponseException e) {
+					if (e.errorResponse().code().equals("NoSuchKey")) System.out.println("  Not Found (probably not signed)");
+					else System.out.println("  Exception " + e);
+				}
 			}
 
 			htmlBody = "Thank you for signing<br>";
@@ -404,14 +410,23 @@ public class Main implements HttpHandler {
 
 		// Delete everything the S3 server
 		MinioClient minioClient = getClient();
-		for(String fileToDelete : (getParam(queryParams, "toDelete") + "," + outFiles + "," + outFiles + ".validationreport.json").split(",")) {
-			System.out.println("    Deleting from the S3 server :" + fileToDelete);
-			minioClient.removeObject(RemoveObjectArgs.builder().bucket(s3UserName).object(fileToDelete).build());
+		for(String fileToDelete : getParam(queryParams, "toDelete").split(",")) {
+			deleteFileFromBucket(fileToDelete);
+		}
+
+		for(String fileToDelete : outFiles.split(",")) {
+			deleteFileFromBucket(fileToDelete);
+			deleteFileFromBucket(fileToDelete + ".validationreport.json");
 		}
 
 		// Return a message to the user
 		String html = HTML_START + htmlBody + HTML_END;
 		respond(httpExch, 200, "text/html", html.getBytes());
+	}
+
+	private void deleteFileFromBucket(String fileToDelete) throws Exception {
+		System.out.println("    Deleting from the S3 server :" + fileToDelete);
+		minioClient.removeObject(RemoveObjectArgs.builder().bucket(s3UserName).object(fileToDelete).build());
 	}
 
 	/** Do an HTTP POST of a json (a REST call) */
