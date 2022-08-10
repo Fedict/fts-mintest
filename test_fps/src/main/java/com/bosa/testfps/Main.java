@@ -276,6 +276,7 @@ public class Main implements HttpHandler {
 				outFiles = outFiles.substring(0, outFiles.length() - 1);
 			}
 
+			addTokens(json, "pspFilePath", filesToUpload);
 			addTokens(json, "displayXsltPath", filesToUpload);
 			addTokens(json, "outXsltPath", filesToUpload);
 
