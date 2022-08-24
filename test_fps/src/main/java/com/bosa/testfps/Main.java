@@ -1,6 +1,5 @@
 package com.bosa.testfps;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.crypto.*;
 
 
@@ -9,8 +8,6 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.io.File;
 import java.io.IOException;
@@ -295,7 +292,7 @@ public class Main implements HttpHandler {
 
 		System.out.println("Out file(s) : " + outFiles);
 
-		createTokenAndRedirect(getTokenUrl + (multidoc ? "s" : ""), json, outFiles, String.join(",", filesToUpload), httpExch);
+		createTokenAndRedirect(getTokenUrl + (multidoc ? "s" : ""), json, outFiles, String.join(",", filesToUpload), queryParams, httpExch);
 	}
 
 	private String getToken(String json, String tokenName) {
@@ -329,7 +326,7 @@ public class Main implements HttpHandler {
 		}
 	}
 
-	private void createTokenAndRedirect(String url, String json, String out, String filesToDelete, HttpExchange httpExch) throws Exception {
+	private void createTokenAndRedirect(String url, String json, String out, String filesToDelete, String[] queryParams, HttpExchange httpExch) throws Exception {
 		System.out.println("JSON for the getToken call:\n" + json);
 		String token = postJson(url, json);
 
@@ -342,8 +339,11 @@ public class Main implements HttpHandler {
 		String callbackURL = localUrl + "/callback?out=" + out + "&toDelete=" + filesToDelete;
 		System.out.println("  Callback: " + callbackURL);
 		String redirectUrl = bosaDssFrontend + "/sign/" + URLEncoder.encode(token) +
-				"?redirectUrl=" + URLEncoder.encode(callbackURL) + "&language=" + LANGUAGE +
-				"&name=" + URLEncoder.encode(NAME);
+				"?redirectUrl=" + URLEncoder.encode(callbackURL);
+
+		int i = queryParams.length;
+		while(i >= 1) redirectUrl += "&" + queryParams[--i];
+
 		System.out.println("  URL: " + redirectUrl);
 		httpExch.getResponseHeaders().add("Location", redirectUrl);
 		httpExch.sendResponseHeaders(303, 0);
