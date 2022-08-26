@@ -341,8 +341,9 @@ public class Main implements HttpHandler {
 		String redirectUrl = bosaDssFrontend + "/sign/" + URLEncoder.encode(token) +
 				"?redirectUrl=" + URLEncoder.encode(callbackURL);
 
-		int i = queryParams.length;
-		while(i >= 1) redirectUrl += "&" + queryParams[--i];
+		for(String queryParam : queryParams) {
+			if (!queryParam.startsWith("json")) redirectUrl += "&" + queryParam;
+		}
 
 		System.out.println("  URL: " + redirectUrl);
 		httpExch.getResponseHeaders().add("Location", redirectUrl);
