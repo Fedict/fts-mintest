@@ -59,21 +59,6 @@ class NameForm extends React.Component {
       })
   }
 
-  getProfilesForInputs() {
-    if (signType == 'XadesMultiFile') return [ 'MDOC_XADES_LTA' ];
-
-    profiles = [];
-    this.state.inputFileExts.forEach((ext) => { profiles = profiles.concat(this.profilePerType[ext]) })
-
-    return profiles;
-  }
-
-  inFileExt() {
-    if (this.state.signType === 'XadesMultiFile') return "xml";
-    inFile = this.state.names[0];
-    return inFile ? inFile.split(".").pop().toLowerCase() : "pdf";
-  }
-
   handleChange(event) {
     target = event.target;
     value = target.value;
@@ -81,10 +66,10 @@ class NameForm extends React.Component {
     else if (target.type === 'select-multiple') {
         value = Array.from(target.selectedOptions, (item) => item.value)
     }
-    this.setState({ [target.id]: value }, this.adaptToChanges);
+    this.setState({ [target.id]: value }, this.adaptToChanges(target.id, value));
   }
 
-  adaptToChanges() {
+  adaptToChanges(targetId, value) {
     reasonForNoSubmit = null;
     if (!reasonForNoSubmit && this.state.out.length < 5) {
          reasonForNoSubmit = "The output file name must be > 5 character (was : '" + this.state.out + "')";
@@ -104,42 +89,73 @@ class NameForm extends React.Component {
     if (reasonForNoSubmit != this.state.reasonForNoSubmit) {
         this.setState( { reasonForNoSubmit: reasonForNoSubmit } );
     }
-    if (this.state.names.length != 1 || this.state.profiles.length != 1) {
-        if (this.state.signType == 'Legacy') {
-            this.setState( { signType: 'Standard'  })
-        }
+
+    names = targetId === 'names' ? value : this.state.names;
+    signType = targetId === 'signType' ? value : this.state.signType;
+    profiles = targetId === 'profiles' ? value : this.state.profiles;
+
+    if (targetId === 'names' && signType == 'Legacy' && value.length != 1) {
+        signType = 'Standard'
+        this.setState( { signType: signType  })
+    }
+
+    if (targetId === 'signType' && value == 'Legacy' && names.length != 1) {
+            names = [ names[0] ]
+            this.setState( { names: names })
     }
 
     this.state.inputFileExts = [];
-    this.state.names.forEach((name) => {
+    names.forEach((name) => {
         ext = name.split(".").pop().toLowerCase();
         if (this.state.inputFileExts.indexOf(ext) < 0) this.state.inputFileExts.push(ext);
-      })
+     })
 
-    if (this.state.signType === 'Legacy' || this.state.signType === 'XadesMultiFile') {
-        profilesForInputs = this.getProfilesForInputs()
-        if (this.state.names.length == 1 || this.state.signType === 'XadesMultiFile') {
-            inFileExt = this.state.signType === 'XadesMultiFile' ? "xml" : this.inFileExt();
-            bitsOut = this.state.out.toLowerCase().split(".");
-            outFileExt = bitsOut.pop();
-            bitsOut.push(inFileExt);
-            out = bitsOut.join(".");
-            }
-        else out = '';
+    if (signType !== 'XadesMultiFile') {
+        profilesForInputs = [];
+        this.state.inputFileExts.forEach((ext) => { profilesForInputs = profilesForInputs.concat(this.profilePerType[ext]) })
+    } else profilesForInputs = [ 'MDOC_XADES_LTA' ];
 
-        this.setState( {
-            out: out,
-            profilesForInputs: profilesForInputs
-        });
-       this.setState( {
-           psfN: this.extractAcroformName()
-           });
+    if (profilesForInputs.toString() !== this.state.profilesForInputs.toString()) {
+        profiles = signType === 'XadesMultiFile' ? [ profilesForInputs[0] ] : []
+        this.setState( { profilesForInputs: profilesForInputs,
+                          profiles: profiles
+                         });
+    } else {
+        maxProfiles = signType === 'Standard' ? 2 : 1;
+        if (profiles.length > maxProfiles) {
+            profiles.length = maxProfiles;
+            this.setState( { profiles: profiles });
+        }
     }
+
+    if (signType !== 'Standard') {
+        if (signType === 'XadesMultiFile') {
+            outFileExt = "xml"
+        } else {
+            outFileExt = names[0] ? names[0].split(".").pop().toLowerCase() : "pdf";
+        }
+       out = this.state.out;
+       if (out.indexOf('.') >= 0) {
+           bitsOut = out.split('.');
+           bitsOut.pop();
+           bitsOut.push(outFileExt);
+       } else if (out === '') out = 'out';
+
+       out = bitsOut.join(".");
+       }
+    else out = '';
+    if (out !== this.state.out) {
+        this.setState( { out: out });
+    }
+
+   this.setState( {
+       psfN: this.extractAcroformName(signType, names)
+       });
   }
 
-    extractAcroformName() {
-        if (this.state.signType !== 'XadesMultiFile') {
-            inFileName = this.state.names[0];
+    extractAcroformName(signType, names) {
+        if (signType !== 'XadesMultiFile') {
+            inFileName = names[0];
             if (inFileName) {
                 start = inFileName.indexOf('~');
                 if (start >= 0) {
@@ -258,15 +274,22 @@ class NameForm extends React.Component {
                 profilesForInputType: this.profilePerType[ext],
                 profiles: [ this.profilePerType[ext][0] ],
                 out: out,
-                psfN: this.extractAcroformName()
+                psfN: this.extractAcroformName(this.state.signType, [selectedFilename])
           })
       });
   }
 
   render() {
 
-    const hasPdf = this.hasFileExts(['pdf']);
-    const hasPolicy = this.hasFileExts(['xml', 'bin']) && this.state.policyId;
+    singlePdf = false;
+    singleXML = false;
+    names = this.state.names;
+    if (names && names.length == 1) {
+        name = names[0].toLowerCase();
+        singlePdf = name.endsWith('.pdf');
+        singleXML = name.endsWith('.xml');
+    }
+    const hasPolicy = singleXML && this.state.policyId;
     return (
       <form onSubmit={this.handleSubmit}>
           <table style={{ border: '1px solid', width: '600px' }}>
@@ -291,7 +314,7 @@ class NameForm extends React.Component {
                 <td><input id="outPathPrefix" type="text" value={this.state.outPathPrefix} onChange={this.handleChange} disabled={this.state.signType !== 'Standard'}/></td></tr>
 
                 <tr><td><label>Signing profile :</label></td>
-                <td><select id="prof" value={this.state.profiles} onChange={this.handleChange} multiple={true}>
+                <td><select id="profiles" value={this.state.profiles} onChange={this.handleChange} multiple={true}>
                                         {this.state.profilesForInputs.map((profile) => <option key={profile}>{profile}</option>)}
                 </select></td></tr>
 
@@ -305,11 +328,11 @@ class NameForm extends React.Component {
                 <tr><td colSpan="2"><hr/></td></tr>
                 <tr><td colSpan="2"><b>PDF parameters</b></td></tr>
                 <tr><td><label>PDF signature parameters file name: </label></td>
-                <td><select id="psp" type="text" value={this.state.psp} disabled={!hasPdf} onChange={this.handleChange}>
+                <td><select id="psp" type="text" value={this.state.psp} disabled={!singlePdf} onChange={this.handleChange}>
                                         {this.state.pspFiles.map((pspFile) => <option key={pspFile}>{pspFile}</option>)}
                 </select></td></tr>
                 <tr><td><label>Language of the signature (Acroform): </label></td>
-                <td><select id="lang" value={this.state.lang} onChange={this.handleChange}  disabled={!hasPdf}>
+                <td><select id="lang" value={this.state.lang} onChange={this.handleChange}  disabled={!singlePdf}>
                                         <option value="de">Deutsch</option>
                                         <option value="en">English</option>
                                         <option value="fr">Français</option>
@@ -317,28 +340,28 @@ class NameForm extends React.Component {
                 </select></td></tr>
 
                 <tr><td><label>PDF signature field name: </label></td>
-                <td><input id="psfN" type="text" value={this.state.psfN} disabled={!hasPdf} onChange={this.handleChange}/></td></tr>
+                <td><input id="psfN" type="text" value={this.state.psfN} disabled={!singlePdf} onChange={this.handleChange}/></td></tr>
 
                 <tr><td><label>PDF signature field coordinates: </label></td>
-                <td><input id="psfC" type="text" value={this.state.psfC} disabled={!hasPdf} onChange={this.handleChange}/></td></tr>
+                <td><input id="psfC" type="text" value={this.state.psfC} disabled={!singlePdf} onChange={this.handleChange}/></td></tr>
 
-                <tr><td><label>Include eID photo as icon in the PDF signature field</label></td><td><input id="psfP" type="checkbox" value={this.state.psfP} disabled={!hasPdf}  onChange={this.handleChange}/></td>
+                <tr><td><label>Include eID photo as icon in the PDF signature field</label></td><td><input id="psfP" type="checkbox" value={this.state.psfP} disabled={!singlePdf}  onChange={this.handleChange}/></td>
                 </tr>
                 <tr><td colSpan="2"><hr/></td></tr>
                 <tr><td colSpan="2"><b>Non PDF parameters</b></td></tr>
                 <tr><td><label>XSLT file name:</label></td>
-                <td><select id="xslt" value={this.state.xslt} disabled={!this.hasFileExts(['xml'])} onChange={this.handleChange}>
+                <td><select id="xslt" value={this.state.xslt} disabled={!singleXML} onChange={this.handleChange}>
                                         {this.state.xsltFiles.map((xsltFile) => <option key={xsltFile}>{xsltFile}</option>)}
                 </select></td></tr>
                 <tr><td><label>Policy Id:</label></td>
-                <td><select id="policyId" value={this.state.policyId} disabled={!this.hasFileExts(['xml', 'bin'])} onChange={this.handleChange}>
+                <td><select id="policyId" value={this.state.policyId} disabled={!singleXML} onChange={this.handleChange}>
                                         <option></option>
                                         <option>http://signinfo.eda.just.fgov.be/SignaturePolicy/pdf/Notary/BE_Justice_Signature_Policy_Notary_eID_Hum_v0.10_202109_Fr.pdf</option>
                                         <option>http://signinfo.eda.just.fgov.be/SignaturePolicy/pdf/PrivateSeal/BE_Justice_Signature_Policy_PrivateSeal_Hum_v0.5_201512_Nl.pdf</option>
                                         <option>http://signinfo.eda.just.fgov.be/SignaturePolicy/pdf/PrivateSeal/BE_Justice_Signature_Policy_PrivateSeal_Hum_v0.11_202111_Fr.pdf</option>
                 </select></td></tr>
 
-                <tr><td><label>Policiy description (Optional):</label></td>
+                <tr><td><label>Policy description (Optional):</label></td>
                 <td><input id="policyDescription" type="text" value={this.state.policyDescription} onChange={this.handleChange} disabled={ !hasPolicy } /></td></tr>
 
                 <tr><td><label>Policy Digest Algorithm :</label></td>
