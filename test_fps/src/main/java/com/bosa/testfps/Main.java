@@ -3,18 +3,13 @@ package com.bosa.testfps;
 import com.nimbusds.jose.crypto.*;
 
 
+import java.io.*;
 import java.net.*;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.util.List;
 
 import com.nimbusds.jose.JWEObject;
@@ -169,6 +164,8 @@ public class Main implements HttpHandler {
 
 			if (uri.startsWith("/callback?")) {
 				handleCallback(httpExch, queryParams);
+			} else if (uri.startsWith("/hook")) {
+				handleHook(httpExch);
 			} else if (uri.startsWith("/getFileList")) {
 				getFileList(httpExch);
 			} else if (uri.startsWith("/sign?json=")) {
@@ -188,6 +185,20 @@ public class Main implements HttpHandler {
 			}
 		}
 	}
+
+	private void handleHook(HttpExchange httpExch) throws IOException {
+
+		if ("POST".equals(httpExch.getRequestMethod())) {
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+			copyStream(httpExch.getRequestBody(), bos);
+			System.out.println(bos.toString());
+		}
+		httpExch.getResponseHeaders().add("Access-Control-Allow-Headers", "content-type");
+		httpExch.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+		httpExch.sendResponseHeaders(200, 0);
+		httpExch.close();
+	}
+
 	private void handleStatic(HttpExchange httpExch, String uri) {
 		int httpStatus = 200;
 		byte[] bytes = null;
@@ -340,6 +351,7 @@ public class Main implements HttpHandler {
 		System.out.println("  Callback: " + callbackURL);
 		String redirectUrl = bosaDssFrontend + "/sign/" + URLEncoder.encode(token) +
 				"?redirectUrl=" + URLEncoder.encode(callbackURL);
+		redirectUrl += "&HookURL=" + URLEncoder.encode(localUrl + "/hook");
 
 		for(String queryParam : queryParams) {
 			if (!queryParam.startsWith("json")) redirectUrl += "&" + queryParam;
@@ -382,13 +394,7 @@ public class Main implements HttpHandler {
 					if (!outFilesDir.exists()) outFilesDir.mkdirs();
 
 					File f = new File(outFilesDir, out);
-					FileOutputStream fos = new FileOutputStream(f);
-					byte[] buf = new byte[16384];
-					int bytesRead;
-					while ((bytesRead = stream.read(buf, 0, buf.length)) >= 0)
-						fos.write(buf, 0, bytesRead);
-					stream.close();
-					fos.close();
+					copyStream(stream, new FileOutputStream(f));
 					System.out.println("    File is downloaded to " + f.getAbsolutePath());
 				} catch(ErrorResponseException e) {
 					if (e.errorResponse().code().equals("NoSuchKey")) System.out.println("  Not Found (probably not signed)");
@@ -424,6 +430,15 @@ public class Main implements HttpHandler {
 		// Return a message to the user
 		String html = HTML_START + htmlBody + HTML_END;
 		respond(httpExch, 200, "text/html", html.getBytes());
+	}
+
+	private void copyStream(InputStream in, OutputStream out) throws IOException {
+		byte[] buf = new byte[16384];
+		int bytesRead;
+		while ((bytesRead = in.read(buf, 0, buf.length)) >= 0)
+			out.write(buf, 0, bytesRead);
+		in.close();
+		out.close();
 	}
 
 	private void deleteFileFromBucket(String fileToDelete) throws Exception {
