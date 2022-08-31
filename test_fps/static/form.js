@@ -81,12 +81,9 @@ var NameForm = function (_React$Component) {
             }
             if (!reasonForNoSubmit && this.inFileExt() == 'pdf') {
                 if (this.state.psfC) {
-                    if (/^[0-9]+,[0-9]+,[0-9]+,[0-9]+,[0-9]+$/.test(this.state.psfC)) {
-                        coord = this.state.psfC.split(',');
-                        if (parseInt(coord[1]) >= parseInt(coord[3]) || parseInt(coord[2]) >= parseInt(coord[4])) {
-                            reasonForNoSubmit = "the 'PDF signature field coordinates' must look like 'page#, top,left,bottom,right (was : '" + this.state.psfC + "')";
-                        }
-                    } else reasonForNoSubmit = "the 'PDF signature field coordinates' must look like '3, 10,10,30,30' (was : '" + this.state.psfC + "')";
+                    if (!/^[0-9]+,[0-9]+,[0-9]+,[0-9]+,[0-9]+$/.test(this.state.psfC)) {
+                        reasonForNoSubmit = "the 'PDF signature field coordinates' (PDF page#,x,y,width,height) must look like '3,10,10,30,30' (was : '" + this.state.psfC + "')";
+                    }
                 } else {
                     if (!this.state.psfN) {
                         reasonForNoSubmit = "you must provide either a 'PDF signature field name' or 'PDF signature field coordinates'";
@@ -130,6 +127,75 @@ var NameForm = function (_React$Component) {
     }, {
         key: "handleSubmit",
         value: function handleSubmit(event) {
+            cleanState = Object.assign({}, this.state);
+            // Cleanup transient state
+            delete cleanState.profilesForInputType;
+            delete cleanState.inputFiles;
+            delete cleanState.pspFiles;
+            delete cleanState.xsltFiles;
+            delete cleanState.reasonForNoSubmit;
+
+            // Cleanup state based on file type
+            extension = this.inFileExt();
+            if (extension == "pdf") {
+                delete cleanState.xslt;
+                delete cleanState.policyId;
+            } else if (extension == "xml") {
+                delete cleanState.psp;
+                delete cleanState.psfC;
+                delete cleanState.psfN;
+                delete cleanState.psfP;
+            }
+
+            if (!cleanState.policyId) {
+                delete cleanState.policyDescription;
+                delete cleanState.policyDigestAlgorithm;
+            } else cleanState.policyId = cleanState.policyId.replaceAll(":", "%3A");
+
+            if (!cleanState.allowedToSign) delete cleanState.allowedToSign;
+            if (!cleanState.signTimeout) delete cleanState.signTimeout;
+            if (!cleanState.psp) delete cleanState.psp;
+            if (!cleanState.psfN) delete cleanState.psfN;
+            if (!cleanState.psfC) delete cleanState.psfC;else cleanState.psfC = cleanState.psfC.replaceAll(",", "%2C");
+
+            if (cleanState.name.length == 1) {
+                cleanState.in = cleanState.name[0];
+                delete cleanState.name;
+                delete cleanState.previewDocuments;
+                if (cleanState.allowedToSign) {
+                    cleanState.allowedToSign = cleanState.allowedToSign.split(",").map(function (natNum) {
+                        return { nn: natNum };
+                    });
+                }
+            } else {
+                mDoc = {};
+                mDoc.signTimeout = cleanState.signTimeout;
+                mDoc.requestDocumentReadConfirm = cleanState.requestDocumentReadConfirm;
+                mDoc.previewDocuments = cleanState.previewDocuments;
+                if (cleanState.allowedToSign) mDoc.nnAllowedToSign = cleanState.allowedToSign.split(",");
+                mDoc.signProfile = cleanState.prof;
+                if (cleanState.policyId) {
+                    mDoc.policy = { id: cleanState.policyId, description: cleanState.policyDescription, digestAlgorithm: cleanState.policyDigestAlgorithm };
+                }
+                mDoc.outFilePath = cleanState.out;
+                mDoc.outDownload = cleanState.noDownload === false;
+                if (cleanState.xslt) mDoc.outXsltPath = cleanState.xslt;
+                count = 0;
+                mDoc.inputs = cleanState.name.map(function (name) {
+                    return { filePath: name, xmlEltId: 'ID' + count++ };
+                });
+
+                cleanState = mDoc;
+            }
+
+            url = JSON.stringify(cleanState);
+            url = url.replaceAll("{", "@o").replaceAll("}", "@c").replaceAll("[", "@O").replaceAll("]", "@C").replaceAll(",", "@S").replaceAll('"', "'").replaceAll(":", "@s");
+            window.location = "sign?json=" + url;
+            event.preventDefault();
+        }
+    }, {
+        key: "OLDhandleSubmit",
+        value: function OLDhandleSubmit(event) {
             cleanState = Object.assign({}, this.state);
 
             // Cleanup transient state

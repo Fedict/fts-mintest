@@ -1,21 +1,15 @@
 package com.bosa.testfps;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.crypto.*;
 
 
+import java.io.*;
 import java.net.*;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.util.List;
 
 import com.nimbusds.jose.JWEObject;
@@ -24,8 +18,7 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
 
 import io.minio.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import io.minio.errors.*;
 import org.json.JSONObject;
 
 import javax.activation.MimetypesFileTypeMap;
@@ -171,10 +164,12 @@ public class Main implements HttpHandler {
 
 			if (uri.startsWith("/callback?")) {
 				handleCallback(httpExch, queryParams);
+			} else if (uri.startsWith("/hook")) {
+				handleHook(httpExch);
 			} else if (uri.startsWith("/getFileList")) {
 				getFileList(httpExch);
-			} else if (uri.startsWith("/sign?name=")) {
-				handleSign(httpExch, queryParams);
+			} else if (uri.startsWith("/sign?json=")) {
+				handleJsonSign(httpExch, queryParams);
 			} else {
 				handleStatic(httpExch, uri);
 			}
@@ -191,9 +186,23 @@ public class Main implements HttpHandler {
 		}
 	}
 
+	private void handleHook(HttpExchange httpExch) throws IOException {
+
+		if ("POST".equals(httpExch.getRequestMethod())) {
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+			copyStream(httpExch.getRequestBody(), bos);
+			System.out.println(bos.toString());
+		}
+		httpExch.getResponseHeaders().add("Access-Control-Allow-Headers", "content-type");
+		httpExch.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+		httpExch.sendResponseHeaders(200, 0);
+		httpExch.close();
+	}
+
 	private void handleStatic(HttpExchange httpExch, String uri) {
 		int httpStatus = 200;
 		byte[] bytes = null;
+		String contentType = "text/plain";
 
 		try {
 			uri = uri.substring(1);
@@ -201,11 +210,10 @@ public class Main implements HttpHandler {
 			else if (!uri.startsWith("static")) throw new IOException("Not so fast here !");
 
 			Path path = Paths.get(uri);
-			String contentType = MimetypesFileTypeMap.getDefaultFileTypeMap().getContentType(path.getFileName().toString());
 
 			System.out.println("Reading static file: " + uri);
 			bytes = Files.readAllBytes(path);
-			respond(httpExch, httpStatus, contentType, bytes);
+			contentType = MimetypesFileTypeMap.getDefaultFileTypeMap().getContentType(path.getFileName().toString());
 
 		} catch(NoSuchFileException e) {
 			httpStatus = 404;
@@ -214,6 +222,8 @@ public class Main implements HttpHandler {
 			httpStatus = 500;
 			bytes = "Error".getBytes();
 		}
+		System.out.println("Returning : " + httpStatus + " - " + contentType + " - " + bytes.length);
+		respond(httpExch, httpStatus, contentType, bytes);
 	}
 
 	/**
@@ -224,183 +234,110 @@ public class Main implements HttpHandler {
 		respond(httpExch, 200, "text/html", String.join(",", Arrays.asList(inFilesDir.list())).getBytes());
 	}
 
-	/**
-	 * The /sign enpoint: the user clicked on a document to sign and got here.
-	 * E.g. /sign?name=test.pdf
-	 */
-	private void handleSign(HttpExchange httpExch, String[] queryParams) throws Exception {
-		String lang = getParam(queryParams, "lang");
-		String psfC = getParam(queryParams, "psfC");
-		String psfN = getParam(queryParams, "psfN");
-		String psfP = getParam(queryParams, "psfP");;
-		String profile = getParam(queryParams, "prof");
-		String noDownload = getParam(queryParams, "noDownload");;
-		String psp = getParam(queryParams, "psp");;
-		String xslt =  getParam(queryParams, "xslt");;
-		String name = getParam(queryParams, "name");
-		String out = getParam(queryParams, "out");
-		String signTimeout = getParam(queryParams, "signTimeout");
-		String requestDocumentReadConfirm = getParam(queryParams, "requestDocumentReadConfirm");
-		String previewDocuments = getParam(queryParams, "previewDocuments");
-		String allowedToSign = getParam(queryParams, "allowedToSign");
-		String policyId = getParam(queryParams, "policyId");
-		String policyDescription = getParam(queryParams, "policyDescription");
-		String policyDigestAlgorithm = getParam(queryParams, "policyDigestAlgorithm");
 
-		List<Input> inputs = getFromFileNames(name);
-		if (inputs.size() == 1) {
-			signOneFile(noDownload, requestDocumentReadConfirm, out, name, psfP, lang, profile, xslt, psp, psfN, psfC, signTimeout, allowedToSign, policyId, policyDescription, policyDigestAlgorithm, httpExch);
+	private void handleJsonSign(HttpExchange httpExch, String[] queryParams) throws Exception {
+		String rawJson = queryParams[0].substring(5);
+
+		StringBuilder sb = new StringBuilder();
+		int len = rawJson.length();
+		int off = 0;
+		while(len != off) {
+			char c = rawJson.charAt(off++);
+			switch (c) {
+				case '\'':
+					sb.append('"');
+					break;
+
+				case '@':
+					c = rawJson.charAt(off++);
+					if (c =='o') sb.append("{\n");
+					else if (c == 'c') sb.append("\n}");
+					else if (c == 'O') sb.append("[\n");
+					else if (c == 'C') sb.append("\n]");
+					else if (c == 's') sb.append(": ");
+					else if (c == 'S') sb.append(",\n");
+					else System.out.println("ERROR in URL at position : " + --off + " - " + rawJson.substring(off));
+					break;
+
+				default:
+					sb.append(c);
+					break;
+			}
+		}
+
+		String json = sb.toString();
+
+		List<String> filesToUpload = new ArrayList<String>();
+		String outFiles;
+		boolean multidoc = json.indexOf("inputs") != -1;
+		if (multidoc) {
+			System.out.println("Multifile");
+			json = json.replaceFirst("\\{", "{\n\"bucket\":\"" +s3UserName + "\",\n" +
+					"\"password\":\"" + s3Passwd + "\",");
+
+			outFiles = getToken(json, "outFilePath");
+			addTokens(json, "filePath", filesToUpload);
+			if (outFiles == null) {
+				outFiles = "";
+				String prefix = getToken(json, "outPathPrefix");
+				for(String inFile : filesToUpload) outFiles = outFiles + prefix + inFile + ",";
+				outFiles = outFiles.substring(0, outFiles.length() - 1);
+			}
+
+			addTokens(json, "pspFilePath", filesToUpload);
+			addTokens(json, "displayXsltPath", filesToUpload);
+			addTokens(json, "outXsltPath", filesToUpload);
+
 		} else {
-			signMultiFile(inputs, out, profile, xslt, signTimeout, noDownload, allowedToSign, policyId, policyDescription, policyDigestAlgorithm, requestDocumentReadConfirm, previewDocuments, httpExch);
+			System.out.println("Singlefile");
+			json = json.replaceFirst("\\{", "{\n\"name\":\"" +s3UserName + "\",\n" +
+					"\"pwd\":\"" + s3Passwd + "\",");
+
+			addTokens(json, "psp", filesToUpload);
+			addTokens(json, "xslt", filesToUpload);
+			addTokens(json, "in", filesToUpload);
+
+			outFiles = getToken(json, "out");
+		}
+		uploadFiles(filesToUpload);
+
+		System.out.println("Out file(s) : " + outFiles);
+
+		createTokenAndRedirect(getTokenUrl + (multidoc ? "s" : ""), json, outFiles, String.join(",", filesToUpload), queryParams, httpExch);
+	}
+
+	private String getToken(String json, String tokenName) {
+		List<String> tokenValues = new ArrayList<>();
+		addTokens(json, tokenName, tokenValues);
+		return tokenValues.size() == 0 ? null : tokenValues.get(0);
+	}
+
+	private void addTokens(String json, String tokenName, List<String> tokenValues) {
+		int posMain = 0;
+		while(posMain != json.length()) {
+			String search = '"' + tokenName + "\": ";
+			int pos = json.indexOf(search, posMain);
+			if (pos == -1) break;
+			pos += search.length();
+			int pos2 = json.indexOf(",", pos);
+			int pos3 = json.indexOf("\n", pos);
+			if (pos2 >= 0) {
+				if (pos3 >= 0 && pos3 < pos2) pos2 = pos3;
+			} else {
+				if (pos3 >= 0) pos2 =pos3;
+				else pos2 = json.length();
+			}
+			String tokenValue = json.substring(pos, pos2);
+			posMain = pos2;
+
+			if (tokenValue.charAt(0) == '"' && tokenValue.charAt(tokenValue.length() - 1) == '"') tokenValue = tokenValue.substring(1, tokenValue.length() - 1);
+
+			System.out.println(tokenValue);
+			tokenValues.add(tokenValue);
 		}
 	}
 
-	private void signMultiFile(List<Input> inputs, String out, String profile, String xslt, String signTimeout, String noDownload, String allowedToSign, String policyId, String policyDescription, String policyDigestAlgorithm, String requestDocumentReadConfirm, String previewDocuments, HttpExchange httpExch) throws Exception {
-		String filesToDelete = "";
-		for(Input input : inputs) {
-			System.out.println("\n1. Uploading the unsigned doc to the S3 server..." + input.getFilePath());
-			uploadFile(new File(inFilesDir, input.getFilePath()));
-			filesToDelete += input.getFilePath() + ",";
-			if (input.getDisplayXsltPath() != null) {
-				System.out.println("\n1. Uploading the XSLT doc to the S3 server..." + input.getDisplayXsltPath());
-				uploadFile(new File(inFilesDir, input.getDisplayXsltPath()));
-				filesToDelete += input.getDisplayXsltPath() + ",";
-			}
-		}
-
-		if (xslt != null) {
-			System.out.println("\n2. Uploading the 'out' xslt doc to the S3 server..." + xslt);
-			uploadFile(new File(inFilesDir, xslt));
-			filesToDelete += xslt;
-		} else {
-			filesToDelete = filesToDelete.substring(0, filesToDelete.length() - 1);
-		}
-
-		String json = "{";
-		json = addStrItem(json, "bucket", s3UserName);
-		json = addStrItem(json, "password", s3Passwd);
-
-		String outDownload = noDownload == null || makeBool(noDownload, "noDownload").equals("false") ? "true" : "false";
-		json = addBool(json, outDownload, "outDownload");
-		json = addBool(json, previewDocuments, "previewDocuments");
-		json = addBool(json, requestDocumentReadConfirm, "requestDocumentReadConfirm");
-		json = addStrItem(json, "outFilePath", out);
-		if (xslt != null) json = addStrItem(json, "outXsltPath", xslt);
-		json = addStrItem(json, "signProfile", profile);
-		if (signTimeout != null) json = addItem(json, "signTimeout", signTimeout);
-		if (policyId != null) {
-			json += "\"policy\": {";
-			json = addStrItem(json, "id", policyId);
-			json = addStrItem(json, "digestAlgorithm", policyDigestAlgorithm);
-			json = addStrItem(json, "description", policyDescription);
-			json = json.substring(0, json.length() - 1);
-			json += "},";
-		}
-		json += "\"inputs\": ";
-		json+= new ObjectMapper().writeValueAsString(inputs);
-		if (allowedToSign != null) {
-			json += ",\"nnAllowedToSign\": [" + allowedToSign + "]";
-		}
-		json += "}";
-
-		if (!profile.contains("XADES")) {
-			System.out.println("\nWARNING : other than XADES selected for a .xml file. was :"+ profile);
-		}
-
-		createTokenAndRedirect(getTokenUrl + "s", json, out, filesToDelete, httpExch);
-	}
-
-	private String addStrItem(String json, String name, String value) {
-		return addItem(json, name, "\"" + value + "\"");
-	}
-
-	private String addItem(String json, String name, String value) {
-		return json + "\"" + name + "\": " + value + ",";
-	}
-
-	private void signOneFile(String noDownload, String requestDocumentReadConfirm, String out, String name, String psfP, String lang, String profile, String xslt, String psp, String psfN, String psfC, String signTimeout, String allowedToSign, String policyId, String policyDescription, String policyDigestAlgorithm, HttpExchange httpExch) throws Exception {
-		if (out == null) out = "signed_" + name;
-		String nameFileExtentsion = getExtension(name);
-
-		System.out.println("\nUser wants to sign doc '" + name + "' to '" + out + "'");
-		if (! nameFileExtentsion.equals(getExtension(out))) {
-			System.out.println("\nWARNING : IN & OUT extensions must be the same !!!!");
-		}
-
-		if (lang == null) lang = LANGUAGE;
-
-		if (profile == null) profile = profileFor(name);
-
-		// 1. Upload the unsigned file to the S3 server
-		// Note: this could have been done in advance
-		System.out.println("\n1. Uploading the unsigned doc (+ xslt, psp) to the S3 server...");
-		uploadFile(new File(inFilesDir, name));
-		String filesToDelete = name;
-
-		if ("XML".equals(nameFileExtentsion)) {
-			if (!profile.contains("XADES")) {
-				System.out.println("\nWARNING : other than XADES selected for a .xml file. was :"+ profile);
-			}
-			if (null != xslt) {
-				System.out.println("   Uploading the corresponding xslt file '" + xslt + "' to the S3 server...");
-				uploadFile(new File(inFilesDir, xslt));
-				filesToDelete += "," + xslt;
-			}
-		} else if ("PDF".equals(nameFileExtentsion)) {
-			if (!profile.contains("PADES")) {
-				System.out.println("\nWARNING : other than PADES selected for a .pdf file. was :" + profile);
-			}
-			if (psp != null) {
-				File pspFile = new File(inFilesDir, psp);
-				System.out.println("   Uploading " + psp + " (PDF visible signature profile) to the S3 server...");
-				uploadFile(pspFile);
-
-				filesToDelete += "," + psp;
-			}
-		}
-
-		System.out.println("  DONE");
-
-		// 2. Do a 'getToken' request to the BOSA DSS
-		// This is a HTTP POST containing a json
-
-		System.out.println("\n2. Doing a 'getTokenForDocument' to the BOSA DSS");
-
-		String json = "{\n" +
-				"  \"name\":\"" + s3UserName + "\",\n" +
-				"  \"pwd\":\""  + s3Passwd +   "\",\n" +
-				"  \"in\":\""   + name + "\",\n";
-		if (null != xslt) json += ( "  \"xslt\":\""   + xslt + "\",\n" );
-		if (null != psp) json += "  \"psp\":\"" + psp + "\",\n";
-		if (null != psfN) json += "  \"psfN\":\"" + psfN + "\",\n";
-		if (null != psfC) json += "  \"psfC\":\"" + psfC + "\",\n";
-		if (null != signTimeout) json += "  \"signTimeout\": " + signTimeout + ",\n";
-		json = addBool(json, noDownload, "noDownload");
-		json = addBool(json, requestDocumentReadConfirm, "requestDocumentReadConfirm");
-		if (null != psfP) json += "  \"psfP\":\"" + makeBool(psfP, "psfP") + "\",\n";
-		if (null != allowedToSign) {
-			json += "  \"allowedToSign\": [\n";
-			for(String allowed : allowedToSign.split(",")) {
-				json += "  { \"nn\": \"" + allowed + "\" },\n";
-			}
-			json = json.substring(0, json.length() - (json.charAt(json.length() - 2) == ',' ? 2 : 0)) + "],";
-		}
-		if (null != policyId) {
-			json += "  \"policyId\": \"" + policyId + "\",\n";
-			if (null != policyDescription) {
-				json += "  \"policyDescription\": \"" + policyDescription + "\",\n";
-			}
-			json += "  \"policyDigestAlgorithm\": \"" + policyDigestAlgorithm + "\",\n";
-		}
-		json += "  \"out\":\""  + out + "\",\n" +
-				"  \"lang\":\""  + lang + "\",\n" +        // used for the text in PDF visible signatures
-				"  \"prof\":\"" + profile + "\"\n" +
-				"}";
-
-		createTokenAndRedirect(getTokenUrl, json, out, filesToDelete, httpExch);
-	}
-
-	private void createTokenAndRedirect(String url, String json, String out, String filesToDelete, HttpExchange httpExch) throws Exception {
+	private void createTokenAndRedirect(String url, String json, String out, String filesToDelete, String[] queryParams, HttpExchange httpExch) throws Exception {
 		System.out.println("JSON for the getToken call:\n" + json);
 		String token = postJson(url, json);
 
@@ -413,28 +350,18 @@ public class Main implements HttpHandler {
 		String callbackURL = localUrl + "/callback?out=" + out + "&toDelete=" + filesToDelete;
 		System.out.println("  Callback: " + callbackURL);
 		String redirectUrl = bosaDssFrontend + "/sign/" + URLEncoder.encode(token) +
-				"?redirectUrl=" + URLEncoder.encode(callbackURL) + "&language=" + LANGUAGE +
-				"&name=" + URLEncoder.encode(NAME);
+				"?redirectUrl=" + URLEncoder.encode(callbackURL);
+		redirectUrl += "&HookURL=" + URLEncoder.encode(localUrl + "/hook");
+
+		for(String queryParam : queryParams) {
+			if (!queryParam.startsWith("json")) redirectUrl += "&" + queryParam;
+		}
+
 		System.out.println("  URL: " + redirectUrl);
 		httpExch.getResponseHeaders().add("Location", redirectUrl);
 		httpExch.sendResponseHeaders(303, 0);
 		httpExch.close();
 		System.out.println("  DONE, now waiting till we get a callback...");
-	}
-
-	private String addBool(String json, String value, String name) {
-		return value == null ? json : json + "  \"" + name + "\": " + makeBool(value, name) + ",\n";
-	}
-
-	private String makeBool(String value, String name) {
-		if ("true".equals(value) || "false".equals(value)) return value;
-		System.out.println("\n" + name + " must be 'true' or 'false' (was " + value + ")");
-		return "false";
-	}
-
-	private String getExtension(String fileName) {
-		int pos = fileName.lastIndexOf('.');
-		return pos >= 0 ? fileName.substring(pos + 1).toUpperCase() : "NOEXT";
 	}
 
 	/**
@@ -447,7 +374,7 @@ public class Main implements HttpHandler {
 
 		System.out.println("\n4. Callback");
 
-		String out = getParam(queryParams, "out"); // this one we specified ourselves in handleSign()
+		String outFiles = getParam(queryParams, "out"); // this one we specified ourselves in handleSign()
 
 		// These params were added by the BOSA DSS/front-end in case of an error
 		String ref = getParam(queryParams, "ref");
@@ -456,26 +383,24 @@ public class Main implements HttpHandler {
 
 		String htmlBody = "";
 		if (null == err) {
-			// If the signing was successfull, download the signed file
+			// If the signing was successful, download the signed file
 
-			System.out.println("  Downloading file " + out + " from the S3 server");
-			MinioClient minioClient = getClient();
-			InputStream stream =
-				minioClient.getObject(
-					GetObjectArgs.builder().bucket(s3UserName).object(out).build());
+			for(String out : outFiles.split(",")) {
+				System.out.println("  Trying to downloading file " + out + " from the S3 server");
+				MinioClient minioClient = getClient();
 
-			if (!outFilesDir.exists())
-				outFilesDir.mkdirs();
+				try {
+					InputStream stream = minioClient.getObject(GetObjectArgs.builder().bucket(s3UserName).object(out).build());
+					if (!outFilesDir.exists()) outFilesDir.mkdirs();
 
-			File f = new File(outFilesDir, out);
-			FileOutputStream fos = new FileOutputStream(f);
-			byte[] buf = new byte[16384];
-			int bytesRead;
-			while ((bytesRead = stream.read(buf, 0, buf.length)) >= 0)
-				fos.write(buf, 0, bytesRead);
-			stream.close();
-			fos.close();
-			System.out.println("    File is downloaded to " + f.getAbsolutePath());
+					File f = new File(outFilesDir, out);
+					copyStream(stream, new FileOutputStream(f));
+					System.out.println("    File is downloaded to " + f.getAbsolutePath());
+				} catch(ErrorResponseException e) {
+					if (e.errorResponse().code().equals("NoSuchKey")) System.out.println("  Not Found (probably not signed)");
+					else System.out.println("  Exception " + e);
+				}
+			}
 
 			htmlBody = "Thank you for signing<br>";
 		}
@@ -493,14 +418,32 @@ public class Main implements HttpHandler {
 
 		// Delete everything the S3 server
 		MinioClient minioClient = getClient();
-		for(String fileToDelete : (getParam(queryParams, "toDelete") + "," + out + "," + out + ".validationreport.json").split(",")) {
-			System.out.println("    Deleting from the S3 server :" + fileToDelete);
-			minioClient.removeObject(RemoveObjectArgs.builder().bucket(s3UserName).object(fileToDelete).build());
+		for(String fileToDelete : getParam(queryParams, "toDelete").split(",")) {
+			deleteFileFromBucket(fileToDelete);
+		}
+
+		for(String fileToDelete : outFiles.split(",")) {
+			deleteFileFromBucket(fileToDelete);
+			deleteFileFromBucket(fileToDelete + ".validationreport.json");
 		}
 
 		// Return a message to the user
 		String html = HTML_START + htmlBody + HTML_END;
 		respond(httpExch, 200, "text/html", html.getBytes());
+	}
+
+	private void copyStream(InputStream in, OutputStream out) throws IOException {
+		byte[] buf = new byte[16384];
+		int bytesRead;
+		while ((bytesRead = in.read(buf, 0, buf.length)) >= 0)
+			out.write(buf, 0, bytesRead);
+		in.close();
+		out.close();
+	}
+
+	private void deleteFileFromBucket(String fileToDelete) throws Exception {
+		System.out.println("    Deleting from the S3 server :" + fileToDelete);
+		minioClient.removeObject(RemoveObjectArgs.builder().bucket(s3UserName).object(fileToDelete).build());
 	}
 
 	/** Do an HTTP POST of a json (a REST call) */
@@ -561,7 +504,14 @@ public class Main implements HttpHandler {
 		return null;
 	}
 
-	private void uploadFile(File f) throws Exception {
+	private void uploadFiles(List<String> filePaths) throws Exception {
+		for(String filePath : filePaths) uploadFile(filePath);
+	}
+
+	private void uploadFile(String fileName) throws Exception {
+
+		System.out.println("   Uploading " + fileName + " to the S3 server...");
+		File f = new File(inFilesDir, fileName);
 		FileInputStream fis = new FileInputStream(f);
 
 		getClient().putObject(
@@ -588,33 +538,5 @@ public class Main implements HttpHandler {
 		String[] parts = jweObject.getPayload().toString().split("\\."); // split out the "parts" (header, payload and signature)
 
 		return new JSONObject(new String(java.util.Base64.getDecoder().decode(parts[1])));
-	}
-
-	@Data
-	@AllArgsConstructor
-	public class Input {
-		private String filePath;
-		private String xmlEltId;
-		private String displayXsltPath;
-	}
-
-	private List<Input> getFromFileNames(String filenames) {
-		List<Input> inputs = new ArrayList<>();
-		int count = 0;
-		String names[] = filenames.split(",");
-		for(String name : names) {
-			Input input = new Input("NOFILE.xml", "ID_" + count++, null);
-			String bits[] = name.split("!");
-			switch(bits.length) {
-				case 3:
-					input.setXmlEltId(bits[2]);
-				case 2:
-					if (bits[1].length() != 0) input.setDisplayXsltPath(bits[1]);
-				case 1:
-					input.setFilePath(bits[0]);
-			}
-			inputs.add(input);
-		}
-		return inputs;
 	}
 }
