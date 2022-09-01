@@ -207,7 +207,7 @@ public class Main implements HttpHandler {
 		try {
 			uri = uri.substring(1);
 			if (uri.length() == 0) uri = "static/index.html";
-			else if (!uri.startsWith("static")) throw new IOException("Not so fast here !");
+			else if (!uri.startsWith("static")) throw new NoSuchFileException("Not so fast here !");
 
 			Path path = Paths.get(uri);
 
