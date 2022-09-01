@@ -22,7 +22,7 @@ fileDir = files
 # The URL for the getToken request
 #getTokenUrl = https://validate.qa.fts.bosa.belgium.be/signandvalidation/signing/getTokenForDocument
 
-getTokenUrl = http://localhost:8080/signing/getTokenForDocument
+getTokenUrl = http://localhost:8751/signing/getTokenForDocument
 
 
 # The redirect URL to the BOSA DSS front-end
