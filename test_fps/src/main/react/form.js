@@ -71,20 +71,24 @@ class NameForm extends React.Component {
 
   adaptToChanges(targetId, value) {
     reasonForNoSubmit = null;
+
     if (!reasonForNoSubmit && this.state.out.length < 5) {
          reasonForNoSubmit = "The output file name must be > 5 character (was : '" + this.state.out + "')";
     }
-    if (!reasonForNoSubmit && this.hasFileExts(['pdf'])) {
-        if (this.state.psfC) {
-            if (! /^[0-9]+,[0-9]+,[0-9]+,[0-9]+,[0-9]+$/.test(this.state.psfC)) {
-                reasonForNoSubmit = "the 'PDF signature field coordinates' (PDF page#,x,y,width,height) must look like '3,10,10,30,30' (was : '" + this.state.psfC + "')";
+
+    if (signType === 'Legacy') {
+        if (!reasonForNoSubmit && this.hasFileExts(['pdf'])) {
+            if (this.state.psfC) {
+                if (! /^[0-9]+,[0-9]+,[0-9]+,[0-9]+,[0-9]+$/.test(this.state.psfC)) {
+                    reasonForNoSubmit = "the 'PDF signature field coordinates' (PDF page#,x,y,width,height) must look like '3,10,10,30,30' (was : '" + this.state.psfC + "')";
+                }
+            } else {
+                if (!this.state.psfN) {
+                    reasonForNoSubmit = "you must provide either a 'PDF signature field name' or 'PDF signature field coordinates'";
+                }
             }
-        } else {
-            if (!this.state.psfN) {
-                reasonForNoSubmit = "you must provide either a 'PDF signature field name' or 'PDF signature field coordinates'";
-            }
+        if (reasonForNoSubmit) reasonForNoSubmit = "For PDF input file " + reasonForNoSubmit;
         }
-    if (reasonForNoSubmit) reasonForNoSubmit = "For PDF input file " + reasonForNoSubmit;
     }
     if (reasonForNoSubmit != this.state.reasonForNoSubmit) {
         this.setState( { reasonForNoSubmit: reasonForNoSubmit } );
@@ -116,7 +120,7 @@ class NameForm extends React.Component {
     } else profilesForInputs = [ 'MDOC_XADES_LTA' ];
 
     if (profilesForInputs.toString() !== this.state.profilesForInputs.toString()) {
-        profiles = signType === 'XadesMultiFile' ? [ profilesForInputs[0] ] : []
+        profiles = [ profilesForInputs[0] ];
         this.setState( { profilesForInputs: profilesForInputs,
                           profiles: profiles
                          });
@@ -170,70 +174,61 @@ class NameForm extends React.Component {
   handleSubmit(event) {
     cleanState = Object.assign({}, this.state);
 
-    // Cleanup state based on file type
-    extension = this.inFileExt();
-    if (extension == "pdf") {
-        delete cleanState.xslt;
-        delete cleanState.policyId;
-    } else if (extension == "xml") {
-        delete cleanState.psp;
-        delete cleanState.psfC;
-        delete cleanState.psfN;
-        delete cleanState.psfP;
-    }
-
-    if (!cleanState.policyId) {
-        delete cleanState.policyDescription;
-        delete cleanState.policyDigestAlgorithm;
-    } else cleanState.policyId = cleanState.policyId.replaceAll(":", "%3A")
-
     if (!cleanState.allowedToSign) delete cleanState.allowedToSign;
     if (!cleanState.signTimeout) delete cleanState.signTimeout;
-    if (!cleanState.psp) delete cleanState.psp;
-    if (!cleanState.psfN) delete cleanState.psfN;
-    if (!cleanState.psfC) delete cleanState.psfC;
-    else cleanState.psfC = cleanState.psfC.replaceAll(",", "%2C")
 
     if (cleanState.signType === 'Legacy') {
-        cleanState.in = cleanState.names[0];
-        cleanState.prof = cleanState.profiles[0];
-
+        urlParams = {
+             in: names[0],
+             out: cleanState.out,
+             prof: cleanState.profiles[0],
+             signTimeout: cleanState.signTimeout,
+             noDownload: cleanState.noDownload,
+             requestDocumentReadConfirm: cleanState.requestDocumentReadConfirm
+        };
         if (cleanState.allowedToSign) {
-            cleanState.allowedToSign = cleanState.allowedToSign.split(",").map(natNum => ({ nn: natNum }));
+            urlParams.allowedToSign = cleanState.allowedToSign.split(",").map(natNum => ({ nn: natNum }));
         }
-        // Cleanup transient state
-        delete cleanState.profilesForInputs;
-        delete cleanState.profiles;
-        delete cleanState.inputFiles;
-        delete cleanState.pspFiles;
-        delete cleanState.xsltFiles;
-        delete cleanState.reasonForNoSubmit;
-        delete cleanState.names;
-        delete cleanState.previewDocuments;
-        delete cleanState.inputFileExts;
-    } else {
-        mDoc = {};
-        mDoc.signType = cleanState.signType
-        mDoc.signTimeout = cleanState.signTimeout;
-        mDoc.requestDocumentReadConfirm = cleanState.requestDocumentReadConfirm;
-        mDoc.previewDocuments = cleanState.previewDocuments;
-        if (cleanState.allowedToSign) mDoc.nnAllowedToSign = cleanState.allowedToSign.split(",");
-        mDoc.signProfile = cleanState.profiles[0];
-        mDoc.altSignProfile = cleanState.profiles[1];
-        if (cleanState.policyId) {
-            mDoc.policy = { id : cleanState.policyId, description: cleanState.policyDescription, digestAlgorithm: cleanState.policyDigestAlgorithm };
-        }
-        mDoc.outFilePath = cleanState.out;
-        mDoc.outPathPrefix = cleanState.outPathPrefix;
-        mDoc.outDownload = cleanState.noDownload === false;
-        if (cleanState.xslt) mDoc.outXsltPath = cleanState.xslt;
-        count = 0;
-        mDoc.inputs = cleanState.names.map(name => ( { filePath: name, xmlEltId: 'ID'+count++ } ));
 
-        cleanState = mDoc;
+        extension = names[0].split('.').pop().toLowerCase()
+        if (extension == "pdf") {
+            if (cleanState.psp) urlParams.psp = cleanState.psp;
+            if (cleanState.lang) urlParams.lang = cleanState.lang;
+            if (cleanState.psfN) urlParams.psfN = cleanState.psfN;
+            if (cleanState.psfP) urlParams.psfP = cleanState.psfP;
+            if (cleanState.psfC) urlParams.psfC = cleanState.psfC.replaceAll(",", "%2C");
+        } else if (extension == "xml") {
+            if (cleanState.xslt) urlParams.xslt = cleanState.xslt;
+            if (cleanState.policyId) {
+                urlParams.policyId = cleanState.policyDescription;
+                urlParams.policyDescription = cleanState.policyId.replaceAll(":", "%3A");
+                urlParams.policyDigestAlgorithm = cleanState.policyDigestAlgorithm;
+            }
+        }
+    } else {
+        urlParams = {
+             signType: cleanState.signType,
+             signTimeout: cleanState.signTimeout,
+             requestDocumentReadConfirm: cleanState.requestDocumentReadConfirm,
+             previewDocuments: cleanState.previewDocuments,
+             outFilePath: cleanState.out,
+             outPathPrefix: cleanState.outPathPrefix,
+             outDownload: cleanState.noDownload === false,
+             signProfile: cleanState.profiles[0],
+             altSignProfile: cleanState.profiles[1]
+        };
+        if (cleanState.allowedToSign) urlParams.nnAllowedToSign = cleanState.allowedToSign.split(",");
+        if (cleanState.policyId) {
+            urlParams.policy = { id : cleanState.policyId, description: cleanState.policyDescription, digestAlgorithm: cleanState.policyDigestAlgorithm };
+        }
+        if (cleanState.xslt) urlParams.outXsltPath = cleanState.xslt;
+        count = 0;
+        urlParams.inputs = cleanState.names.map(name => (
+            cleanState.signType === 'XadesMultiFile' ? { filePath: name, xmlEltId: 'ID'+count++ } : { filePath: name }
+            ));
     }
 
-    url = JSON.stringify(cleanState);
+    url = JSON.stringify(urlParams);
     url = url.replaceAll("{", "@o").replaceAll("}", "@c").replaceAll("[", "@O").replaceAll("]", "@C").replaceAll(",", "@S").replaceAll('"', "'").replaceAll(":", "@s");
     window.location="sign?json=" + url;
     event.preventDefault();
@@ -323,7 +318,7 @@ class NameForm extends React.Component {
                 <tr><td><label>Sign timeout (in seconds)</label></td><td><input id="signTimeout" type="text" value={this.state.signTimeout} onChange={this.handleChange}/></td></tr>
                 <tr><td><label>Disable output file download</label></td><td><input id="noDownload" type="checkbox" value={this.state.noDownload} onChange={this.handleChange}/></td></tr>
                 <tr><td><label>Request read confirmation</label></td><td><input id="requestDocumentReadConfirm" type="checkbox" value={this.state.requestDocumentReadConfirm} onChange={this.handleChange}/></td></tr>
-                <tr><td><label>Preview documents</label></td><td><input id="previewDocuments" type="checkbox" value={this.state.previewDocuments} onChange={this.handleChange}/></td></tr>
+                <tr><td><label>Preview documents</label></td><td><input id="previewDocuments" disabled={this.state.signType !== 'XadesMultiFile'} type="checkbox" value={this.state.previewDocuments} onChange={this.handleChange}/></td></tr>
 
                 <tr><td colSpan="2"><hr/></td></tr>
                 <tr><td colSpan="2"><b>PDF parameters</b></td></tr>
