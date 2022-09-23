@@ -71,14 +71,13 @@ class NameForm extends React.Component {
     else if (target.type === 'select-multiple') {
         value = Array.from(target.selectedOptions, (item) => item.value)
     }
-    this.setState({ [target.id]: value }, this.adaptToChanges(target.id, value));
+    this.setState({ [target.id]: value }, this.adaptToChanges(target.id, value), this.blockSubmit());
   }
 
 //--------------------------------------------------------------------------
 
-  adaptToChanges(targetId, value) {
+ blockSubmit() {
     reasonForNoSubmit = null;
-
     if (!reasonForNoSubmit && (this.state.names.length === 1 || signType === 'XadesMultiFile') && this.state.out.length < 5) {
          reasonForNoSubmit = "The output file name must be > 5 character (was : '" + this.state.out + "')";
     }
@@ -97,9 +96,26 @@ class NameForm extends React.Component {
         if (reasonForNoSubmit) reasonForNoSubmit = "For PDF input file " + reasonForNoSubmit;
         }
     }
-    if (reasonForNoSubmit != this.state.reasonForNoSubmit) {
-        this.setState( { reasonForNoSubmit: reasonForNoSubmit } );
+    if (signType === 'Standard') {
+//        reasonForNoSubmit = this.checkProfile('pdf');
+//        if (reasonForNoSubmit == null) reasonForNoSubmit = this.checkProfile('xml');
     }
+
+    this.setState( { reasonForNoSubmit: reasonForNoSubmit } );
+}
+
+//--------------------------------------------------------------------------
+
+  checkProfile(fileType) {
+     if (!this.hasFileExts([fileType])) return null;
+     if (this.profilePerType[fileType].filter(n => (this.state.profiles.indexOf(n) !== -1)).length !== 0) return null;
+
+     return 'A file of type "' + fileType + '" was selected but no Profile matching it was selected';
+   }
+
+//--------------------------------------------------------------------------
+
+  adaptToChanges(targetId, value) {
 
     names = targetId === 'names' ? value : this.state.names;
     signType = targetId === 'signType' ? value : this.state.signType;
@@ -128,14 +144,12 @@ class NameForm extends React.Component {
 
     if (profilesForInputs.toString() !== this.state.profilesForInputs.toString()) {
         profiles = [ profilesForInputs[0] ];
-        this.setState( { profilesForInputs: profilesForInputs,
-                          profiles: profiles
-                         });
-    } else {
+        this.setState( { profilesForInputs: profilesForInputs, profiles: profiles }, this.blockSubmit());
+} else {
         maxProfiles = signType === 'Standard' ? 2 : 1;
         if (profiles.length > maxProfiles) {
             profiles.length = maxProfiles;
-            this.setState( { profiles: profiles });
+            this.setState( { profiles: profiles }, this.blockSubmit());
         }
     }
 

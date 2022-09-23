@@ -78,18 +78,15 @@ var NameForm = function (_React$Component) {
                     return item.value;
                 });
             }
-            this.setState(_defineProperty({}, target.id, value), this.adaptToChanges(target.id, value));
+            this.setState(_defineProperty({}, target.id, value), this.adaptToChanges(target.id, value), this.blockSubmit());
         }
 
         //--------------------------------------------------------------------------
 
     }, {
-        key: "adaptToChanges",
-        value: function adaptToChanges(targetId, value) {
-            var _this2 = this;
-
+        key: "blockSubmit",
+        value: function blockSubmit() {
             reasonForNoSubmit = null;
-
             if (!reasonForNoSubmit && (this.state.names.length === 1 || signType === 'XadesMultiFile') && this.state.out.length < 5) {
                 reasonForNoSubmit = "The output file name must be > 5 character (was : '" + this.state.out + "')";
             }
@@ -108,9 +105,35 @@ var NameForm = function (_React$Component) {
                     if (reasonForNoSubmit) reasonForNoSubmit = "For PDF input file " + reasonForNoSubmit;
                 }
             }
-            if (reasonForNoSubmit != this.state.reasonForNoSubmit) {
-                this.setState({ reasonForNoSubmit: reasonForNoSubmit });
+            if (signType === 'Standard') {
+                //        reasonForNoSubmit = this.checkProfile('pdf');
+                //        if (reasonForNoSubmit == null) reasonForNoSubmit = this.checkProfile('xml');
             }
+
+            this.setState({ reasonForNoSubmit: reasonForNoSubmit });
+        }
+
+        //--------------------------------------------------------------------------
+
+    }, {
+        key: "checkProfile",
+        value: function checkProfile(fileType) {
+            var _this2 = this;
+
+            if (!this.hasFileExts([fileType])) return null;
+            if (this.profilePerType[fileType].filter(function (n) {
+                return _this2.state.profiles.indexOf(n) !== -1;
+            }).length !== 0) return null;
+
+            return 'A file of type "' + fileType + '" was selected but no Profile matching it was selected';
+        }
+
+        //--------------------------------------------------------------------------
+
+    }, {
+        key: "adaptToChanges",
+        value: function adaptToChanges(targetId, value) {
+            var _this3 = this;
 
             names = targetId === 'names' ? value : this.state.names;
             signType = targetId === 'signType' ? value : this.state.signType;
@@ -129,26 +152,24 @@ var NameForm = function (_React$Component) {
             this.state.inputFileExts = [];
             names.forEach(function (name) {
                 ext = name.split(".").pop().toLowerCase();
-                if (_this2.state.inputFileExts.indexOf(ext) < 0) _this2.state.inputFileExts.push(ext);
+                if (_this3.state.inputFileExts.indexOf(ext) < 0) _this3.state.inputFileExts.push(ext);
             });
 
             if (signType !== 'XadesMultiFile') {
                 profilesForInputs = [];
                 this.state.inputFileExts.forEach(function (ext) {
-                    profilesForInputs = profilesForInputs.concat(_this2.profilePerType[ext]);
+                    profilesForInputs = profilesForInputs.concat(_this3.profilePerType[ext]);
                 });
             } else profilesForInputs = ['MDOC_XADES_LTA'];
 
             if (profilesForInputs.toString() !== this.state.profilesForInputs.toString()) {
                 profiles = [profilesForInputs[0]];
-                this.setState({ profilesForInputs: profilesForInputs,
-                    profiles: profiles
-                });
+                this.setState({ profilesForInputs: profilesForInputs, profiles: profiles }, this.blockSubmit());
             } else {
                 maxProfiles = signType === 'Standard' ? 2 : 1;
                 if (profiles.length > maxProfiles) {
                     profiles.length = maxProfiles;
-                    this.setState({ profiles: profiles });
+                    this.setState({ profiles: profiles }, this.blockSubmit());
                 }
             }
 
@@ -291,7 +312,7 @@ var NameForm = function (_React$Component) {
     }, {
         key: "getTestFileNames",
         value: function getTestFileNames() {
-            var _this3 = this;
+            var _this4 = this;
 
             fetch("/getFileList").then(function (response) {
                 return response.text();
@@ -312,19 +333,19 @@ var NameForm = function (_React$Component) {
                 selectedFilename = inputFiles[0];
                 ext = selectedFilename.split(".").pop().toLowerCase();
                 inputFileExts = [ext];
-                bitsOut = _this3.state.out.toLowerCase().split(".");
+                bitsOut = _this4.state.out.toLowerCase().split(".");
                 bitsOut[bitsOut.length - 1] = ext;
-                out = bitsOut.join("."), _this3.setState({
+                out = bitsOut.join("."), _this4.setState({
                     pspFiles: pspFiles,
                     psp: pspFiles[0],
                     xsltFiles: xsltFiles,
                     xslt: xsltFiles[0],
                     inputFiles: inputFiles,
                     names: [selectedFilename],
-                    profilesForInputType: _this3.profilePerType[ext],
-                    profiles: [_this3.profilePerType[ext][0]],
+                    profilesForInputType: _this4.profilePerType[ext],
+                    profiles: [_this4.profilePerType[ext][0]],
                     out: out,
-                    psfN: _this3.extractAcroformName(_this3.state.signType, [selectedFilename])
+                    psfN: _this4.extractAcroformName(_this4.state.signType, [selectedFilename])
                 });
             });
         }
