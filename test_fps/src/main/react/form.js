@@ -35,6 +35,7 @@ class NameForm extends React.Component {
         policyDigestAlgorithm: 'SHA512',
         requestDocumentReadConfirm: false,
         previewDocuments: true,
+        selectDocuments: false,
 
         profilesForInputs: this.profilePerType.pdf,
         inputFiles: [],
@@ -178,6 +179,16 @@ class NameForm extends React.Component {
 
 //--------------------------------------------------------------------------
 
+    getPdfParams(src, dst, legacy) {
+        if (src.psp) dst[legacy ? 'psp' : 'pspFilePath'] = src.psp;
+        if (src.lang) dst[legacy ? 'lang' : 'signLanguage'] = src.lang;
+        if (src.psfN) dst.psfN = src.psfN;
+        if (src.psfP) dst.psfP = src.psfP;
+        if (src.psfC) dst.psfC = src.psfC.replaceAll(",", "%2C");
+}
+
+//--------------------------------------------------------------------------
+
   handleSubmit(event) {
     cleanState = Object.assign({}, this.state);
 
@@ -196,14 +207,11 @@ class NameForm extends React.Component {
         if (cleanState.allowedToSign) {
             urlParams.allowedToSign = cleanState.allowedToSign.split(",").map(natNum => ({ nn: natNum }));
         }
+        if (cleanState.xslt) urlParams.xslt = cleanState.xslt;
 
         extension = names[0].split('.').pop().toLowerCase()
         if (extension == "pdf") {
-            if (cleanState.psp) urlParams.psp = cleanState.psp;
-            if (cleanState.lang) urlParams.lang = cleanState.lang;
-            if (cleanState.psfN) urlParams.psfN = cleanState.psfN;
-            if (cleanState.psfP) urlParams.psfP = cleanState.psfP;
-            if (cleanState.psfC) urlParams.psfC = cleanState.psfC.replaceAll(",", "%2C");
+            this.getPdfParams(cleanState, urlParams, true);
         } else if (extension == "xml") {
             if (cleanState.xslt) urlParams.xslt = cleanState.xslt;
             if (cleanState.policyId) {
@@ -217,33 +225,47 @@ class NameForm extends React.Component {
              signType: cleanState.signType,
              signTimeout: cleanState.signTimeout,
              requestDocumentReadConfirm: cleanState.requestDocumentReadConfirm,
-             previewDocuments: cleanState.previewDocuments,
+             selectDocuments: cleanState.selectDocuments,
              outDownload: cleanState.noDownload === false,
              signProfile: cleanState.profiles[0],
              altSignProfile: cleanState.profiles[1]
         };
+        if (cleanState.allowedToSign) urlParams.nnAllowedToSign = cleanState.allowedToSign.split(",");
+
+        if (cleanState.previewDocuments && cleanState.signType === 'Standard' && cleanState.names.length !== 1) {
+             urlParams.previewDocuments = cleanState.previewDocuments;
+        }
         if (cleanState.signType === 'XadesMultiFile' || cleanState.names.length === 1) {
              urlParams.outFilePath = cleanState.out;
         } else {
              urlParams.outPathPrefix = cleanState.outPathPrefix;
         }
+        if (cleanState.signType === 'XadesMultiFile' && cleanState.xslt) urlParams.outXsltPath = cleanState.xslt;
 
-        if (cleanState.allowedToSign) urlParams.nnAllowedToSign = cleanState.allowedToSign.split(",");
         if (cleanState.policyId) {
-            urlParams.policy = { id : cleanState.policyId, description: cleanState.policyDescription, digestAlgorithm: cleanState.policyDigestAlgorithm };
+            urlParams.policy = { id : cleanState.policyId.replaceAll(":", "%3A"), description: cleanState.policyDescription, digestAlgorithm: cleanState.policyDigestAlgorithm };
         }
-        if (cleanState.xslt) urlParams.outXsltPath = cleanState.xslt;
+
         count = 0;
-        urlParams.inputs = cleanState.names.map(name => (
-            cleanState.signType === 'XadesMultiFile' ? { filePath: name, xmlEltId: 'ID'+count++ } : { filePath: name }
-            ));
+        urlParams.inputs = cleanState.names.map(name => (cleanState.signType === 'XadesMultiFile' ? { filePath: name, xmlEltId: 'ID'+count++ } : { filePath: name } ));
+
+        if (cleanState.names.length === 1) {
+            if (cleanState.names[0].endsWith("pdf")) {
+                this.getPdfParams(cleanState, urlParams.inputs[0]);
+            } else if (cleanState.names[0].endsWith("xml")) {
+                if (cleanState.xslt) urlParams.inputs[0].displayXsltPath = cleanState.xslt;
+           }
+        }
     }
+
 
     url = JSON.stringify(urlParams);
     url = url.replaceAll("{", "@o").replaceAll("}", "@c").replaceAll("[", "@O").replaceAll("]", "@C").replaceAll(",", "@S").replaceAll('"', "'").replaceAll(":", "@s");
     window.location="sign?json=" + url;
     event.preventDefault();
   }
+
+//--------------------------------------------------------------------------
 
    getTestFileNames() {
       fetch("/getFileList").then(response => response.text())
@@ -309,7 +331,7 @@ class NameForm extends React.Component {
                 </select></td></tr>
 
                 <tr><td><label>Input file name :</label></td>
-                <td><select id="names" multiple={true} value={this.state.names} onChange={this.handleChange}>
+                <td><select style={{ height: '200px' }} id="names" multiple={true} value={this.state.names} onChange={this.handleChange}>
                                     {this.state.inputFiles.map((inputFile) => <option key={inputFile}>{inputFile}</option>)}
                 </select></td></tr>
 
@@ -330,6 +352,7 @@ class NameForm extends React.Component {
                 <tr><td><label>Disable output file download</label></td><td><input id="noDownload" type="checkbox" value={this.state.noDownload} onChange={this.handleChange}/></td></tr>
                 <tr><td><label>Request read confirmation</label></td><td><input id="requestDocumentReadConfirm" type="checkbox" value={this.state.requestDocumentReadConfirm} onChange={this.handleChange}/></td></tr>
                 <tr><td><label>Preview documents</label></td><td><input id="previewDocuments" disabled={this.state.signType !== 'XadesMultiFile'} type="checkbox" value={this.state.previewDocuments} onChange={this.handleChange}/></td></tr>
+                <tr><td><label>Select documents</label></td><td><input id="selectDocuments" disabled={this.state.signType !== 'Standard' || this.state.names.length === 1} type="checkbox" value={this.state.selectDocuments} onChange={this.handleChange}/></td></tr>
 
                 <tr><td colSpan="2"><hr/></td></tr>
                 <tr><td colSpan="2"><b>PDF parameters</b></td></tr>

@@ -44,7 +44,7 @@ var NameForm = function (_React$Component) {
             signTimeout: '',
             allowedToSign: '',
             policyId: ''
-        }, _defineProperty(_this$state, "policyId", ''), _defineProperty(_this$state, "policyDescription", 'Policy Description'), _defineProperty(_this$state, "policyDigestAlgorithm", 'SHA512'), _defineProperty(_this$state, "requestDocumentReadConfirm", false), _defineProperty(_this$state, "previewDocuments", true), _defineProperty(_this$state, "profilesForInputs", _this.profilePerType.pdf), _defineProperty(_this$state, "inputFiles", []), _defineProperty(_this$state, "inputFileExts", []), _defineProperty(_this$state, "pspFiles", []), _defineProperty(_this$state, "xsltFiles", []), _defineProperty(_this$state, "reasonForNoSubmit", null), _this$state);
+        }, _defineProperty(_this$state, "policyId", ''), _defineProperty(_this$state, "policyDescription", 'Policy Description'), _defineProperty(_this$state, "policyDigestAlgorithm", 'SHA512'), _defineProperty(_this$state, "requestDocumentReadConfirm", false), _defineProperty(_this$state, "previewDocuments", true), _defineProperty(_this$state, "selectDocuments", false), _defineProperty(_this$state, "profilesForInputs", _this.profilePerType.pdf), _defineProperty(_this$state, "inputFiles", []), _defineProperty(_this$state, "inputFileExts", []), _defineProperty(_this$state, "pspFiles", []), _defineProperty(_this$state, "xsltFiles", []), _defineProperty(_this$state, "reasonForNoSubmit", null), _this$state);
 
         _this.handleSubmit = _this.handleSubmit.bind(_this);
         _this.handleChange = _this.handleChange.bind(_this);
@@ -194,6 +194,18 @@ var NameForm = function (_React$Component) {
         //--------------------------------------------------------------------------
 
     }, {
+        key: "getPdfParams",
+        value: function getPdfParams(src, dst, legacy) {
+            if (src.psp) dst[legacy ? 'psp' : 'pspFilePath'] = src.psp;
+            if (src.lang) dst[legacy ? 'lang' : 'signLanguage'] = src.lang;
+            if (src.psfN) dst.psfN = src.psfN;
+            if (src.psfP) dst.psfP = src.psfP;
+            if (src.psfC) dst.psfC = src.psfC.replaceAll(",", "%2C");
+        }
+
+        //--------------------------------------------------------------------------
+
+    }, {
         key: "handleSubmit",
         value: function handleSubmit(event) {
             cleanState = Object.assign({}, this.state);
@@ -215,14 +227,11 @@ var NameForm = function (_React$Component) {
                         return { nn: natNum };
                     });
                 }
+                if (cleanState.xslt) urlParams.xslt = cleanState.xslt;
 
                 extension = names[0].split('.').pop().toLowerCase();
                 if (extension == "pdf") {
-                    if (cleanState.psp) urlParams.psp = cleanState.psp;
-                    if (cleanState.lang) urlParams.lang = cleanState.lang;
-                    if (cleanState.psfN) urlParams.psfN = cleanState.psfN;
-                    if (cleanState.psfP) urlParams.psfP = cleanState.psfP;
-                    if (cleanState.psfC) urlParams.psfC = cleanState.psfC.replaceAll(",", "%2C");
+                    this.getPdfParams(cleanState, urlParams, true);
                 } else if (extension == "xml") {
                     if (cleanState.xslt) urlParams.xslt = cleanState.xslt;
                     if (cleanState.policyId) {
@@ -236,26 +245,39 @@ var NameForm = function (_React$Component) {
                     signType: cleanState.signType,
                     signTimeout: cleanState.signTimeout,
                     requestDocumentReadConfirm: cleanState.requestDocumentReadConfirm,
-                    previewDocuments: cleanState.previewDocuments,
+                    selectDocuments: cleanState.selectDocuments,
                     outDownload: cleanState.noDownload === false,
                     signProfile: cleanState.profiles[0],
                     altSignProfile: cleanState.profiles[1]
                 };
+                if (cleanState.allowedToSign) urlParams.nnAllowedToSign = cleanState.allowedToSign.split(",");
+
+                if (cleanState.previewDocuments && cleanState.signType === 'Standard' && cleanState.names.length !== 1) {
+                    urlParams.previewDocuments = cleanState.previewDocuments;
+                }
                 if (cleanState.signType === 'XadesMultiFile' || cleanState.names.length === 1) {
                     urlParams.outFilePath = cleanState.out;
                 } else {
                     urlParams.outPathPrefix = cleanState.outPathPrefix;
                 }
+                if (cleanState.signType === 'XadesMultiFile' && cleanState.xslt) urlParams.outXsltPath = cleanState.xslt;
 
-                if (cleanState.allowedToSign) urlParams.nnAllowedToSign = cleanState.allowedToSign.split(",");
                 if (cleanState.policyId) {
-                    urlParams.policy = { id: cleanState.policyId, description: cleanState.policyDescription, digestAlgorithm: cleanState.policyDigestAlgorithm };
+                    urlParams.policy = { id: cleanState.policyId.replaceAll(":", "%3A"), description: cleanState.policyDescription, digestAlgorithm: cleanState.policyDigestAlgorithm };
                 }
-                if (cleanState.xslt) urlParams.outXsltPath = cleanState.xslt;
+
                 count = 0;
                 urlParams.inputs = cleanState.names.map(function (name) {
                     return cleanState.signType === 'XadesMultiFile' ? { filePath: name, xmlEltId: 'ID' + count++ } : { filePath: name };
                 });
+
+                if (cleanState.names.length === 1) {
+                    if (cleanState.names[0].endsWith("pdf")) {
+                        this.getPdfParams(cleanState, urlParams.inputs[0]);
+                    } else if (cleanState.names[0].endsWith("xml")) {
+                        if (cleanState.xslt) urlParams.inputs[0].displayXsltPath = cleanState.xslt;
+                    }
+                }
             }
 
             url = JSON.stringify(urlParams);
@@ -263,6 +285,9 @@ var NameForm = function (_React$Component) {
             window.location = "sign?json=" + url;
             event.preventDefault();
         }
+
+        //--------------------------------------------------------------------------
+
     }, {
         key: "getTestFileNames",
         value: function getTestFileNames() {
@@ -391,7 +416,7 @@ var NameForm = function (_React$Component) {
                                 null,
                                 React.createElement(
                                     "select",
-                                    { id: "names", multiple: true, value: this.state.names, onChange: this.handleChange },
+                                    { style: { height: '200px' }, id: "names", multiple: true, value: this.state.names, onChange: this.handleChange },
                                     this.state.inputFiles.map(function (inputFile) {
                                         return React.createElement(
                                             "option",
@@ -554,6 +579,24 @@ var NameForm = function (_React$Component) {
                                 "td",
                                 null,
                                 React.createElement("input", { id: "previewDocuments", disabled: this.state.signType !== 'XadesMultiFile', type: "checkbox", value: this.state.previewDocuments, onChange: this.handleChange })
+                            )
+                        ),
+                        React.createElement(
+                            "tr",
+                            null,
+                            React.createElement(
+                                "td",
+                                null,
+                                React.createElement(
+                                    "label",
+                                    null,
+                                    "Select documents"
+                                )
+                            ),
+                            React.createElement(
+                                "td",
+                                null,
+                                React.createElement("input", { id: "selectDocuments", disabled: this.state.signType !== 'Standard' || this.state.names.length === 1, type: "checkbox", value: this.state.selectDocuments, onChange: this.handleChange })
                             )
                         ),
                         React.createElement(

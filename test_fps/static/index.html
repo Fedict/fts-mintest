@@ -22,31 +22,36 @@
 </head>
 <body>
 <h1>FPS test signing service</h1>
-<p>Welcome user, select a file to sign:</p>
-<ul>
-    <li><a href="/sign?json=@o'in'@s'nd_test.pdf'@S'noDownload'@s'true'@S'out'@s'signed_nd_test.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&name=Justice&language=fr">PDF (download disabled)</a></li>
-    <li><a href="/sign?json=@o'in'@s'psf0_visible_sigfields~signature_1.pdf'@S'psfN'@s'signature_1'@S'out'@s'signed_psf0_visible_sigfields.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&name=Law&name_fr=Loi&language=fr">PDF visible signature field named 'signature_1'</a></li>
-    <li><a href="/sign?json=@o'in'@s'psf1_test.pdf'@S'psp'@s'test1.psp'@S'psfC'@s'1%2C30%2C20%2C180%2C60'@S'out'@s'signed_psf1_test.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&language=en">PDF visible signature field coords '1,30,20,180,60' and profile 'test1.psp'</a></li>
-    <li><a href="/sign?json=@o'in'@s'psf2_test.pdf'@S'psp'@s'test2.psp'@S'psfC'@s'1%2C30%2C20%2C180%2C60'@S'psfP'@s'true'@S'out'@s'signed_psf2_test.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&language=en">PDF with photo in the PDF visible signature and profile 'test2.psp'</a></li>
-    <li><a href="/sign?json=@o'in'@s'quotes.xml'@S'xslt'@s'quotes.xslt'@S'out'@s'signed_quotes.xml'@S'lang'@s'en'@S'prof'@s'XADES_LTA'@S'signTimeout'@s9999@c&language=en">quotes.xml with xslt</a></li>
-    <li><a href="/sign?json=@o'in'@s'test.pdf'@S'out'@s'signed_test.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&name=CFPO&name_fr=CsFaPeOr&language=en">test.pdf</a></li>
-    <li><a href="/sign?json=@o'in'@s'test.xml'@S'out'@s'signed_test.xml'@S'lang'@s'en'@S'prof'@s'XADES_LTA'@S'signTimeout'@s9999@c&name=ORG&name_nl=XXXXX">test.xml</a></li>
+<div style="display: flex">
+    <div style="padding: 30px">
+        <p>Create your own test case:</p>
+        <div id="form_container"></div>
+        <script>ReactDOM.render(React.createElement(NameForm), document.querySelector('#form_container'));</script>
+    </div>
+    <div style="padding: 30px">
+        <p>Select a sign test case:</p>
+        <ul>
+            <li><a href="/sign?json=@o'in'@s'nd_test.pdf'@S'noDownload'@s'true'@S'out'@s'signed_nd_test.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&name=Justice&language=fr">PDF (download disabled)</a></li>
+            <li><a href="/sign?json=@o'in'@s'psf0_visible_sigfields~signature_1.pdf'@S'psfN'@s'signature_1'@S'out'@s'signed_psf0_visible_sigfields.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&name=Law&name_fr=Loi&language=fr">PDF visible signature field named 'signature_1'</a></li>
+            <li><a href="/sign?json=@o'in'@s'psf1_test.pdf'@S'psp'@s'test1.psp'@S'psfC'@s'1%2C30%2C20%2C180%2C60'@S'out'@s'signed_psf1_test.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&language=en">PDF visible signature field coords '1,30,20,180,60' and profile 'test1.psp'</a></li>
+            <li><a href="/sign?json=@o'in'@s'psf2_test.pdf'@S'psp'@s'test2.psp'@S'psfC'@s'1%2C30%2C20%2C180%2C60'@S'psfP'@s'true'@S'out'@s'signed_psf2_test.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&language=en">PDF with photo in the PDF visible signature and profile 'test2.psp'</a></li>
+            <li><a href="/sign?json=@o'in'@s'quotes.xml'@S'xslt'@s'quotes.xslt'@S'out'@s'signed_quotes.xml'@S'lang'@s'en'@S'prof'@s'XADES_LTA'@S'signTimeout'@s9999@c&language=en">quotes.xml with xslt</a></li>
+            <li><a href="/sign?json=@o'in'@s'test.pdf'@S'out'@s'signed_test.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&name=CFPO&name_fr=CsFaPeOr&language=en">test.pdf</a></li>
+            <li><a href="/sign?json=@o'in'@s'test.xml'@S'out'@s'signed_test.xml'@S'lang'@s'en'@S'prof'@s'XADES_LTA'@S'signTimeout'@s9999@c&name=ORG&name_nl=XXXXX">test.xml</a></li>
 
-    <li><a href="/sign?json=@o'outDownload'@strue@S'previewDocuments'@strue@S'requestDocumentReadConfirm'@strue@S'outFilePath'@s'out.xml'@S'signProfile'@s'MDOC_XADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O @o'filePath'@s'psf2_test.pdf'@S'xmlEltId'@s'PDF1'@c@S@o'filePath'@s'quotes.xml'@S'xmlEltId'@s'XML1'@S'displayXsltPath'@s'quotes.xslt'@c@S@o'filePath'@s'test.pdf'@S'xmlEltId'@s'PDF2'@c@S@o'filePath'@s'test.xml'@S'xmlEltId'@s'ID3'@c @C @c">XADES Multifile (Preview)</a></li>
-    <li><a href="/sign?json=@o'outDownload'@strue@S'previewDocuments'@sfalse@S'requestDocumentReadConfirm'@strue@S'outFilePath'@s'Xades_JUST.xml'@S'outXsltPath'@s'JUST.xslt'@S'signProfile'@s'MDOC_XADES_LTA'@S'signTimeout'@s9999@S'policy'@s@o'id'@s'http://signinfo.eda.just.fgov.be/SignaturePolicy/pdf/PrivateSeal/BE_Justice_Signature_Policy_PrivateSeal_Hum_v0.12_202204_Fr.pdf'@S'digestAlgorithm'@s'SHA512'@S'description'@s'null'@c@S'inputs'@s@O@o'filePath'@s'test.pdf'@S'xmlEltId'@s'ID1'@c@S@o'filePath'@s'annexeRefs.xml'@S'xmlEltId'@s'ID2'@c@S@o'filePath'@s'nd_test.pdf'@S'xmlEltId'@s'ID3'@c@C@c">Multifile (No preview) Justice Xades with all options</a></li>
+            <li><a href="/sign?json=@o'outDownload'@strue@S'previewDocuments'@strue@S'requestDocumentReadConfirm'@strue@S'outFilePath'@s'out.xml'@S'signProfile'@s'MDOC_XADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O @o'filePath'@s'psf2_test.pdf'@S'xmlEltId'@s'PDF1'@c@S@o'filePath'@s'quotes.xml'@S'xmlEltId'@s'XML1'@S'displayXsltPath'@s'quotes.xslt'@c@S@o'filePath'@s'test.pdf'@S'xmlEltId'@s'PDF2'@c@S@o'filePath'@s'test.xml'@S'xmlEltId'@s'ID3'@c @C @c">XADES Multifile (Preview)</a></li>
+            <li><a href="/sign?json=@o'outDownload'@strue@S'previewDocuments'@sfalse@S'requestDocumentReadConfirm'@strue@S'outFilePath'@s'Xades_JUST.xml'@S'outXsltPath'@s'JUST.xslt'@S'signProfile'@s'MDOC_XADES_LTA'@S'signTimeout'@s9999@S'policy'@s@o'id'@s'http://signinfo.eda.just.fgov.be/SignaturePolicy/pdf/PrivateSeal/BE_Justice_Signature_Policy_PrivateSeal_Hum_v0.12_202204_Fr.pdf'@S'digestAlgorithm'@s'SHA512'@S'description'@s'null'@c@S'inputs'@s@O@o'filePath'@s'test.pdf'@S'xmlEltId'@s'ID1'@c@S@o'filePath'@s'annexeRefs.xml'@S'xmlEltId'@s'ID2'@c@S@o'filePath'@s'nd_test.pdf'@S'xmlEltId'@s'ID3'@c@C@c">Multifile (No preview) Justice Xades with all options</a></li>
 
-    <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'selectDocuments'@strue@S'previewDocuments'@strue@S'outPathPrefix'@s'OUT_'@S'signProfile'@s'PADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O@o'filePath'@s'psf1_test.pdf'@S'pspFilePath'@s'test1.psp'@S'psfC'@s'1%2C30%2C20%2C180%2C60'@S'signLanguage'@s'fr'@c@S@o'filePath'@s'nd_test.pdf'@S'pspFilePath'@s'test1.psp'@c@C@c&language=en">Bulk signing</a></li>
-    <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'previewDocuments'@strue@S'outPathPrefix'@s'OUT_'@S'signProfile'@s'PADES_LTA'@S'altSignProfile'@s'XADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O@o'filePath'@s'test.pdf'@c@S@o'filePath'@s'quotes.xml'@S'displayXsltPath'@s'quotes.xslt'@c@S@o'filePath'@s'psf0_visible_sigfields~signature_1.pdf'@S'psfN'@s'signature_1'@S'signLanguage'@s'en'@c@S@o'filePath'@s'test.xml'@c@C@c&language=en">Bulk signing - XML and PDF - No selection</a></li>
-    <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'selectDocuments'@strue@S'previewDocuments'@strue@S'outPathPrefix'@s'OUT_'@S'signProfile'@s'PADES_LTA'@S'altSignProfile'@s'XADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O@o'filePath'@s'psf2_test.pdf'@S'pspFilePath'@s'test2.psp'@S'psfC'@s'1%2C30%2C20%2C180%2C60'@S'psfP'@strue@S'signLanguage'@s'fr'@c@S@o'filePath'@s'quotes.xml'@S'displayXsltPath'@s'quotes.xslt'@c@S@o'filePath'@s'nd_test.pdf'@c@S@o'filePath'@s'test.xml'@c@C@c&language=en">Bulk signing Mix XML and PDF</a></li>
-    <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'selectDocuments'@strue@S'previewDocuments'@strue@S'outFilePath'@s'sig.xml'@S'signProfile'@s'XADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O@o'filePath'@s'test.xml'@c@C@c&language=de">Bulk signing single XML file preview</a></li>
-    <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'selectDocuments'@strue@S'previewDocuments'@strue@S'outFilePath'@s'sig_test.pdf'@S'signProfile'@s'PADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O@o'filePath'@s'test.pdf'@c@C@c&language=nl">Bulk signing single PDF file preview</a></li>
+            <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'selectDocuments'@strue@S'previewDocuments'@strue@S'outPathPrefix'@s'OUT_'@S'signProfile'@s'PADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O@o'filePath'@s'psf1_test.pdf'@S'pspFilePath'@s'test1.psp'@S'psfC'@s'1%2C30%2C20%2C180%2C60'@S'signLanguage'@s'fr'@c@S@o'filePath'@s'nd_test.pdf'@S'pspFilePath'@s'test1.psp'@c@C@c&language=en">Bulk signing</a></li>
+            <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'previewDocuments'@strue@S'outPathPrefix'@s'OUT_'@S'signProfile'@s'PADES_LTA'@S'altSignProfile'@s'XADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O@o'filePath'@s'test.pdf'@c@S@o'filePath'@s'quotes.xml'@S'displayXsltPath'@s'quotes.xslt'@c@S@o'filePath'@s'psf0_visible_sigfields~signature_1.pdf'@S'psfN'@s'signature_1'@S'signLanguage'@s'en'@c@S@o'filePath'@s'test.xml'@c@C@c&language=en">Bulk signing - XML and PDF - No selection</a></li>
+            <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'selectDocuments'@strue@S'previewDocuments'@strue@S'outPathPrefix'@s'OUT_'@S'signProfile'@s'PADES_LTA'@S'altSignProfile'@s'XADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O@o'filePath'@s'psf2_test.pdf'@S'pspFilePath'@s'test2.psp'@S'psfC'@s'1%2C30%2C20%2C180%2C60'@S'psfP'@strue@S'signLanguage'@s'fr'@c@S@o'filePath'@s'quotes.xml'@S'displayXsltPath'@s'quotes.xslt'@c@S@o'filePath'@s'nd_test.pdf'@c@S@o'filePath'@s'test.xml'@c@C@c&language=en">Bulk signing Mix XML and PDF</a></li>
+            <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'selectDocuments'@strue@S'previewDocuments'@strue@S'outFilePath'@s'sig.xml'@S'signProfile'@s'XADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O@o'filePath'@s'test.xml'@c@C@c&language=de">Bulk signing single XML file preview</a></li>
+            <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'selectDocuments'@strue@S'previewDocuments'@strue@S'outFilePath'@s'sig_test.pdf'@S'signProfile'@s'PADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O@o'filePath'@s'test.pdf'@c@C@c&language=nl">Bulk signing single PDF file preview</a></li>
 
-    <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'selectDocuments'@strue@S'previewDocuments'@strue@S'outFilePath'@s'sig_test.xml'@S'signProfile'@s'XADES_1'@S'signTimeout'@s2@S'inputs'@s@O@o'filePath'@s'test.xml'@c@C@c&language=nl">test.xml with signTimeout=2</a></li>
-    <li><a href="/sign?json=@o'in'@s'notFound.xml'@S'out'@s'no.xml'@S'prof'@s'XADES_LTA'@S'signTimeout'@s9999@c">Sign a missing bucket file</a></li>
-</ul>
-
-<p>Create you own test case:</p>
-<div id="form_container"></div>
-<script>ReactDOM.render(React.createElement(NameForm), document.querySelector('#form_container'));</script>
+            <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'selectDocuments'@strue@S'previewDocuments'@strue@S'outFilePath'@s'sig_test.xml'@S'signProfile'@s'XADES_1'@S'signTimeout'@s2@S'inputs'@s@O@o'filePath'@s'test.xml'@c@C@c&language=nl">test.xml with signTimeout=2</a></li>
+            <li><a href="/sign?json=@o'in'@s'notFound.xml'@S'out'@s'no.xml'@S'prof'@s'XADES_LTA'@S'signTimeout'@s9999@c">Sign a missing bucket file</a></li>
+        </ul>
+    </div>
+</div>
 </body>
 </html>
