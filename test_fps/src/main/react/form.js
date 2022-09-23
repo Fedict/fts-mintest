@@ -48,6 +48,8 @@ class NameForm extends React.Component {
     this.handleChange = this.handleChange.bind(this);
   }
 
+//--------------------------------------------------------------------------
+
   hasFileExts(exts, all) {
     return this.state.inputFileExts.find((ext) => {
          index = exts.indexOf(ext);
@@ -59,6 +61,8 @@ class NameForm extends React.Component {
       })
   }
 
+//--------------------------------------------------------------------------
+
   handleChange(event) {
     target = event.target;
     value = target.value;
@@ -69,10 +73,12 @@ class NameForm extends React.Component {
     this.setState({ [target.id]: value }, this.adaptToChanges(target.id, value));
   }
 
+//--------------------------------------------------------------------------
+
   adaptToChanges(targetId, value) {
     reasonForNoSubmit = null;
 
-    if (!reasonForNoSubmit && this.state.out.length < 5) {
+    if (!reasonForNoSubmit && (this.state.names.length === 1 || signType === 'XadesMultiFile') && this.state.out.length < 5) {
          reasonForNoSubmit = "The output file name must be > 5 character (was : '" + this.state.out + "')";
     }
 
@@ -132,12 +138,9 @@ class NameForm extends React.Component {
         }
     }
 
-    if (signType !== 'Standard') {
-        if (signType === 'XadesMultiFile') {
-            outFileExt = "xml"
-        } else {
-            outFileExt = names[0] ? names[0].split(".").pop().toLowerCase() : "pdf";
-        }
+    if (signType !== 'Standard' || names.length === 1) {
+       outFileExt = signType === 'XadesMultiFile' ? "xml" : (!names[0] ? "pdf"  : names[0].split(".").pop().toLowerCase());
+
        out = this.state.out;
        if (out.indexOf('.') >= 0) {
            bitsOut = out.split('.');
@@ -152,24 +155,28 @@ class NameForm extends React.Component {
         this.setState( { out: out });
     }
 
-   this.setState( {
-       psfN: this.extractAcroformName(signType, names)
-       });
+    acroName = this.extractAcroformName(names[0]);
+    if (acroName !== this.state.psfN) {
+        this.setState( {
+           psfN: acroName
+           });
+    }
   }
 
-    extractAcroformName(signType, names) {
-        if (signType !== 'XadesMultiFile') {
-            inFileName = names[0];
-            if (inFileName) {
-                start = inFileName.indexOf('~');
-                if (start >= 0) {
-                    end = inFileName.indexOf('.', ++start);
-                    if (end >= 0) return inFileName.substring(start, end);
-                }
-            }
+//--------------------------------------------------------------------------
+
+  extractAcroformName(inFileName) {
+    if (inFileName) {
+        start = inFileName.indexOf('~');
+        if (start >= 0) {
+            end = inFileName.indexOf('.', ++start);
+            if (end >= 0) return inFileName.substring(start, end);
         }
-        return '';
     }
+    return '';
+  }
+
+//--------------------------------------------------------------------------
 
   handleSubmit(event) {
     cleanState = Object.assign({}, this.state);
@@ -200,8 +207,8 @@ class NameForm extends React.Component {
         } else if (extension == "xml") {
             if (cleanState.xslt) urlParams.xslt = cleanState.xslt;
             if (cleanState.policyId) {
-                urlParams.policyId = cleanState.policyDescription;
-                urlParams.policyDescription = cleanState.policyId.replaceAll(":", "%3A");
+                urlParams.policyId = cleanState.policyId.replaceAll(":", "%3A");
+                urlParams.policyDescription = cleanState.policyDescription;
                 urlParams.policyDigestAlgorithm = cleanState.policyDigestAlgorithm;
             }
         }
@@ -211,12 +218,16 @@ class NameForm extends React.Component {
              signTimeout: cleanState.signTimeout,
              requestDocumentReadConfirm: cleanState.requestDocumentReadConfirm,
              previewDocuments: cleanState.previewDocuments,
-             outFilePath: cleanState.out,
-             outPathPrefix: cleanState.outPathPrefix,
              outDownload: cleanState.noDownload === false,
              signProfile: cleanState.profiles[0],
              altSignProfile: cleanState.profiles[1]
         };
+        if (cleanState.signType === 'XadesMultiFile' || cleanState.names.length === 1) {
+             urlParams.outFilePath = cleanState.out;
+        } else {
+             urlParams.outPathPrefix = cleanState.outPathPrefix;
+        }
+
         if (cleanState.allowedToSign) urlParams.nnAllowedToSign = cleanState.allowedToSign.split(",");
         if (cleanState.policyId) {
             urlParams.policy = { id : cleanState.policyId, description: cleanState.policyDescription, digestAlgorithm: cleanState.policyDigestAlgorithm };
@@ -303,7 +314,7 @@ class NameForm extends React.Component {
                 </select></td></tr>
 
                 <tr><td><label>Output file name:</label></td>
-                <td><input id="out" type="text" value={this.state.out} onChange={this.handleChange}/></td></tr>
+                <td><input id="out" type="text" value={this.state.out} onChange={this.handleChange} disabled={this.state.signType === 'Standard' && this.state.names.length > 1}/></td></tr>
 
                 <tr><td><label>Output prefix:</label></td>
                 <td><input id="outPathPrefix" type="text" value={this.state.outPathPrefix} onChange={this.handleChange} disabled={this.state.signType !== 'Standard'}/></td></tr>
@@ -345,7 +356,7 @@ class NameForm extends React.Component {
                 <tr><td colSpan="2"><hr/></td></tr>
                 <tr><td colSpan="2"><b>Non PDF parameters</b></td></tr>
                 <tr><td><label>XSLT file name:</label></td>
-                <td><select id="xslt" value={this.state.xslt} disabled={!singleXML} onChange={this.handleChange}>
+                <td><select id="xslt" value={this.state.xslt} disabled={ !singleXML && this.state.signType !== 'XadesMultiFile' } onChange={this.handleChange}>
                                         {this.state.xsltFiles.map((xsltFile) => <option key={xsltFile}>{xsltFile}</option>)}
                 </select></td></tr>
                 <tr><td><label>Policy Id:</label></td>

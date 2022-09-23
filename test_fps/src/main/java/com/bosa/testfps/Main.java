@@ -276,10 +276,12 @@ public class Main implements HttpHandler {
 					"\"password\":\"" + s3Passwd + "\",");
 
 			outFiles = getToken(json, "outFilePath");
-			addTokens(json, "filePath", filesToUpload);
+			if (outFiles != null && outFiles.length() ==0) outFiles = null;
+
+				addTokens(json, "filePath", filesToUpload);
 			if (outFiles == null) {
-				outFiles = "";
 				String prefix = getToken(json, "outPathPrefix");
+				outFiles = "";
 				for(String inFile : filesToUpload) outFiles = outFiles + prefix + inFile + ",";
 				outFiles = outFiles.substring(0, outFiles.length() - 1);
 			}
@@ -299,6 +301,9 @@ public class Main implements HttpHandler {
 
 			outFiles = getToken(json, "out");
 		}
+
+		for(int i = filesToUpload.size() - 1; i >= 0; i--) if (filesToUpload.get(i).startsWith("notFound")) filesToUpload.remove(i);
+
 		uploadFiles(filesToUpload);
 
 		System.out.println("Out file(s) : " + outFiles);
