@@ -178,10 +178,10 @@ public class Main implements HttpHandler {
 			try {
 				System.out.println("ERR in Standalone.handle(): " + e.toString());
 				e.printStackTrace();
-				respond(httpExch, 500, "text/plain", e.toString().getBytes());
+				respond(httpExch, 500, "text/html", e.toString().getBytes());
 			}
-			catch (Exception x) {
-				x.printStackTrace();
+			catch (Exception e1) {
+				e1.printStackTrace();
 			}
 		}
 	}
@@ -446,27 +446,37 @@ public class Main implements HttpHandler {
 		out.close();
 	}
 
+	private String streamToString(InputStream in) throws IOException {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream(4096*4);
+		copyStream(in, baos);
+		return new String(baos.toByteArray());
+	}
+
 	private void deleteFileFromBucket(String fileToDelete) throws Exception {
 		System.out.println("    Deleting from the S3 server :" + fileToDelete);
 		minioClient.removeObject(RemoveObjectArgs.builder().bucket(s3UserName).object(fileToDelete).build());
 	}
 
 	/** Do an HTTP POST of a json (a REST call) */
-	private String postJson(String urlStr, String json) throws Exception {
-		URL url = new URL(urlStr);
-		HttpURLConnection urlConn = (HttpURLConnection) url.openConnection();
-		urlConn.setRequestProperty("Content-Type", "application/json; utf-8");
-		urlConn.setDoOutput(true);
+	private String postJson(String urlStr, String json) throws IOException {
+		HttpURLConnection urlConn = null;
+		try {
+			URL url = new URL(urlStr);
+			urlConn = (HttpURLConnection) url.openConnection();
+			urlConn.setRequestProperty("Content-Type", "application/json; utf-8");
+			urlConn.setDoOutput(true);
 
-		OutputStream os = urlConn.getOutputStream();
-		os.write(json.getBytes("utf-8"));
+			OutputStream os = urlConn.getOutputStream();
+			os.write(json.getBytes("utf-8"));
 
-		InputStream is = urlConn.getInputStream();
-		byte[] buf = new byte[5000];
-		int len = is.read(buf);
-		String ret = new String(buf, 0, len).trim();
-
-		return ret;
+			return streamToString(urlConn.getInputStream());
+		}
+		catch(Exception e) {
+			if (urlConn != null) {
+				throw new IOException(streamToString(urlConn.getErrorStream()));
+			}
+		}
+		return null;
 	}
 		
 	/** Send back a response to the client */
