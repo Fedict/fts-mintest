@@ -71,44 +71,14 @@ class NameForm extends React.Component {
     else if (target.type === 'select-multiple') {
         value = Array.from(target.selectedOptions, (item) => item.value)
     }
-    this.setState({ [target.id]: value }, this.adaptToChanges(target.id, value), this.blockSubmit());
+    this.setState({ [target.id]: value }, this.adaptToChanges(target.id, value));
   }
 
 //--------------------------------------------------------------------------
 
- blockSubmit() {
-    reasonForNoSubmit = null;
-    if (!reasonForNoSubmit && (this.state.names.length === 1 || signType === 'XadesMultiFile') && this.state.out.length < 5) {
-         reasonForNoSubmit = "The output file name must be > 5 character (was : '" + this.state.out + "')";
-    }
-
-    if (signType === 'Legacy') {
-        if (!reasonForNoSubmit && this.hasFileExts(['pdf'])) {
-            if (this.state.psfC) {
-                if (! /^[0-9]+,[0-9]+,[0-9]+,[0-9]+,[0-9]+$/.test(this.state.psfC)) {
-                    reasonForNoSubmit = "the 'PDF signature field coordinates' (PDF page#,x,y,width,height) must look like '3,10,10,30,30' (was : '" + this.state.psfC + "')";
-                }
-            } else {
-                if (!this.state.psfN) {
-                    reasonForNoSubmit = "you must provide either a 'PDF signature field name' or 'PDF signature field coordinates'";
-                }
-            }
-        if (reasonForNoSubmit) reasonForNoSubmit = "For PDF input file " + reasonForNoSubmit;
-        }
-    }
-    if (signType === 'Standard') {
-//        reasonForNoSubmit = this.checkProfile('pdf');
-//        if (reasonForNoSubmit == null) reasonForNoSubmit = this.checkProfile('xml');
-    }
-
-    this.setState( { reasonForNoSubmit: reasonForNoSubmit } );
-}
-
-//--------------------------------------------------------------------------
-
-  checkProfile(fileType) {
+  checkProfile(fileType, profiles) {
      if (!this.hasFileExts([fileType])) return null;
-     if (this.profilePerType[fileType].filter(n => (this.state.profiles.indexOf(n) !== -1)).length !== 0) return null;
+     if (this.profilePerType[fileType].filter(n => (profiles.indexOf(n) !== -1)).length !== 0) return null;
 
      return 'A file of type "' + fileType + '" was selected but no Profile matching it was selected';
    }
@@ -120,15 +90,12 @@ class NameForm extends React.Component {
     names = targetId === 'names' ? value : this.state.names;
     signType = targetId === 'signType' ? value : this.state.signType;
     profiles = targetId === 'profiles' ? value : this.state.profiles;
+    psfN = targetId === 'psfN' ? value : this.state.psfN;
+    out = targetId === 'out' ? value : this.state.out;
 
-    if (targetId === 'names' && signType == 'Legacy' && value.length != 1) {
-        signType = 'Standard'
-        this.setState( { signType: signType  })
-    }
-
-    if (targetId === 'signType' && value == 'Legacy' && names.length != 1) {
-            names = [ names[0] ]
-            this.setState( { names: names })
+    if (signType == 'Legacy' && value.length != 1) {
+        if (targetId === 'names') signType = 'Standard'
+        else if (targetId === 'signType') names = [ names[0] ]
     }
 
     this.state.inputFileExts = [];
@@ -140,23 +107,17 @@ class NameForm extends React.Component {
     if (signType !== 'XadesMultiFile') {
         profilesForInputs = [];
         this.state.inputFileExts.forEach((ext) => { profilesForInputs = profilesForInputs.concat(this.profilePerType[ext]) })
-    } else profilesForInputs = [ 'MDOC_XADES_LTA' ];
 
-    if (profilesForInputs.toString() !== this.state.profilesForInputs.toString()) {
-        profiles = [ profilesForInputs[0] ];
-        this.setState( { profilesForInputs: profilesForInputs, profiles: profiles }, this.blockSubmit());
-} else {
-        maxProfiles = signType === 'Standard' ? 2 : 1;
+        if (profilesForInputs.toString() !== this.state.profilesForInputs.toString()) profiles = [ profilesForInputs[0] ];
+        maxProfiles = names.length === 1 ? 1 : 2;
         if (profiles.length > maxProfiles) {
             profiles.length = maxProfiles;
-            this.setState( { profiles: profiles }, this.blockSubmit());
         }
-    }
+    } else profiles = profilesForInputs = [ 'MDOC_XADES_LTA' ];
 
     if (signType !== 'Standard' || names.length === 1) {
-       outFileExt = signType === 'XadesMultiFile' ? "xml" : (!names[0] ? "pdf"  : names[0].split(".").pop().toLowerCase());
+       outFileExt = signType === 'XadesMultiFile' ? "xml" : (!names[0] ? "pdf" : names[0].split(".").pop().toLowerCase());
 
-       out = this.state.out;
        if (out.indexOf('.') >= 0) {
            bitsOut = out.split('.');
            bitsOut.pop();
@@ -164,18 +125,49 @@ class NameForm extends React.Component {
        } else if (out === '') out = 'out';
 
        out = bitsOut.join(".");
-       }
-    else out = '';
-    if (out !== this.state.out) {
-        this.setState( { out: out });
+    } else out = '';
+
+    if (targetId === 'names') {
+        acroName = this.extractAcroformName(names[0]);
+        if (acroName !== '') psfN = acroName
     }
 
-    acroName = this.extractAcroformName(names[0]);
-    if (acroName !== this.state.psfN) {
-        this.setState( {
-           psfN: acroName
-           });
+    reasonForNoSubmit = null;
+    if (!reasonForNoSubmit && (names.length === 1 || signType === 'XadesMultiFile') && out.length < 5) {
+         reasonForNoSubmit = "The output file name must be > 5 character";
     }
+
+    if (signType === 'Legacy') {
+        if (!reasonForNoSubmit && this.hasFileExts(['pdf'])) {
+            psfC = targetId === 'psfC' ? value : this.state.psfC;
+            if (psfC) {
+                if (! /^[0-9]+,[0-9]+,[0-9]+,[0-9]+,[0-9]+$/.test(psfC)) {
+                    reasonForNoSubmit = "the 'PDF signature field coordinates' (PDF page#,x,y,width,height) must look like '3,10,10,30,30'";
+                }
+            } else {
+                if (!psfN) {
+                    reasonForNoSubmit = "you must provide either a 'PDF signature field name' or 'PDF signature field coordinates'";
+                }
+            }
+        if (reasonForNoSubmit) reasonForNoSubmit = "For PDF input file " + reasonForNoSubmit;
+        }
+    }
+    if (signType === 'Standard') {
+        reasonForNoSubmit = this.checkProfile('pdf', profiles);
+        if (reasonForNoSubmit == null) reasonForNoSubmit = this.checkProfile('xml', profiles);
+        if (reasonForNoSubmit == null && names.length > 1 && targetId === 'outPathPrefix' && value === '') reasonForNoSubmit = 'Output prefix can\'t be empty for \'Standard\' multifile';
+
+    }
+
+    this.setState( {
+        names: names,
+        signType: signType,
+        profilesForInputs: profilesForInputs,
+        profiles: profiles,
+        out: out,
+        psfN: psfN,
+        reasonForNoSubmit: reasonForNoSubmit
+    } )
   }
 
 //--------------------------------------------------------------------------
@@ -415,6 +407,8 @@ class NameForm extends React.Component {
                 <tr><td colSpan="2"><input type="submit" value="Submit" disabled={this.state.reasonForNoSubmit}/>
                 { this.state.reasonForNoSubmit && <p><label style={{ color: 'red' }}>Submit is disabled because : { this.state.reasonForNoSubmit }</label></p> }
                 { this.state.signType === 'XadesMultiFile' && <p><label>This will produce a XADES Multifile signature.<br/>Policies are allowed, XSLT will be used to produce a custom output XML format</label></p> }
+                { this.state.signType === 'Legacy' && <p><label>Sign a single file with basic options</label></p> }
+                { this.state.signType === 'Standard' && <p><label>Sign 1 to n files with advanced options</label></p> }
                 </td></tr>
             </tbody>
           </table>
