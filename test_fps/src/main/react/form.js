@@ -155,8 +155,10 @@ class NameForm extends React.Component {
     if (signType === 'Standard') {
         reasonForNoSubmit = this.checkProfile('pdf', profiles);
         if (reasonForNoSubmit == null) reasonForNoSubmit = this.checkProfile('xml', profiles);
-        if (reasonForNoSubmit == null && names.length > 1 && targetId === 'outPathPrefix' && value === '') reasonForNoSubmit = 'Output prefix can\'t be empty for \'Standard\' multifile';
-
+        if (reasonForNoSubmit == null) {
+            outPathPrefix = targetId === 'outPathPrefix' ? value : this.state.outPathPrefix;
+            if (names.length > 1 && outPathPrefix === '') reasonForNoSubmit = 'Output prefix can\'t be empty for \'Standard\' multifile';
+        }
     }
 
     this.setState( {
