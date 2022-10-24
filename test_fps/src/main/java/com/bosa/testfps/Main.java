@@ -208,6 +208,7 @@ public class Main implements HttpHandler {
 			uri = uri.substring(1);
 			if (uri.length() == 0) uri = "static/index.html";
 			else if (!uri.startsWith("static")) throw new NoSuchFileException("Not so fast here !");
+			uri = uri.replaceAll("\\.\\.", "").replaceAll("~", "");
 
 			Path path = Paths.get(uri);
 
@@ -356,7 +357,7 @@ public class Main implements HttpHandler {
 		System.out.println("  Callback: " + callbackURL);
 		String redirectUrl = bosaDssFrontend + "/sign/" + URLEncoder.encode(token) +
 				"?redirectUrl=" + URLEncoder.encode(callbackURL);
-		redirectUrl += "&HookURL=" + URLEncoder.encode(localUrl + "/hook");
+				redirectUrl += "&HookURL=" + URLEncoder.encode(localUrl + "/hook");
 
 		for(String queryParam : queryParams) {
 			if (!queryParam.startsWith("json")) redirectUrl += "&" + queryParam;
