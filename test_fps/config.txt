@@ -24,6 +24,7 @@ fileDir = files
 
 getTokenUrl = http://localhost:8751/signing/getTokenForDocument
 
+idpGuiUrl = http://localhost:3001
 
 # The redirect URL to the BOSA DSS front-end
 #bosaDssFrontend = https://sign.qa.fts.bosa.belgium.be

@@ -1,10 +1,12 @@
 package com.bosa.testfps;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.crypto.*;
 
 
 import java.io.*;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -54,6 +56,7 @@ public class Main implements HttpHandler {
 	private static File outFilesDir;
 
 	private static String getTokenUrl;
+	private static String idpGuiUrl;
 
 	private static String bosaDssFrontend;
 
@@ -95,6 +98,7 @@ public class Main implements HttpHandler {
 		s3UserName =   config.getProperty("s3UserName");
 		s3Passwd =     config.getProperty("s3Passwd");
 		s3Url =        config.getProperty("s3Url");
+		idpGuiUrl =	   config.getProperty("idpGuiUrl");
 
 		filesDir =     new File(config.getProperty("fileDir"));
 		inFilesDir =   new File(filesDir, UNSIGNED_DIR);
@@ -170,6 +174,8 @@ public class Main implements HttpHandler {
 				getFileList(httpExch);
 			} else if (uri.startsWith("/sign?json=")) {
 				handleJsonSign(httpExch, queryParams);
+			} else if (uri.startsWith("/idp_")) {
+				handleIdp(httpExch, uri, queryParams);
 			} else {
 				handleStatic(httpExch, uri);
 			}
@@ -184,6 +190,32 @@ public class Main implements HttpHandler {
 				e1.printStackTrace();
 			}
 		}
+	}
+
+
+
+
+	private void handleIdp(HttpExchange httpExch, String uri, String[] queryParams) throws Exception {
+
+		if (uri.startsWith("/idp_jump")) {
+			String redirectUrl = idpGuiUrl + "?redirect_uri=" + URLEncoder.encode(localUrl + "/idp_land", StandardCharsets.UTF_8.name()) + "&" + queryParams[0] + "&" + queryParams[1];
+
+			System.out.println("  URL: " + redirectUrl);
+			httpExch.getResponseHeaders().add("Location", redirectUrl);
+			httpExch.sendResponseHeaders(303, 0);
+			httpExch.close();
+		} else {
+			JWEObject jweObject = JWEObject.parse(queryParams[1].substring(5));
+			String jwtString = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(jweObject);
+			String response = "<HTML>" + extractParam(queryParams[0]) + extractParam(queryParams[1]) + "<pre>" + jwtString + "</pre>" + "</HTML>";
+			respond(httpExch, 200, "text/html", response.getBytes());
+		}
+	}
+
+	private static String extractParam(String queryParam) throws UnsupportedEncodingException {
+		int pos = queryParam.indexOf('=');
+		if (pos < 0) return "unknown";
+		return "<p>" + queryParam.substring(0, pos) + ": " + URLDecoder.decode(queryParam.substring(pos + 1), StandardCharsets.UTF_8.name()) + "</p>";
 	}
 
 	private void handleHook(HttpExchange httpExch) throws IOException {
