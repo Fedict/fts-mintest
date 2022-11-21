@@ -293,23 +293,16 @@ public class Main implements HttpHandler {
 		respond(httpExch, 200, "text/html", String.join(",", Arrays.asList(inFilesDir.list())).getBytes());
 	}
 
-	private void getSealingCredentials(HttpExchange httpExch) {
+	private void getSealingCredentials(HttpExchange httpExch) throws Exception {
 		byte response[] = null;
 		try {
 			String json = "{\"requestID\":\"11668764926004483530182899800\",\"lang\":\"en\",\"certificates\":\"chain\",\"certInfo\":false,\"authInfo\":false,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/certificateslistprotocol#\",\"signerIdentity\":null}";
 
 			String reply = postJson(easealingUrl + "/credentials/list", json, true);
-			String credentialsHeader = "credentialIDs\":[";
-			int pos = reply.indexOf(credentialsHeader);
-			if (pos >= 0) {
-				pos += credentialsHeader.length();
-				int endPos = reply.indexOf("]", pos);
-				if (endPos >= 0) {
-					reply = reply.substring(pos, endPos).replaceAll("\"", "");
-					System.out.println("Esealing credentials : " + reply);
-					response = reply.getBytes(StandardCharsets.UTF_8);
-				}
-			}
+
+			reply = getDelimitedValue(reply, "\"credentialIDs\":[", "]").replaceAll("\"", "");
+			System.out.println("Esealing credentials : " + reply);
+			response = reply.getBytes(StandardCharsets.UTF_8);
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.out.println("No esealing credential found");
