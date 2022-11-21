@@ -27,8 +27,6 @@ import io.minio.*;
 import io.minio.errors.*;
 import org.json.JSONObject;
 
-import javax.activation.MimetypesFileTypeMap;
-
 /**
  * Test/sample code for an FPS service where users (citizens) can sign documents.
  * The flow is as follows:
@@ -144,17 +142,24 @@ public class Main implements HttpHandler {
 		System.out.println("Surf with your browser to http://localhost:" + port);
 	}
 
+	private String mimeTypeFor(String filename) {
+		String type = "text/plain";
+		int pos = filename.lastIndexOf('.');
+		if (pos >= 0) {
+			String extension = filename.substring(pos + 1).toLowerCase(Locale.ROOT);
+			if (extension.equals("xml")) type = "application/xml";
+			if (extension.equals("pdf")) type = "application/pdf";
+			if (extension.equals("js")) type = "text/javascript";
+			if (extension.equals("html") || extension.equals("htm")) type = "text/html";
+		}
+		return type;
+	}
+
 	/** Map filename to profile name */
-        private String profileFor(String filename) {
-            MimetypesFileTypeMap map = new MimetypesFileTypeMap();
-            map.addMimeTypes("application/pdf pdf PDF");
-            map.addMimeTypes("application/xml xml XML docx");
-            String type = map.getContentType(filename);
-            if(sigProfiles.containsKey(type)) {
-                return sigProfiles.get(type);
-            }
-            return "CADES_1";
-        }
+	private String profileFor(String filename) {
+		String type = mimeTypeFor(filename);
+		return sigProfiles.containsKey(type) ? sigProfiles.get(type) : "CADES_1";
+	}
 
 	/**
 	 * We handle 3 endpoints:
@@ -265,7 +270,7 @@ public class Main implements HttpHandler {
 			System.out.println("Reading static file: " + uri);
 			bytes = Files.readAllBytes(path);
 
-			contentType = URLConnection.guessContentTypeFromName(path.getFileName().toString());
+			contentType = mimeTypeFor(path.getFileName().toString());
 
 		} catch(NoSuchFileException e) {
 			httpStatus = 404;
