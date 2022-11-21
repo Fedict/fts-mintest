@@ -3,6 +3,7 @@ class NameForm extends React.Component {
     super(props);
 
     this.getTestFileNames();
+    this.getSealingCredentials();
 
     this.policyDigestAlgorithms = [ "SHA1","SHA224","SHA256","SHA384","SHA512",
                     "SHA3_224","SHA3_256","SHA3_384","SHA3_512","SHAKE128","SHAKE256",
@@ -15,6 +16,9 @@ class NameForm extends React.Component {
     }
 
     this.state = {
+        isSealing: false,
+        sealingCredential: '',
+        sealingCredentials: [],
         signType: 'Legacy',
         names: [],
         xslt: '',
@@ -92,8 +96,9 @@ class NameForm extends React.Component {
     profiles = targetId === 'profiles' ? value : this.state.profiles;
     psfN = targetId === 'psfN' ? value : this.state.psfN;
     out = targetId === 'out' ? value : this.state.out;
+    isSealing = targetId === 'isSealing' ? value : this.state.isSealing;
 
-    if (signType == 'Legacy' && value.length != 1) {
+    if (signType == 'Legacy' && names.length != 1) {
         if (targetId === 'names') signType = 'Standard'
         else if (targetId === 'signType') names = [ names[0] ]
     }
@@ -137,27 +142,33 @@ class NameForm extends React.Component {
          reasonForNoSubmit = "The output file name must be > 5 character";
     }
 
-    if (signType === 'Legacy') {
-        if (!reasonForNoSubmit && this.hasFileExts(['pdf'])) {
-            psfC = targetId === 'psfC' ? value : this.state.psfC;
-            if (psfC) {
-                if (! /^[0-9]+,[0-9]+,[0-9]+,[0-9]+,[0-9]+$/.test(psfC)) {
-                    reasonForNoSubmit = "the 'PDF signature field coordinates' (PDF page#,x,y,width,height) must look like '3,10,10,30,30'";
-                }
-            } else {
-                if (!psfN) {
-                    reasonForNoSubmit = "you must provide either a 'PDF signature field name' or 'PDF signature field coordinates'";
-                }
-            }
-        if (reasonForNoSubmit) reasonForNoSubmit = "For PDF input file " + reasonForNoSubmit;
+    if (isSealing) {
+        if (!reasonForNoSubmit && names.length != 1) {
+            reasonForNoSubmit = "Mintest can only seal one file at the same time";
         }
-    }
-    if (signType === 'Standard') {
-        reasonForNoSubmit = this.checkProfile('pdf', profiles);
-        if (reasonForNoSubmit == null) reasonForNoSubmit = this.checkProfile('xml', profiles);
-        if (reasonForNoSubmit == null) {
-            outPathPrefix = targetId === 'outPathPrefix' ? value : this.state.outPathPrefix;
-            if (names.length > 1 && outPathPrefix === '') reasonForNoSubmit = 'Output prefix can\'t be empty for \'Standard\' multifile';
+    } else {
+        if (signType === 'Legacy') {
+            if (!reasonForNoSubmit && this.hasFileExts(['pdf'])) {
+                psfC = targetId === 'psfC' ? value : this.state.psfC;
+                if (psfC) {
+                    if (! /^[0-9]+,[0-9]+,[0-9]+,[0-9]+,[0-9]+$/.test(psfC)) {
+                        reasonForNoSubmit = "the 'PDF signature field coordinates' (PDF page#,x,y,width,height) must look like '3,10,10,30,30'";
+                    }
+                } else {
+                    if (!psfN) {
+                        reasonForNoSubmit = "you must provide either a 'PDF signature field name' or 'PDF signature field coordinates'";
+                    }
+                }
+            if (reasonForNoSubmit) reasonForNoSubmit = "For PDF input file " + reasonForNoSubmit;
+            }
+        }
+        if (signType === 'Standard') {
+            reasonForNoSubmit = this.checkProfile('pdf', profiles);
+            if (reasonForNoSubmit == null) reasonForNoSubmit = this.checkProfile('xml', profiles);
+            if (reasonForNoSubmit == null) {
+                outPathPrefix = targetId === 'outPathPrefix' ? value : this.state.outPathPrefix;
+                if (names.length > 1 && outPathPrefix === '') reasonForNoSubmit = 'Output prefix can\'t be empty for \'Standard\' multifile';
+            }
         }
     }
 
@@ -202,6 +213,12 @@ class NameForm extends React.Component {
 
     if (!cleanState.allowedToSign) delete cleanState.allowedToSign;
     if (!cleanState.signTimeout) delete cleanState.signTimeout;
+
+    if (cleanState.isSealing) {
+        window.location="seal?inFile=" + cleanState.names[0] + "&outFile=" + cleanState.out + "&profile=" + cleanState.profiles[0] + "&lang=" + cleanState.lang + "&cred=" + cleanState.sealingCredential;
+        event.preventDefault();
+        return;
+    }
 
     if (cleanState.signType === 'Legacy') {
         urlParams = {
@@ -266,12 +283,40 @@ class NameForm extends React.Component {
         }
     }
 
-
     url = JSON.stringify(urlParams);
     url = url.replaceAll("{", "@o").replaceAll("}", "@c").replaceAll("[", "@O").replaceAll("]", "@C").replaceAll(",", "@S").replaceAll('"', "'").replaceAll(":", "@s");
     window.location="sign?json=" + url;
     event.preventDefault();
   }
+
+//--------------------------------------------------------------------------
+
+  getOperationLabel() {
+    if (this.state.isSealing) return "Seal selected document";
+
+    switch(this.state.signType) {
+        case 'XadesMultiFile':
+            return "This will produce a XADES Multifile signature.<br/>Policies are allowed, XSLT will be used to produce a custom output XML format";
+        case 'Legacy':
+            return "Sign a single file with basic options";
+        case 'Standard':
+            return "Sign 1 to n files with advanced options";
+    }
+    return "ERROR !!!!!!!";
+ }
+
+//--------------------------------------------------------------------------
+
+   getSealingCredentials() {
+      fetch("/getSealingCredentials").then(response => response.text())
+          .then((response) => {
+              sealingCredentials = response.split(",");
+              this.setState( {
+                    sealingCredentials: sealingCredentials,
+                    sealingCredential: sealingCredentials[0]
+               });
+          })
+   }
 
 //--------------------------------------------------------------------------
 
@@ -331,8 +376,13 @@ class NameForm extends React.Component {
           <table style={{ border: '1px solid', width: '600px' }}>
             <tbody>
                 <tr><td colSpan="2"><b>General parameters</b></td></tr>
+                <tr><td><label>Seal document</label></td><td><input id="isSealing" type="checkbox" value={this.state.isSealing} onChange={this.handleChange} disabled={ this.state.sealingCredentials.length === 0 }/></td></tr>
+                <tr><td><label>Seal credential :</label></td>
+                <td><select id="sealingCredential" value={this.state.sealingCredential} onChange={this.handleChange} disabled={!this.state.isSealing}>
+                         {this.state.sealingCredentials.map((cred) => <option key={cred}>{cred}</option>)}
+                </select></td></tr>
                 <tr><td><label>Signing type :</label></td>
-                <td><select id="signType" value={this.state.signType} onChange={this.handleChange}>
+                <td><select id="signType" value={this.state.signType} onChange={this.handleChange} disabled={this.state.isSealing}>
                          <option>Legacy</option>
                          <option>Standard</option>
                          <option>XadesMultiFile</option>
@@ -355,17 +405,17 @@ class NameForm extends React.Component {
                 </select></td></tr>
 
                 <tr><td><label>NN Allowed to Sign (Comma separated): </label></td>
-                <td><input id="allowedToSign" type="text" value={this.state.allowedToSign} onChange={this.handleChange}/></td></tr>
-                <tr><td><label>Sign timeout (in seconds)</label></td><td><input id="signTimeout" type="text" value={this.state.signTimeout} onChange={this.handleChange}/></td></tr>
-                <tr><td><label>Disable output file download</label></td><td><input id="noDownload" type="checkbox" value={this.state.noDownload} onChange={this.handleChange}/></td></tr>
-                <tr><td><label>Request read confirmation</label></td><td><input id="requestDocumentReadConfirm" type="checkbox" value={this.state.requestDocumentReadConfirm} onChange={this.handleChange}/></td></tr>
-                <tr><td><label>Preview documents</label></td><td><input id="previewDocuments" disabled={this.state.signType !== 'XadesMultiFile'} type="checkbox" value={this.state.previewDocuments} onChange={this.handleChange}/></td></tr>
-                <tr><td><label>Select documents</label></td><td><input id="selectDocuments" disabled={this.state.signType !== 'Standard' || this.state.names.length === 1} type="checkbox" value={this.state.selectDocuments} onChange={this.handleChange}/></td></tr>
+                <td><input id="allowedToSign" type="text" value={this.state.allowedToSign} onChange={this.handleChange} disabled={this.state.isSealing}/></td></tr>
+                <tr><td><label>Sign timeout (in seconds)</label></td><td><input id="signTimeout" type="text" value={this.state.signTimeout} onChange={this.handleChange} disabled={this.state.isSealing}/></td></tr>
+                <tr><td><label>Disable output file download</label></td><td><input id="noDownload" type="checkbox" value={this.state.noDownload} onChange={this.handleChange} disabled={this.state.isSealing}/></td></tr>
+                <tr><td><label>Request read confirmation</label></td><td><input id="requestDocumentReadConfirm" type="checkbox" value={this.state.requestDocumentReadConfirm} onChange={this.handleChange} disabled={this.state.isSealing}/></td></tr>
+                <tr><td><label>Preview documents</label></td><td><input id="previewDocuments" disabled={this.state.signType !== 'XadesMultiFile'} type="checkbox" value={this.state.previewDocuments} onChange={this.handleChange} disabled={this.state.isSealing}/></td></tr>
+                <tr><td><label>Select documents</label></td><td><input id="selectDocuments" disabled={this.state.signType !== 'Standard' || this.state.names.length === 1} type="checkbox" value={this.state.selectDocuments} onChange={this.handleChange} disabled={this.state.isSealing}/></td></tr>
 
                 <tr><td colSpan="2"><hr/></td></tr>
                 <tr><td colSpan="2"><b>PDF parameters</b></td></tr>
                 <tr><td><label>PDF signature parameters file name: </label></td>
-                <td><select id="psp" type="text" value={this.state.psp} disabled={!singlePdf} onChange={this.handleChange}>
+                <td><select id="psp" type="text" value={this.state.psp} disabled={!singlePdf} onChange={this.handleChange} disabled={this.state.isSealing}>
                                         {this.state.pspFiles.map((pspFile) => <option key={pspFile}>{pspFile}</option>)}
                 </select></td></tr>
                 <tr><td><label>Language of the signature (Acroform): </label></td>
@@ -377,21 +427,21 @@ class NameForm extends React.Component {
                 </select></td></tr>
 
                 <tr><td><label>PDF signature field name: </label></td>
-                <td><input id="psfN" type="text" value={this.state.psfN} disabled={!singlePdf} onChange={this.handleChange}/></td></tr>
+                <td><input id="psfN" type="text" value={this.state.psfN} disabled={!singlePdf || this.state.isSealing} onChange={this.handleChange}/></td></tr>
 
                 <tr><td><label>PDF signature field coordinates: </label></td>
-                <td><input id="psfC" type="text" value={this.state.psfC} disabled={!singlePdf} onChange={this.handleChange}/></td></tr>
+                <td><input id="psfC" type="text" value={this.state.psfC} disabled={!singlePdf || this.state.isSealing} onChange={this.handleChange}/></td></tr>
 
                 <tr><td><label>Include eID photo as icon in the PDF signature field</label></td><td><input id="psfP" type="checkbox" value={this.state.psfP} disabled={!singlePdf}  onChange={this.handleChange}/></td>
                 </tr>
                 <tr><td colSpan="2"><hr/></td></tr>
                 <tr><td colSpan="2"><b>Non PDF parameters</b></td></tr>
                 <tr><td><label>XSLT file name:</label></td>
-                <td><select id="xslt" value={this.state.xslt} disabled={ !singleXML && this.state.signType !== 'XadesMultiFile' } onChange={this.handleChange}>
+                <td><select id="xslt" value={this.state.xslt} disabled={ (!singleXML && this.state.signType !== 'XadesMultiFile') || this.state.isSealing } onChange={this.handleChange}>
                                         {this.state.xsltFiles.map((xsltFile) => <option key={xsltFile}>{xsltFile}</option>)}
                 </select></td></tr>
                 <tr><td><label>Policy Id:</label></td>
-                <td><select id="policyId" value={this.state.policyId} disabled={!singleXML} onChange={this.handleChange}>
+                <td><select id="policyId" value={this.state.policyId} disabled={!singleXML || this.state.isSealing} onChange={this.handleChange}>
                                         <option></option>
                                         <option>http://signinfo.eda.just.fgov.be/SignaturePolicy/pdf/Notary/BE_Justice_Signature_Policy_Notary_eID_Hum_v0.10_202109_Fr.pdf</option>
                                         <option>http://signinfo.eda.just.fgov.be/SignaturePolicy/pdf/PrivateSeal/BE_Justice_Signature_Policy_PrivateSeal_Hum_v0.5_201512_Nl.pdf</option>
@@ -399,18 +449,16 @@ class NameForm extends React.Component {
                 </select></td></tr>
 
                 <tr><td><label>Policy description (Optional):</label></td>
-                <td><input id="policyDescription" type="text" value={this.state.policyDescription} onChange={this.handleChange} disabled={ !hasPolicy } /></td></tr>
+                <td><input id="policyDescription" type="text" value={this.state.policyDescription} onChange={this.handleChange} disabled={ !hasPolicy || this.state.isSealing } /></td></tr>
 
                 <tr><td><label>Policy Digest Algorithm :</label></td>
-                <td><select id="policyDigestAlgorithm" value={this.state.policyDigestAlgorithm} onChange={this.handleChange} disabled={ !hasPolicy } >
+                <td><select id="policyDigestAlgorithm" value={this.state.policyDigestAlgorithm} onChange={this.handleChange} disabled={ !hasPolicy || this.state.isSealing } >
                                         {this.policyDigestAlgorithms.map((algo) => <option key={algo}>{algo}</option>)}
                 </select></td></tr>
                 <tr><td colSpan="2"><hr/></td></tr>
-                <tr><td colSpan="2"><input type="submit" value="Submit" disabled={this.state.reasonForNoSubmit}/>
+                <tr><td colSpan="2"><input type="submit" value={this.state.isSealing ? "Seal" : "Submit"} disabled={this.state.reasonForNoSubmit}/>
                 { this.state.reasonForNoSubmit && <p><label style={{ color: 'red' }}>Submit is disabled because : { this.state.reasonForNoSubmit }</label></p> }
-                { this.state.signType === 'XadesMultiFile' && <p><label>This will produce a XADES Multifile signature.<br/>Policies are allowed, XSLT will be used to produce a custom output XML format</label></p> }
-                { this.state.signType === 'Legacy' && <p><label>Sign a single file with basic options</label></p> }
-                { this.state.signType === 'Standard' && <p><label>Sign 1 to n files with advanced options</label></p> }
+                <p><label>{ this.getOperationLabel() }</label></p>
                 </td></tr>
             </tbody>
           </table>
