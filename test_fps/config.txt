@@ -22,9 +22,13 @@ fileDir = files
 # The URL for the getToken request
 #getTokenUrl = https://validate.qa.fts.bosa.belgium.be/signandvalidation/signing/getTokenForDocument
 
-getTokenUrl = http://localhost:8751/signing/getTokenForDocument
-
 idpGuiUrl = http://localhost:3001
+
+easealingUrl = http://localhost:8752
+sadKeyFile = src/main/resources/sealing_sad.p12
+sadKeyPwd = 123456
+
+getTokenUrl = http://localhost:8751/signing/getTokenForDocument
 
 # The redirect URL to the BOSA DSS front-end
 #bosaDssFrontend = https://sign.qa.fts.bosa.belgium.be
