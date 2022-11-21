@@ -142,7 +142,7 @@ public class Main implements HttpHandler {
 		System.out.println("Surf with your browser to http://localhost:" + port);
 	}
 
-	private String mimeTypeFor(String filename) {
+	private static String mimeTypeFor(String filename) {
 		String type = "text/plain";
 		int pos = filename.lastIndexOf('.');
 		if (pos >= 0) {
@@ -204,6 +204,8 @@ public class Main implements HttpHandler {
 				getSealingCredentials(httpExch);
 			} else if (uri.startsWith("/idp_")) {
 				handleIdp(httpExch, uri, queryParams);
+			} else if (uri.startsWith("/getFile")) {
+				handleGetFile(httpExch, queryParams);
 			} else {
 				handleStatic(httpExch, uri);
 			}
@@ -315,11 +317,34 @@ public class Main implements HttpHandler {
 		respond(httpExch, 200, "text/html", response);
 	}
 
+	private static byte fileData[];
+	private static String fileName;
+
+	private void handleGetFile(HttpExchange httpExch, Map<String, String> queryParams) throws IOException {
+		if (fileData != null) {
+			httpExch.getResponseHeaders().add("Content-Type", fileName);
+			httpExch.getResponseHeaders().add("Cache-Control", "no-cache, no-store, must-revalidate");
+			httpExch.getResponseHeaders().add("Content-Transfer-Encoding", "binary");
+			httpExch.getResponseHeaders().add("Content-Disposition","attachment; filename=\"" + fileName + "\"");
+			httpExch.getResponseHeaders().add("Pragma", "no-cache");
+			httpExch.getResponseHeaders().add("Expires", "0");
+			httpExch.sendResponseHeaders(200, fileData.length);
+			OutputStream os = httpExch.getResponseBody();
+			os.write(fileData);
+			os.close();
+			httpExch.close();
+			fileData = null;
+		} else respond(httpExch, 200, "text/html", ("File not found !").getBytes());
+	}
+
 	private void handleJsonSealing(HttpExchange httpExch, Map<String, String> queryParams) throws Exception {
 		//http://localhost:8081/seal?inFile=Riddled%20with%20errors.pdf&outFile=out.pdf&profile=PADES_1&lang=en&cred=final_sealing
 
+		String outFilename = queryParams.get("outFile");
+		String lang = queryParams.get("lang");
+
 		String json = "{\"requestID\":\"11668786643409505247592754000\",\"credentialID\":\"" + queryParams.get("cred") +
-				"\",\"lang\":\"" + queryParams.get("lang") + "\",\"returnCertificates\":\"chain\",\"certInfo\":true,\"authInfo\":true,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/credentialinfoprotocol#\"}";
+				"\",\"lang\":\"" + lang + "\",\"returnCertificates\":\"chain\",\"certInfo\":true,\"authInfo\":true,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/credentialinfoprotocol#\"}";
 
 		String reply = postJson(easealingUrl + "/credentials/info", json, true);
 
@@ -338,7 +363,9 @@ public class Main implements HttpHandler {
 		copyStream(fis, baos);
 		String document = Base64.getEncoder().encodeToString(baos.toByteArray());
 
-		json = "{\"clientSignatureParameters\":{\"signingCertificate\":" + cert + ",\"certificateChain\":[" + String.join(",", certChain) +"]},\"signingProfileId\":\"" + queryParams.get("profile") + "\",\"toSignDocument\":{\"bytes\":\"" + document + "\",\"digestAlgorithm\":null,\"name\":\"RemoteDocument\"}}";
+		json = "{\"clientSignatureParameters\":{\"signingCertificate\":" + cert +
+				",\"certificateChain\":[" + String.join(",", certChain) +"]},\"signingProfileId\":\"" + queryParams.get("profile") +
+				"\",\"toSignDocument\":{\"bytes\":\"" + document + "\",\"digestAlgorithm\":null,\"name\":\"RemoteDocument\"}}";
 
 		reply = postJson(signValidationUrl + "/signing/getDataToSign", json, false);
 
@@ -350,15 +377,32 @@ public class Main implements HttpHandler {
 		digest.setHashes(new String[] { hashToSign });
 		digest.setHashAlgorithmOID(digestAlgo.oid);
 		String sad = makeSAD(digest);
-		json = "{\"operationMode\":\"S\",\"requestID\":\"11668768431957487036136225500\",\"optionalData\":{\"returnSigningCertificateInfo\":true,\"returnSupportMultiSignatureInfo\":true,\"returnServicePolicyInfo\":true,\"returnSignatureCreationPolicyInfo\":true,\"returnCredentialAuthorizationModeInfo\":true,\"returnSoleControlAssuranceLevelInfo\":true},\"validity_period\":null,\"credentialID\":\""+ queryParams.get("cred") + "\",\"lang\":\"en\",\"numSignatures\":1,\"policy\":null,\"signaturePolicyID\":null,\"signAlgo\":\"1.2.840.10045.4.3.2\",\"signAlgoParams\":null,\"response_uri\":null,\"documentDigests\":{\"hashes\":[\"" + hashToSign + "\"],\"hashAlgorithmOID\":\"2.16.840.1.101.3.4.2.1\"},\"sad\":\"" + sad + "\"}";
+		json = "{\"operationMode\":\"S\",\"requestID\":\"11668768431957487036136225500\"," +
+				"\"optionalData\":{\"returnSigningCertificateInfo\":true,\"returnSupportMultiSignatureInfo\":true,\"returnServicePolicyInfo\":true,\"returnSignatureCreationPolicyInfo\":true,\"returnCredentialAuthorizationModeInfo\":true,\"returnSoleControlAssuranceLevelInfo\":true}" +
+				",\"validity_period\":null,\"credentialID\":\"" + queryParams.get("cred") +
+				"\",\"lang\":\"" + lang + "\"," +
+				"\"numSignatures\":1,\"policy\":null,\"signaturePolicyID\":null,\"signAlgo\":\"1.2.840.10045.4.3.2\",\"signAlgoParams\":null,\"response_uri\":null,\"documentDigests\":{\"hashes\":[\"" + hashToSign +
+				"\"],\"hashAlgorithmOID\":\"2.16.840.1.101.3.4.2.1\"},\"sad\":\"" + sad + "\"}";
 
 		reply = postJson(easealingUrl + "/signatures/signHash", json, true);
 
 		String signedHash = getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
 
-		json = "{\"toSignDocument\":{\"bytes\":\"" + document + "\",\"digestAlgorithm\":null,\"name\":\"RemoteDocument\"},\"signingProfileId\":\"" + queryParams.get("profile") + "\",\"clientSignatureParameters\":{\"signingCertificate\":{\"encodedCertificate\":\"" + cert + "\"},\"certificateChain\":[{\"encodedCertificate\":\"MIIDSzCCAtGgAwIBAgIRAMQzrdSn7ZFWvvHSP1XBjtswCgYIKoZIzj0EAwMwNDELMAkGA1UEBhMCQkUxJTAjBgNVBAMMHFRlc3RTaWduIEJlbGdpdW0gUm9vdCBVVCBDQTcwHhcNMjIxMDIxMDYxNzEwWhcNMzIxMDIxMDYxNzEwWjBYMRswGQYDVQQDDBJUZXN0U2lnbiBDaXRpemVuQ0ExDzANBgNVBAUTBjIwMjIwNzEbMBkGA1UECgwSQmVsZ2lhbiBHb3Zlcm5tZW50MQswCQYDVQQGEwJCRTB2MBAGByqGSM49AgEGBSuBBAAiA2IABIQ1JoYfiqYWC0av/mytJqKci/ro5vnnItgyhb5MlYwAQ13RMSn7slezKdGFjsQL2os62I7nSrMdZsa5nWhRS8cO2xKRPLxFU5X0DZNd0w5RKUFj2/BLAryJAU7WR3KN56OCAYEwggF9MBIGA1UdEwEB/wQIMAYBAf8CAQAwDgYDVR0PAQH/BAQDAgEGMB0GA1UdJQQWMBQGCCsGAQUFBwMEBggrBgEFBQcDAjAdBgNVHQ4EFgQUs/DBw8lK0DdoWAIeShJQd1izPjUwHwYDVR0jBBgwFoAUZ5WrzOrgBpKMZjSp4r9kpZt9VEMwUAYDVR0fBEkwRzBFoEOgQYY/aHR0cHM6Ly9taW50ZXN0LnRhLmZ0cy5ib3NhLmJlbGdpdW0uYmUvc3RhdGljL2lzc3VpbmcyMDIyMDcuY3JsMFsGCCsGAQUFBwEBBE8wTTBLBggrBgEFBQcwAoY/aHR0cHM6Ly9taW50ZXN0LnRhLmZ0cy5ib3NhLmJlbGdpdW0uYmUvc3RhdGljL2lzc3VpbmcyMDIyMDcuY3J0MEkGA1UdIARCMEAwPgYEVR0gADA2MDQGCCsGAQUFBwIBFihodHRwczovL3JlcG9zaXRvcnkuZWlkcGtpLmJlbGdpdW0uYmUvZWlkMAoGCCqGSM49BAMDA2gAMGUCMQCkiOVMqyWfQjH+E8tIV71sbHDDhABMsetGMh9u3TI5NkHpaSzNFAmzofb6F7oAHkoCMA4uf+az9S6b6PlhrWPJg0GV1kcuOiw2RcSsKc16igLzWhG9vuIC+fr8min1K73DzQ==\"},{\"encodedCertificate\":\"MIICCTCCAY+gAwIBAgIQBXUd0Pw2AuzZirCxemm9XzAKBggqhkjOPQQDAzA0MQswCQYDVQQGEwJCRTElMCMGA1UEAwwcVGVzdFNpZ24gQmVsZ2l1bSBSb290IFVUIENBNzAeFw0yMjEwMjAwNjE3MTBaFw00MjEwMjAwNjE3MTBaMDQxCzAJBgNVBAYTAkJFMSUwIwYDVQQDDBxUZXN0U2lnbiBCZWxnaXVtIFJvb3QgVVQgQ0E3MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEQLzDD4UPdVRxp9AwKeWLsW4tXNtV5fK85plg0GF2E4Qv8J8v6hypazClrt5K86XTE/lPo7NIiIO4qwdZCf+V7TczQQjk4xIvE2qpD801M0F0K6nsUL86qqpEHpSkxdEvo2YwZDASBgNVHRMBAf8ECDAGAQH/AgEBMA4GA1UdDwEB/wQEAwIBBjAdBgNVHQ4EFgQUZ5WrzOrgBpKMZjSp4r9kpZt9VEMwHwYDVR0jBBgwFoAUZ5WrzOrgBpKMZjSp4r9kpZt9VEMwCgYIKoZIzj0EAwMDaAAwZQIxAPqPC2Ykddi1AhqDcQPSloHSQlwCVtQ294Vdtm74jInFajfFrMVMFaNcYeuAw1g8bwIwMaZXPycoAyYq2r2HgIgf6gzR5zUa5dJBpiuS3zNnd61axtf1LhFYtFHYdrw8smS8\"}],\"detachedContents\":null,\"signingDate\":1669027424898},\"signatureValue\":\"" + signedHash + "\"}\n";
+		json = "{\"toSignDocument\":{\"bytes\":\"" + document + "\",\"digestAlgorithm\":null,\"name\":\"RemoteDocument\"},\"signingProfileId\":\"" + queryParams.get("profile") +
+				"\",\"clientSignatureParameters\":{\"signingCertificate\":" + cert +
+				",\"certificateChain\":[" + String.join(",", certChain) + "],\"detachedContents\":null,\"signingDate\":\"" + signingDate +
+				"\"},\"signatureValue\":\"" + signedHash + "\"}\n";
 
 		reply = postJson(signValidationUrl + "/signing/signDocument", json, false);
+
+		document = getDelimitedValue(reply, "\"bytes\" : \"", "\",");
+		fileData = Base64.getDecoder().decode(document);
+		fileName = outFilename;
+
+		reply = "<script language=\"javascript\">window.onload=function() { document.getElementById('file').click(); } </script>" +
+				"<a id='file' href='/getFile'></a><h1>Sealed document downloaded</h1>";
+
+		respond(httpExch, 200, "text/html", reply.getBytes());
 	}
 
 	private static String getDelimitedValue(String str, String beginMark, String endMark) throws Exception {
