@@ -115,7 +115,7 @@ public class Main implements HttpHandler {
 		String tmp  =  config.getProperty("outFileDir");
 		outFilesDir =  (null == tmp) ? new File(filesDir, SIGNED_DIR) : new File(tmp);
 
-		signValidationUrl =  config.getProperty("signValidationUrl");
+		signValidationUrl =  config.getProperty("getTokenUrl").replace("/signing/getTokenForDocument", "");
 
 		bosaDssFrontend =  config.getProperty("bosaDssFrontend");
 
