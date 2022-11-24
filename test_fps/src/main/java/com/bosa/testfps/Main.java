@@ -330,6 +330,10 @@ public class Main implements HttpHandler {
 		} else respond(httpExch, 200, "text/html", ("File not found !").getBytes());
 	}
 
+	// "Low footprint", "down to the bits", freestyle implementation (in the spirit of mintest) of an esal orchestration.
+	// We should use proper objects but I'd like to setup a structural solution to importing models from other applications
+	// unlike the copy/paste solution used in all the FTS projects
+
 	private void handleJsonSealing(HttpExchange httpExch, Map<String, String> queryParams) throws Exception {
 		//http://localhost:8081/seal?inFile=Riddled%20with%20errors.pdf&outFile=out.pdf&profile=PADES_1&lang=en&cred=final_sealing
 
@@ -351,10 +355,7 @@ public class Main implements HttpHandler {
 			if(i != 0) certChain[i - 1] = cert;
 		}
 
-		FileInputStream fis = new FileInputStream(new File(inFilesDir, queryParams.get("inFile")));
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		copyStream(fis, baos);
-		String document = Base64.getEncoder().encodeToString(baos.toByteArray());
+		String document = getDocumentAsB64(queryParams.get("inFile"));
 
 		json = "{\"clientSignatureParameters\":{\"signingCertificate\":" + cert +
 				",\"certificateChain\":[" + String.join(",", certChain) +"]},\"signingProfileId\":\"" + queryParams.get("profile") +
@@ -393,9 +394,16 @@ public class Main implements HttpHandler {
 		fileName = outFilename;
 
 		reply = "<script language=\"javascript\">window.onload=function() { document.getElementById('file').click(); } </script>" +
-				"<a id='file' href='/getFile'></a><h1>Sealed document downloaded</h1>";
+				"<a id='file' href='/getFile'></a><h1>Sealed document '" + outFilename + "' was downloaded</h1>";
 
 		respond(httpExch, 200, "text/html", reply.getBytes());
+	}
+
+	private static String getDocumentAsB64(String inFile) throws IOException {
+		FileInputStream fis = new FileInputStream(new File(inFilesDir, inFile));
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		copyStream(fis, baos);
+		return Base64.getEncoder().encodeToString(baos.toByteArray());
 	}
 
 	private static String getDelimitedValue(String str, String beginMark, String endMark) throws Exception {
