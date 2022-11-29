@@ -142,25 +142,6 @@ public class Main implements HttpHandler {
 		System.out.println("Surf with your browser to http://localhost:" + port);
 	}
 
-	private static String mimeTypeFor(String filename) {
-		String type = "text/plain";
-		int pos = filename.lastIndexOf('.');
-		if (pos >= 0) {
-			String extension = filename.substring(pos + 1).toLowerCase(Locale.ROOT);
-			if (extension.equals("xml")) type = "application/xml";
-			if (extension.equals("pdf")) type = "application/pdf";
-			if (extension.equals("js")) type = "text/javascript";
-			if (extension.equals("html") || extension.equals("htm")) type = "text/html";
-		}
-		return type;
-	}
-
-	/** Map filename to profile name */
-	private String profileFor(String filename) {
-		String type = mimeTypeFor(filename);
-		return sigProfiles.containsKey(type) ? sigProfiles.get(type) : "CADES_1";
-	}
-
 	/**
 	 * We handle 3 endpoints:
 	 * <pre>
@@ -329,6 +310,9 @@ public class Main implements HttpHandler {
 			fileData = null;
 		} else respond(httpExch, 200, "text/html", ("File not found !").getBytes());
 	}
+//	reply = "<script language=\"javascript\">window.onload=function() { document.getElementById('file').click(); } </script>" +
+//			"<a id='file' href='/getFile'></a><h1>Sealed document '" + outFilename + "' was downloaded</h1>";
+
 
 	// "Low footprint", "down to the bits", freestyle implementation (in the spirit of mintest) of an esal orchestration.
 	// We should use proper objects but I'd like to setup a structural solution to importing models from other applications
@@ -389,30 +373,25 @@ public class Main implements HttpHandler {
 
 		reply = postJson(signValidationUrl + "/signing/signDocument", json, false);
 
-		document = getDelimitedValue(reply, "\"bytes\" : \"", "\",");
-		fileData = Base64.getDecoder().decode(document);
-		fileName = outFilename;
+		byte outDoc[] = Base64.getDecoder().decode(getDelimitedValue(reply, "\"bytes\" : \"", "\","));
+		String outDocString = new String(outDoc);
 
-		reply = "<script language=\"javascript\">window.onload=function() { document.getElementById('file').click(); } </script>" +
-				"<a id='file' href='/getFile'></a><h1>Sealed document '" + outFilename + "' was downloaded</h1>";
+		String displayAs = queryParams.get("displayAs");
+		if ("ascii".equals(displayAs)) {
+			reply = "<HTML><pre style=\"white-space: pre-wrap; word-wrap: break-word;\">" + outDocString + "</pre></HTML>";
+		} else  if ("JWT".equals(displayAs)) {
+			reply = "<HTML><pre style=\"white-space: pre-wrap; word-wrap: break-word;\">" + toStringJWT(outDocString) + "</pre></HTML>";
+		} else  if ("JSON".equals(displayAs)) {
+			reply = "<HTML><pre style=\"white-space: pre-wrap; word-wrap: break-word;\">" + toStringJSON(outDocString) + "</pre></HTML>";
+		} else {
+			fileData = outDoc;
+			fileName = outFilename;
+
+			reply = "<script language=\"javascript\">window.onload=function() { document.getElementById('file').click(); } </script>" +
+					"<a id='file' href='/getFile'></a><h1>Sealed document '" + outFilename + "' was downloaded</h1>";
+		}
 
 		respond(httpExch, 200, "text/html", reply.getBytes());
-	}
-
-	private static String getDocumentAsB64(String inFile) throws IOException {
-		FileInputStream fis = new FileInputStream(new File(inFilesDir, inFile));
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		copyStream(fis, baos);
-		return Base64.getEncoder().encodeToString(baos.toByteArray());
-	}
-
-	private static String getDelimitedValue(String str, String beginMark, String endMark) throws Exception {
-		int pos = str.indexOf(beginMark);
-		if (pos < 0) throw new Exception("No " + beginMark + " ?");
-		pos += beginMark.length();
-		int endPos = str.indexOf(endMark, pos);
-		if (endPos < 0) throw new Exception("No "+ endMark + " after " + beginMark + " ?");
-		return str.substring(pos, endPos);
 	}
 
 	protected String makeSAD(Digest documentDigests) throws Exception {
@@ -657,21 +636,6 @@ public class Main implements HttpHandler {
 		respond(httpExch, 200, "text/html", html.getBytes());
 	}
 
-	private static void copyStream(InputStream in, OutputStream out) throws IOException {
-		byte[] buf = new byte[16384];
-		int bytesRead;
-		while ((bytesRead = in.read(buf, 0, buf.length)) >= 0)
-			out.write(buf, 0, bytesRead);
-		in.close();
-		out.close();
-	}
-
-	private static String streamToString(InputStream in) throws IOException {
-		ByteArrayOutputStream baos = new ByteArrayOutputStream(4096*4);
-		copyStream(in, baos);
-		return new String(baos.toByteArray());
-	}
-
 	private void deleteFileFromBucket(String fileToDelete) throws Exception {
 		System.out.println("    Deleting from the S3 server :" + fileToDelete);
 		minioClient.removeObject(RemoveObjectArgs.builder().bucket(s3UserName).object(fileToDelete).build());
@@ -685,6 +649,7 @@ public class Main implements HttpHandler {
 			URL url = new URL(urlStr);
 			urlConn = (HttpURLConnection) url.openConnection();
 			if (addSealAuth) {
+				System.out.println("Authorization Basic " + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8)));
 				urlConn.setRequestProperty("Authorization", "Basic " + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8)));
 			}
 			urlConn.setRequestProperty("Content-Type", "application/json; utf-8");
@@ -754,6 +719,25 @@ public class Main implements HttpHandler {
 			.build());
 	}
 
+	private static String mimeTypeFor(String filename) {
+		String type = "text/plain";
+		int pos = filename.lastIndexOf('.');
+		if (pos >= 0) {
+			String extension = filename.substring(pos + 1).toLowerCase(Locale.ROOT);
+			if (extension.equals("xml")) type = "application/xml";
+			if (extension.equals("pdf")) type = "application/pdf";
+			if (extension.equals("js")) type = "text/javascript";
+			if (extension.equals("html") || extension.equals("htm")) type = "text/html";
+		}
+		return type;
+	}
+
+	/** Map filename to profile name */
+	private String profileFor(String filename) {
+		String type = mimeTypeFor(filename);
+		return sigProfiles.containsKey(type) ? sigProfiles.get(type) : "CADES_1";
+	}
+
 	private JSONObject decodeJWTToken(String jwtToken) throws Exception {
 		JWEObject jweObject = JWEObject.parse(jwtToken);
 
@@ -771,4 +755,49 @@ public class Main implements HttpHandler {
 
 		return new JSONObject(new String(java.util.Base64.getDecoder().decode(parts[1])));
 	}
+
+	private static String getDocumentAsB64(String inFile) throws IOException {
+		FileInputStream fis = new FileInputStream(new File(inFilesDir, inFile));
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		copyStream(fis, baos);
+		return Base64.getEncoder().encodeToString(baos.toByteArray());
+	}
+
+	private static String toStringJWT(String rawJwt) {
+		String bits[] = rawJwt.split("\\.");
+		return "HEADER: " + toStringB64JSON(bits[0]) + "\nPAYLOAD: " + toStringB64JSON(bits[1]) + "\nSIGNATURE: " + bits[2];
+	}
+
+	private static String toStringB64JSON(String b64) {
+		return new JSONObject(new String(Base64.getDecoder().decode(b64))).toString(4);
+	}
+
+	private static String toStringJSON(String json) {
+		return new JSONObject(json).toString(4);
+	}
+
+	private static void copyStream(InputStream in, OutputStream out) throws IOException {
+		byte[] buf = new byte[16384];
+		int bytesRead;
+		while ((bytesRead = in.read(buf, 0, buf.length)) >= 0)
+			out.write(buf, 0, bytesRead);
+		in.close();
+		out.close();
+	}
+
+	private static String streamToString(InputStream in) throws IOException {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream(4096*4);
+		copyStream(in, baos);
+		return new String(baos.toByteArray());
+	}
+
+	private static String getDelimitedValue(String str, String beginMark, String endMark) throws Exception {
+		int pos = str.indexOf(beginMark);
+		if (pos < 0) throw new Exception("No " + beginMark + " ?");
+		pos += beginMark.length();
+		int endPos = str.indexOf(endMark, pos);
+		if (endPos < 0) throw new Exception("No "+ endMark + " after " + beginMark + " ?");
+		return str.substring(pos, endPos);
+	}
+
 }
