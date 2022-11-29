@@ -23,6 +23,7 @@ fileDir = files
 #getTokenUrl = https://validate.qa.fts.bosa.belgium.be/signandvalidation/signing/getTokenForDocument
 
 idpGuiUrl = http://localhost:3001
+idpUrl = http://localhost:8753
 
 easealingUrl = http://localhost:8752
 sadKeyFile = src/main/resources/sealing_sad.p12

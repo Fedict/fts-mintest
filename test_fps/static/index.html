@@ -29,7 +29,7 @@
         <script>ReactDOM.render(React.createElement(NameForm), document.querySelector('#form_container'));</script>
     </div>
     <div style="padding: 30px">
-        <p>Select a sign test case:</p>
+        <p>Select a sign test case (<a href="/swagger?to=signval">SWAGGER API Doc</a>):</p>
         <ul>
             <li><a href="/sign?json=@o'in'@s'nd_test.pdf'@S'noDownload'@s'true'@S'out'@s'signed_nd_test.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&name=Justice&language=fr">PDF (download disabled)</a></li>
             <li><a href="/sign?json=@o'in'@s'psf0_visible_sigfields~signature_1.pdf'@S'psfN'@s'signature_1'@S'out'@s'signed_psf0_visible_sigfields.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&name=Law&name_fr=Loi&language=fr">PDF visible signature field named 'signature_1'</a></li>
@@ -53,12 +53,12 @@
         </ul>
     </div>
     <div style="padding: 30px">
-        <p>Select an IDP test case:</p>
+        <p>Select an IDP test case (<a href="/swagger?to=idp">SWAGGER API Doc</a>):</p>
         <ul>
             <li><a href="/idp_jump?client_id=IAMFAS&scope=profile%20openid">IDP Fas redirect</a></li>
         </ul>
 
-        <p>Select an ESealing test case:</p>
+        <p>Select an ESealing test case (<a href="/swagger?to=seal">SWAGGER API Doc</a>):</p>
         <ul>
             <li><a href="/seal?inFile=test.pdf&outFile=out.pdf&profile=PADES_1&lang=en&cred=final_sealing">Seal PADES_1 "test.pdf" with "Final Sealing" cert</a></li>
             <li><a href="/seal?inFile=test.xml&outFile=out.xml&profile=XADES_LTA&lang=fr&cred=interm_sealing">Seal XADES_LTA "test.xml" with "Intermediate Sealing" cert</a></li>
@@ -69,6 +69,7 @@
             <li><a href="/seal?inFile=test.json&outFile=out.json&profile=JADES_LT&lang=de&cred=final_sealing&displayAs=JSON">Seal JADES_LT(FLATTENED_JSON_SERIALIZATION) "test.pdf" with "Final Sealing" cert</a></li>
             <li><a href="/seal?inFile=test.json&outFile=out.json&profile=JADES_LTA&lang=nl&cred=interm_sealing&displayAs=JSON">Seal JADES_LTA(JSON_SERIALIZATION) "test.pdf" with "Intermediate Sealing" cert</a></li>
         </ul>
+
     </div>
 </div>
 </body>

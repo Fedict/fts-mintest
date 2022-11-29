@@ -59,7 +59,8 @@ public class Main implements HttpHandler {
 
 	private static String signValidationUrl;
 	private static String idpGuiUrl;
-	private static String easealingUrl;
+	private static String idpUrl;
+	private static String esealingUrl;
 	private static String sadKeyFile;
 	private static String sadKeyPwd;
 
@@ -104,11 +105,12 @@ public class Main implements HttpHandler {
 		s3Passwd =     config.getProperty("s3Passwd");
 		s3Url =        config.getProperty("s3Url");
 		idpGuiUrl =	   config.getProperty("idpGuiUrl");
+		idpUrl = 	   config.getProperty("idpUrl");
 
 		sadKeyFile =   config.getProperty("sadKeyFile");
 		sadKeyPwd =   config.getProperty("sadKeyPwd");
 
-		easealingUrl = config.getProperty("easealingUrl");
+		esealingUrl = config.getProperty("easealingUrl");
 
 		filesDir =     new File(config.getProperty("fileDir"));
 		inFilesDir =   new File(filesDir, UNSIGNED_DIR);
@@ -173,6 +175,8 @@ public class Main implements HttpHandler {
 
 			if (uri.startsWith("/callback?")) {
 				handleCallback(httpExch, queryParams);
+			} else if (uri.startsWith("/swagger")) {
+				handleSwagger(queryParams, httpExch);
 			} else if (uri.startsWith("/hook")) {
 				handleHook(httpExch);
 			} else if (uri.startsWith("/getFileList")) {
@@ -201,6 +205,24 @@ public class Main implements HttpHandler {
 				e1.printStackTrace();
 			}
 		}
+	}
+
+	private void handleSwagger(Map<String, String> queryParams, HttpExchange httpExch) throws IOException {
+		String URL = "";
+		switch(queryParams.get("to")) {
+			case "signval":
+				URL = signValidationUrl;
+				break;
+			case "idp":
+				URL = idpUrl;
+				break;
+			case "seal":
+				URL = esealingUrl;
+				break;
+		}
+		httpExch.getResponseHeaders().add("Location", URL + "/swagger-ui/index.html");
+		httpExch.sendResponseHeaders(303, 0);
+		httpExch.close();
 	}
 
 	private void handleIdp(HttpExchange httpExch, String uri, Map<String, String> queryParams) throws Exception {
@@ -279,7 +301,7 @@ public class Main implements HttpHandler {
 		try {
 			String json = "{\"requestID\":\"11668764926004483530182899800\",\"lang\":\"en\",\"certificates\":\"chain\",\"certInfo\":false,\"authInfo\":false,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/certificateslistprotocol#\",\"signerIdentity\":null}";
 
-			String reply = postJson(easealingUrl + "/credentials/list", json, true);
+			String reply = postJson(esealingUrl + "/credentials/list", json, true);
 
 			reply = getDelimitedValue(reply, "\"credentialIDs\":[", "]").replaceAll("\"", "");
 			System.out.println("Esealing credentials : " + reply);
@@ -327,7 +349,7 @@ public class Main implements HttpHandler {
 		String json = "{\"requestID\":\"11668786643409505247592754000\",\"credentialID\":\"" + queryParams.get("cred") +
 				"\",\"lang\":\"" + lang + "\",\"returnCertificates\":\"chain\",\"certInfo\":true,\"authInfo\":true,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/credentialinfoprotocol#\"}";
 
-		String reply = postJson(easealingUrl + "/credentials/info", json, true);
+		String reply = postJson(esealingUrl + "/credentials/info", json, true);
 
 		String certs[] = getDelimitedValue(reply, "\"certificates\":[", "]").split(",");
 
@@ -362,7 +384,7 @@ public class Main implements HttpHandler {
 				"\"numSignatures\":1,\"policy\":null,\"signaturePolicyID\":null,\"signAlgo\":\"1.2.840.10045.4.3.2\",\"signAlgoParams\":null,\"response_uri\":null,\"documentDigests\":{\"hashes\":[\"" + hashToSign +
 				"\"],\"hashAlgorithmOID\":\"2.16.840.1.101.3.4.2.1\"},\"sad\":\"" + sad + "\"}";
 
-		reply = postJson(easealingUrl + "/signatures/signHash", json, true);
+		reply = postJson(esealingUrl + "/signatures/signHash", json, true);
 
 		String signedHash = getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
 
@@ -649,6 +671,7 @@ public class Main implements HttpHandler {
 			URL url = new URL(urlStr);
 			urlConn = (HttpURLConnection) url.openConnection();
 			if (addSealAuth) {
+				System.out.println("Authorization Basic " + Base64.getEncoder().encodeToString("selor:test123".getBytes(StandardCharsets.UTF_8)));
 				System.out.println("Authorization Basic " + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8)));
 				urlConn.setRequestProperty("Authorization", "Basic " + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8)));
 			}
