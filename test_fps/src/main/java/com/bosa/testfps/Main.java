@@ -56,10 +56,11 @@ public class Main implements HttpHandler {
 	private static File filesDir;
 	private static File inFilesDir;
 	private static File outFilesDir;
-
+	private static String signValidationSvcUrl;
 	private static String signValidationUrl;
 	private static String idpGuiUrl;
 	private static String idpUrl;
+	private static String esealingSvcUrl;
 	private static String esealingUrl;
 	private static String sadKeyFile;
 	private static String sadKeyPwd;
@@ -110,14 +111,16 @@ public class Main implements HttpHandler {
 		sadKeyFile =   config.getProperty("sadKeyFile");
 		sadKeyPwd =   config.getProperty("sadKeyPwd");
 
+		esealingSvcUrl = config.getProperty("easealingSvcUrl");
 		esealingUrl = config.getProperty("easealingUrl");
+
+		signValidationSvcUrl =  config.getProperty("getTokenUrl").replace("/signing/getTokenForDocument", "");
+		signValidationUrl =  config.getProperty("signValidationUrl");
 
 		filesDir =     new File(config.getProperty("fileDir"));
 		inFilesDir =   new File(filesDir, UNSIGNED_DIR);
 		String tmp  =  config.getProperty("outFileDir");
 		outFilesDir =  (null == tmp) ? new File(filesDir, SIGNED_DIR) : new File(tmp);
-
-		signValidationUrl =  config.getProperty("getTokenUrl").replace("/signing/getTokenForDocument", "");
 
 		bosaDssFrontend =  config.getProperty("bosaDssFrontend");
 
@@ -137,6 +140,7 @@ public class Main implements HttpHandler {
 	public static void startService(int port) throws Exception {
 		HttpServer server = HttpServer.create();
 		server.bind(new InetSocketAddress(port), 10);
+		server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
 		server.createContext("/", new Main());
 		server.start();
 
@@ -301,7 +305,7 @@ public class Main implements HttpHandler {
 		try {
 			String json = "{\"requestID\":\"11668764926004483530182899800\",\"lang\":\"en\",\"certificates\":\"chain\",\"certInfo\":false,\"authInfo\":false,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/certificateslistprotocol#\",\"signerIdentity\":null}";
 
-			String reply = postJson(esealingUrl + "/credentials/list", json, true);
+			String reply = postJson(esealingSvcUrl + "/credentials/list", json, true);
 
 			reply = getDelimitedValue(reply, "\"credentialIDs\":[", "]").replaceAll("\"", "");
 			System.out.println("Esealing credentials : " + reply);
@@ -349,7 +353,7 @@ public class Main implements HttpHandler {
 		String json = "{\"requestID\":\"11668786643409505247592754000\",\"credentialID\":\"" + queryParams.get("cred") +
 				"\",\"lang\":\"" + lang + "\",\"returnCertificates\":\"chain\",\"certInfo\":true,\"authInfo\":true,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/credentialinfoprotocol#\"}";
 
-		String reply = postJson(esealingUrl + "/credentials/info", json, true);
+		String reply = postJson(esealingSvcUrl + "/credentials/info", json, true);
 
 		String certs[] = getDelimitedValue(reply, "\"certificates\":[", "]").split(",");
 
@@ -367,7 +371,7 @@ public class Main implements HttpHandler {
 				",\"certificateChain\":[" + String.join(",", certChain) +"]},\"signingProfileId\":\"" + queryParams.get("profile") +
 				"\",\"toSignDocument\":{\"bytes\":\"" + document + "\",\"digestAlgorithm\":null,\"name\":\"RemoteDocument\"}}";
 
-		reply = postJson(signValidationUrl + "/signing/getDataToSign", json, false);
+		reply = postJson(signValidationSvcUrl + "/signing/getDataToSign", json, false);
 
 		String hashToSign = getDelimitedValue(reply, "\"digest\" : \"", "\",");
 		String signingDate = getDelimitedValue(reply,"\"signingDate\" : \"", "\"");
@@ -384,7 +388,7 @@ public class Main implements HttpHandler {
 				"\"numSignatures\":1,\"policy\":null,\"signaturePolicyID\":null,\"signAlgo\":\"1.2.840.10045.4.3.2\",\"signAlgoParams\":null,\"response_uri\":null,\"documentDigests\":{\"hashes\":[\"" + hashToSign +
 				"\"],\"hashAlgorithmOID\":\"2.16.840.1.101.3.4.2.1\"},\"sad\":\"" + sad + "\"}";
 
-		reply = postJson(esealingUrl + "/signatures/signHash", json, true);
+		reply = postJson(esealingSvcUrl + "/signatures/signHash", json, true);
 
 		String signedHash = getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
 
@@ -393,7 +397,7 @@ public class Main implements HttpHandler {
 				",\"certificateChain\":[" + String.join(",", certChain) + "],\"detachedContents\":null,\"signingDate\":\"" + signingDate +
 				"\"},\"signatureValue\":\"" + signedHash + "\"}\n";
 
-		reply = postJson(signValidationUrl + "/signing/signDocument", json, false);
+		reply = postJson(signValidationSvcUrl + "/signing/signDocument", json, false);
 
 		byte outDoc[] = Base64.getDecoder().decode(getDelimitedValue(reply, "\"bytes\" : \"", "\","));
 		String outDocString = new String(outDoc);
@@ -529,7 +533,7 @@ public class Main implements HttpHandler {
 
 		System.out.println("Out file(s) : " + outFiles);
 
-		createTokenAndRedirect(signValidationUrl + "/signing/getTokenForDocument" + (multidoc ? "s" : ""), json, outFiles, String.join(",", filesToUpload), queryParams, httpExch);
+		createTokenAndRedirect(signValidationSvcUrl + "/signing/getTokenForDocument" + (multidoc ? "s" : ""), json, outFiles, String.join(",", filesToUpload), queryParams, httpExch);
 	}
 
 	private String getToken(String json, String tokenName) {
