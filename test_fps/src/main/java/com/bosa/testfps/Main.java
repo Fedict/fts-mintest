@@ -239,10 +239,13 @@ public class Main implements HttpHandler {
 			httpExch.sendResponseHeaders(303, 0);
 			httpExch.close();
 		} else {
-			JWEObject jweObject = JWEObject.parse(queryParams.get("code"));
-			String jwtString = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(jweObject);
-			String response = "<HTML>" + formatParam(queryParams, "scope") + formatParam(queryParams, "code") + "<pre>" + jwtString + "</pre>" + "</HTML>";
-			respond(httpExch, 200, "text/html", response.getBytes());
+			String response = queryParams.get("error");
+			if (response == null) {
+				JWEObject jweObject = JWEObject.parse(queryParams.get("code"));
+				String jwtString = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(jweObject);
+				response = formatParam(queryParams, "scope") + formatParam(queryParams, "code") + "<pre>" + jwtString + "</pre>";
+			}
+			respond(httpExch, 200, "text/html", ("<HTML>" + response + "</HTML>").getBytes());
 		}
 	}
 
