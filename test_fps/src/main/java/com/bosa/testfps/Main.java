@@ -368,7 +368,7 @@ public class Main implements HttpHandler {
 			if(i != 0) certChain[i - 1] = cert;
 		}
 
-		String document = getDocumentAsB64(queryParams.get("inFile"));
+		String document = getDocumentAsB64(inFilesDir, queryParams.get("inFile"));
 
 		json = "{\"clientSignatureParameters\":{\"signingCertificate\":" + cert +
 				",\"certificateChain\":[" + String.join(",", certChain) +"]},\"signingProfileId\":\"" + queryParams.get("profile") +
@@ -395,10 +395,13 @@ public class Main implements HttpHandler {
 
 		String signedHash = getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
 
+		// Since eSealing is using TEST (see testpki) certificates with their own lifecycles, CRL, no-OCSP, ... influencing revocation freshness
+		// We must request a custom policy/constraint to validate those in TA/QA/...
+		String validatePolicy = getDocumentAsB64(filesDir, "esealingConstraint.xml");
 		json = "{\"toSignDocument\":{\"bytes\":\"" + document + "\",\"digestAlgorithm\":null,\"name\":\"RemoteDocument\"},\"signingProfileId\":\"" + queryParams.get("profile") +
 				"\",\"clientSignatureParameters\":{\"signingCertificate\":" + cert +
 				",\"certificateChain\":[" + String.join(",", certChain) + "],\"detachedContents\":null,\"signingDate\":\"" + signingDate +
-				"\"},\"signatureValue\":\"" + signedHash + "\"}\n";
+				"\"},\"signatureValue\":\"" + signedHash + "\", \"validatePolicy\": { \"bytes\": \"" + validatePolicy + "\"}}\n";
 
 		reply = postJson(signValidationUrl + "/signing/signDocument", json, false);
 
@@ -786,13 +789,6 @@ public class Main implements HttpHandler {
 		return new JSONObject(new String(java.util.Base64.getDecoder().decode(parts[1])));
 	}
 
-	private static String getDocumentAsB64(String inFile) throws IOException {
-		FileInputStream fis = new FileInputStream(new File(inFilesDir, inFile));
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		copyStream(fis, baos);
-		return Base64.getEncoder().encodeToString(baos.toByteArray());
-	}
-
 	private static String toStringJWT(String rawJwt) {
 		String bits[] = rawJwt.split("\\.");
 		return "HEADER: " + toStringB64JSON(bits[0]) + "\nPAYLOAD: " + toStringB64JSON(bits[1]) + "\nSIGNATURE: " + bits[2];
@@ -806,6 +802,29 @@ public class Main implements HttpHandler {
 		return new JSONObject(json).toString(4);
 	}
 
+	private static String streamToString(InputStream in) throws IOException {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream(4096*4);
+		copyStream(in, baos);
+		baos.close();
+		in.close();
+		return new String(baos.toByteArray());
+	}
+
+	private static String getDocumentAsB64(File folder, String inFile) throws IOException {
+		return Base64.getEncoder().encodeToString(getDocument(folder, inFile));
+	}
+	private static String getDocumentAsString(File folder, String inFile) throws IOException {
+		return streamToString(new FileInputStream(new File(folder, inFile)));
+	}
+	private static byte[] getDocument(File folder, String inFile) throws IOException {
+		FileInputStream fis = new FileInputStream(new File(folder, inFile));
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		copyStream(fis, baos);
+		baos.close();
+		fis.close();
+		return baos.toByteArray();
+	}
+
 	private static void copyStream(InputStream in, OutputStream out) throws IOException {
 		byte[] buf = new byte[16384];
 		int bytesRead;
@@ -813,12 +832,6 @@ public class Main implements HttpHandler {
 			out.write(buf, 0, bytesRead);
 		in.close();
 		out.close();
-	}
-
-	private static String streamToString(InputStream in) throws IOException {
-		ByteArrayOutputStream baos = new ByteArrayOutputStream(4096*4);
-		copyStream(in, baos);
-		return new String(baos.toByteArray());
 	}
 
 	private static String getDelimitedValue(String str, String beginMark, String endMark) throws Exception {
