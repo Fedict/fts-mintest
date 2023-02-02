@@ -372,7 +372,7 @@ public class Main implements HttpHandler {
 
 		json = "{\"clientSignatureParameters\":{\"signingCertificate\":" + cert +
 				",\"certificateChain\":[" + String.join(",", certChain) +"]},\"signingProfileId\":\"" + queryParams.get("profile") +
-				"\",\"toSignDocument\":{\"bytes\":\"" + document + "\",\"digestAlgorithm\":null,\"name\":\"RemoteDocument\"}}";
+				"\",\"toSignDocument\":{\"bytes\":\"" + document + "\"}}";
 
 		reply = postJson(signValidationUrl + "/signing/getDataToSign", json, false);
 
