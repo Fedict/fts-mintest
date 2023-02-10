@@ -1,18 +1,24 @@
 package com.bosa.testfps;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.*;
 
 
 import java.io.*;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.cert.X509Certificate;
+import java.security.interfaces.ECPrivateKey;
 import java.util.*;
 import java.util.List;
 
-import com.nimbusds.jose.JWEObject;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
@@ -20,8 +26,6 @@ import com.sun.net.httpserver.HttpExchange;
 import io.minio.*;
 import io.minio.errors.*;
 import org.json.JSONObject;
-
-import javax.activation.MimetypesFileTypeMap;
 
 /**
  * Test/sample code for an FPS service where users (citizens) can sign documents.
@@ -52,8 +56,14 @@ public class Main implements HttpHandler {
 	private static File filesDir;
 	private static File inFilesDir;
 	private static File outFilesDir;
-
-	private static String getTokenUrl;
+	private static String signValidationSvcUrl;
+	private static String signValidationUrl;
+	private static String idpGuiUrl;
+	private static String idpUrl;
+	private static String esealingSvcUrl;
+	private static String esealingUrl;
+	private static String sadKeyFile;
+	private static String sadKeyPwd;
 
 	private static String bosaDssFrontend;
 
@@ -95,13 +105,22 @@ public class Main implements HttpHandler {
 		s3UserName =   config.getProperty("s3UserName");
 		s3Passwd =     config.getProperty("s3Passwd");
 		s3Url =        config.getProperty("s3Url");
+		idpGuiUrl =	   config.getProperty("idpGuiUrl");
+		idpUrl = 	   config.getProperty("idpUrl");
+
+		sadKeyFile =   config.getProperty("sadKeyFile");
+		sadKeyPwd =   config.getProperty("sadKeyPwd");
+
+		esealingSvcUrl = config.getProperty("easealingSvcUrl");
+		esealingUrl = config.getProperty("easealingUrl");
+
+		signValidationSvcUrl =  config.getProperty("getTokenUrl").replace("/signing/getTokenForDocument", "");
+		signValidationUrl =  config.getProperty("signValidationUrl");
 
 		filesDir =     new File(config.getProperty("fileDir"));
 		inFilesDir =   new File(filesDir, UNSIGNED_DIR);
 		String tmp  =  config.getProperty("outFileDir");
 		outFilesDir =  (null == tmp) ? new File(filesDir, SIGNED_DIR) : new File(tmp);
-
-		getTokenUrl =  config.getProperty("getTokenUrl");
 
 		bosaDssFrontend =  config.getProperty("bosaDssFrontend");
 
@@ -121,24 +140,13 @@ public class Main implements HttpHandler {
 	public static void startService(int port) throws Exception {
 		HttpServer server = HttpServer.create();
 		server.bind(new InetSocketAddress(port), 10);
+		server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
 		server.createContext("/", new Main());
 		server.start();
 
 		System.out.println("Service started - press Ctrl-C to stop\n");
 		System.out.println("Surf with your browser to http://localhost:" + port);
 	}
-
-	/** Map filename to profile name */
-        private String profileFor(String filename) {
-            MimetypesFileTypeMap map = new MimetypesFileTypeMap();
-            map.addMimeTypes("application/pdf pdf PDF");
-            map.addMimeTypes("application/xml xml XML docx");
-            String type = map.getContentType(filename);
-            if(sigProfiles.containsKey(type)) {
-                return sigProfiles.get(type);
-            }
-            return "CADES_1";
-        }
 
 	/**
 	 * We handle 3 endpoints:
@@ -160,16 +168,33 @@ public class Main implements HttpHandler {
 
 			// Parse the query parameters
 			int idx = uri.indexOf("?");
-			String[] queryParams = idx >= 0 ? uri.substring(idx + 1).split("&") : null;
+			Map <String,String> queryParams = new HashMap<>();
+			if (idx >= 0) {
+				for(String qp : uri.substring(idx + 1).split("&")) {
+					int pos = qp.indexOf('=');
+					if (pos < 0) queryParams.put(qp.substring(0, qp.length()), "");
+					else queryParams.put(qp.substring(0, pos), qp.substring(pos+1, qp.length()));
+				}
+			}
 
 			if (uri.startsWith("/callback?")) {
 				handleCallback(httpExch, queryParams);
+			} else if (uri.startsWith("/swagger")) {
+				handleSwagger(queryParams, httpExch);
 			} else if (uri.startsWith("/hook")) {
 				handleHook(httpExch);
 			} else if (uri.startsWith("/getFileList")) {
 				getFileList(httpExch);
 			} else if (uri.startsWith("/sign?json=")) {
 				handleJsonSign(httpExch, queryParams);
+			} else if (uri.startsWith("/seal?")) {
+				handleJsonSealing(httpExch, queryParams);
+			} else if (uri.startsWith("/getSealingCredentials")) {
+				getSealingCredentials(httpExch);
+			} else if (uri.startsWith("/idp_")) {
+				handleIdp(httpExch, uri, queryParams);
+			} else if (uri.startsWith("/getFile")) {
+				handleGetFile(httpExch, queryParams);
 			} else {
 				handleStatic(httpExch, uri);
 			}
@@ -178,12 +203,54 @@ public class Main implements HttpHandler {
 			try {
 				System.out.println("ERR in Standalone.handle(): " + e.toString());
 				e.printStackTrace();
-				respond(httpExch, 500, "text/plain", e.toString().getBytes());
+				respond(httpExch, 500, "text/html", e.toString().getBytes());
 			}
-			catch (Exception x) {
-				x.printStackTrace();
+			catch (Exception e1) {
+				e1.printStackTrace();
 			}
 		}
+	}
+
+	private void handleSwagger(Map<String, String> queryParams, HttpExchange httpExch) throws IOException {
+		String URL = "";
+		switch(queryParams.get("to")) {
+			case "signval":
+				URL = signValidationUrl;
+				break;
+			case "idp":
+				URL = idpUrl;
+				break;
+			case "seal":
+				URL = esealingUrl;
+				break;
+		}
+		httpExch.getResponseHeaders().add("Location", URL + "/swagger-ui/index.html");
+		httpExch.sendResponseHeaders(303, 0);
+		httpExch.close();
+	}
+
+	private void handleIdp(HttpExchange httpExch, String uri, Map<String, String> queryParams) throws Exception {
+
+		if (uri.startsWith("/idp_jump")) {
+			String redirectUrl = idpGuiUrl + "?redirect_uri=" + URLEncoder.encode(localUrl + "/idp_land", StandardCharsets.UTF_8.name()) + "&client_id=" + queryParams.get("client_id") + "&scope=" + URLEncoder.encode(queryParams.get("scope"));
+
+			System.out.println("  URL: " + redirectUrl);
+			httpExch.getResponseHeaders().add("Location", redirectUrl);
+			httpExch.sendResponseHeaders(303, 0);
+			httpExch.close();
+		} else {
+			String response = queryParams.get("error");
+			if (response == null) {
+				JWEObject jweObject = JWEObject.parse(queryParams.get("code"));
+				String jwtString = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(jweObject);
+				response = formatParam(queryParams, "scope") + formatParam(queryParams, "code") + "<pre>" + jwtString + "</pre>";
+			}
+			respond(httpExch, 200, "text/html", ("<HTML>" + response + "</HTML>").getBytes());
+		}
+	}
+
+	private static String formatParam(Map<String, String> queryParams, String name) throws UnsupportedEncodingException {
+		return "<p>" + name + ": " + URLDecoder.decode(queryParams.get(name), StandardCharsets.UTF_8.name()) + "</p>";
 	}
 
 	private void handleHook(HttpExchange httpExch) throws IOException {
@@ -208,12 +275,14 @@ public class Main implements HttpHandler {
 			uri = uri.substring(1);
 			if (uri.length() == 0) uri = "static/index.html";
 			else if (!uri.startsWith("static")) throw new NoSuchFileException("Not so fast here !");
+			uri = uri.replaceAll("\\.\\.", "").replaceAll("~", "");
 
 			Path path = Paths.get(uri);
 
 			System.out.println("Reading static file: " + uri);
 			bytes = Files.readAllBytes(path);
-			contentType = MimetypesFileTypeMap.getDefaultFileTypeMap().getContentType(path.getFileName().toString());
+
+			contentType = mimeTypeFor(path.getFileName().toString());
 
 		} catch(NoSuchFileException e) {
 			httpStatus = 404;
@@ -234,10 +303,169 @@ public class Main implements HttpHandler {
 		respond(httpExch, 200, "text/html", String.join(",", Arrays.asList(inFilesDir.list())).getBytes());
 	}
 
+	private void getSealingCredentials(HttpExchange httpExch) throws Exception {
+		byte response[] = null;
+		try {
+			String json = "{\"requestID\":\"11668764926004483530182899800\",\"lang\":\"en\",\"certificates\":\"chain\",\"certInfo\":false,\"authInfo\":false,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/certificateslistprotocol#\",\"signerIdentity\":null}";
 
-	private void handleJsonSign(HttpExchange httpExch, String[] queryParams) throws Exception {
-		String rawJson = queryParams[0].substring(5);
+			String reply = postJson(esealingUrl + "/credentials/list", json, true);
 
+			reply = getDelimitedValue(reply, "\"credentialIDs\":[", "]").replaceAll("\"", "");
+			System.out.println("Esealing credentials : " + reply);
+			response = reply.getBytes(StandardCharsets.UTF_8);
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.out.println("No esealing credential found");
+		}
+		respond(httpExch, 200, "text/html", response);
+	}
+
+	private static byte fileData[];
+	private static String fileName;
+
+	private void handleGetFile(HttpExchange httpExch, Map<String, String> queryParams) throws IOException {
+		if (fileData != null) {
+			httpExch.getResponseHeaders().add("Content-Type", fileName);
+			httpExch.getResponseHeaders().add("Cache-Control", "no-cache, no-store, must-revalidate");
+			httpExch.getResponseHeaders().add("Content-Transfer-Encoding", "binary");
+			httpExch.getResponseHeaders().add("Content-Disposition","attachment; filename=\"" + fileName + "\"");
+			httpExch.getResponseHeaders().add("Pragma", "no-cache");
+			httpExch.getResponseHeaders().add("Expires", "0");
+			httpExch.sendResponseHeaders(200, fileData.length);
+			OutputStream os = httpExch.getResponseBody();
+			os.write(fileData);
+			os.close();
+			httpExch.close();
+			fileData = null;
+		} else respond(httpExch, 200, "text/html", ("File not found !").getBytes());
+	}
+//	reply = "<script language=\"javascript\">window.onload=function() { document.getElementById('file').click(); } </script>" +
+//			"<a id='file' href='/getFile'></a><h1>Sealed document '" + outFilename + "' was downloaded</h1>";
+
+
+	// "Low footprint", "down to the bits", freestyle implementation (in the spirit of mintest) of an esal orchestration.
+	// We should use proper objects but I'd like to setup a structural solution to importing models from other applications
+	// unlike the copy/paste solution used in all the FTS projects
+
+	private void handleJsonSealing(HttpExchange httpExch, Map<String, String> queryParams) throws Exception {
+		//http://localhost:8081/seal?inFile=Riddled%20with%20errors.pdf&outFile=out.pdf&profile=PADES_1&lang=en&cred=final_sealing
+
+		String outFilename = queryParams.get("outFile");
+		String lang = queryParams.get("lang");
+
+		String json = "{\"requestID\":\"11668786643409505247592754000\",\"credentialID\":\"" + queryParams.get("cred") +
+				"\",\"lang\":\"" + lang + "\",\"returnCertificates\":\"chain\",\"certInfo\":true,\"authInfo\":true,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/credentialinfoprotocol#\"}";
+
+		String reply = postJson(esealingUrl + "/credentials/info", json, true);
+
+		String certs[] = getDelimitedValue(reply, "\"certificates\":[", "]").split(",");
+
+		String cert = null;
+		int i = certs.length;
+		String certChain[] = new String[certs.length - 1];
+		while(i-- != 0) {
+			cert = "{\"encodedCertificate\":" + certs[i] + "}";
+			if(i != 0) certChain[i - 1] = cert;
+		}
+
+		String document = getDocumentAsB64(inFilesDir, queryParams.get("inFile"));
+
+		json = "{\"clientSignatureParameters\":{\"signingCertificate\":" + cert +
+				",\"certificateChain\":[" + String.join(",", certChain) +"]},\"signingProfileId\":\"" + queryParams.get("profile") +
+				"\",\"toSignDocument\":{\"bytes\":\"" + document + "\"}}";
+
+		reply = postJson(signValidationUrl + "/signing/getDataToSign", json, false);
+
+		String hashToSign = getDelimitedValue(reply, "\"digest\" : \"", "\",");
+		String signingDate = getDelimitedValue(reply,"\"signingDate\" : \"", "\"");
+		DigestAlgorithm digestAlgo = DigestAlgorithm.valueOf(getDelimitedValue(reply, "digestAlgorithm\" : \"", "\","));
+
+		Digest digest = new Digest();
+		digest.setHashes(new String[] { hashToSign });
+		digest.setHashAlgorithmOID(digestAlgo.oid);
+		String sad = makeSAD(digest);
+		json = "{\"operationMode\":\"S\",\"requestID\":\"11668768431957487036136225500\"," +
+				"\"optionalData\":{\"returnSigningCertificateInfo\":true,\"returnSupportMultiSignatureInfo\":true,\"returnServicePolicyInfo\":true,\"returnSignatureCreationPolicyInfo\":true,\"returnCredentialAuthorizationModeInfo\":true,\"returnSoleControlAssuranceLevelInfo\":true}" +
+				",\"validity_period\":null,\"credentialID\":\"" + queryParams.get("cred") +
+				"\",\"lang\":\"" + lang + "\"," +
+				"\"numSignatures\":1,\"policy\":null,\"signaturePolicyID\":null,\"signAlgo\":\"1.2.840.10045.4.3.2\",\"signAlgoParams\":null,\"response_uri\":null,\"documentDigests\":{\"hashes\":[\"" + hashToSign +
+				"\"],\"hashAlgorithmOID\":\"2.16.840.1.101.3.4.2.1\"},\"sad\":\"" + sad + "\"}";
+
+		reply = postJson(esealingUrl + "/signatures/signHash", json, true);
+
+		String signedHash = getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
+
+		// Since eSealing is using TEST (see testpki) certificates with their own lifecycles, CRL, no-OCSP, ... influencing revocation freshness
+		// We must request a custom policy/constraint to validate those in TA/QA/...
+		String validatePolicy = getDocumentAsB64(filesDir, "esealingConstraint.xml");
+		json = "{\"toSignDocument\":{\"bytes\":\"" + document + "\",\"digestAlgorithm\":null,\"name\":\"RemoteDocument\"},\"signingProfileId\":\"" + queryParams.get("profile") +
+				"\",\"clientSignatureParameters\":{\"signingCertificate\":" + cert +
+				",\"certificateChain\":[" + String.join(",", certChain) + "],\"detachedContents\":null,\"signingDate\":\"" + signingDate +
+				"\"},\"signatureValue\":\"" + signedHash + "\", \"validatePolicy\": { \"bytes\": \"" + validatePolicy + "\"}}\n";
+
+		reply = postJson(signValidationUrl + "/signing/signDocument", json, false);
+
+		byte outDoc[] = Base64.getDecoder().decode(getDelimitedValue(reply, "\"bytes\" : \"", "\","));
+		String outDocString = new String(outDoc);
+
+		String displayAs = queryParams.get("displayAs");
+		if ("ascii".equals(displayAs)) {
+			reply = "<HTML><pre style=\"white-space: pre-wrap; word-wrap: break-word;\">" + outDocString + "</pre></HTML>";
+		} else  if ("JWT".equals(displayAs)) {
+			reply = "<HTML><pre style=\"white-space: pre-wrap; word-wrap: break-word;\">" + toStringJWT(outDocString) + "</pre></HTML>";
+		} else  if ("JSON".equals(displayAs)) {
+			reply = "<HTML><pre style=\"white-space: pre-wrap; word-wrap: break-word;\">" + toStringJSON(outDocString) + "</pre></HTML>";
+		} else {
+			fileData = outDoc;
+			fileName = outFilename;
+
+			reply = "<script language=\"javascript\">window.onload=function() { document.getElementById('file').click(); } </script>" +
+					"<a id='file' href='/getFile'></a><h1>Sealed document '" + outFilename + "' was downloaded</h1>";
+		}
+
+		respond(httpExch, 200, "text/html", reply.getBytes());
+	}
+
+	protected String makeSAD(Digest documentDigests) throws Exception {
+		KeyStore ks = KeyStore.getInstance("PKCS12");
+		ks.load(new FileInputStream(sadKeyFile), sadKeyPwd.toCharArray());
+		Enumeration<String> aliases = ks.aliases();
+		PrivateKey sadSignKey = null;
+		X509Certificate sadSignCert = null;
+		while (aliases.hasMoreElements()) {
+			String alias = aliases.nextElement();
+			if (ks.isKeyEntry(alias)) {
+				KeyStore.PrivateKeyEntry entry = (KeyStore.PrivateKeyEntry)
+						ks.getEntry(alias, new KeyStore.PasswordProtection(sadKeyPwd.toCharArray()));
+				sadSignKey = entry.getPrivateKey();
+				sadSignCert = (X509Certificate) (entry.getCertificateChain())[0];
+				break;
+			}
+		}
+
+		// Serialize the documentDigests to json, this is the JWS header
+		ObjectMapper objectMapper = new ObjectMapper();
+		StringWriter out = new StringWriter();
+		objectMapper.writeValue(out, documentDigests);
+		String sadData = out.toString();
+
+		// Create the JWS header,
+		// the kid (key id) value = the certificate serial number, hex encoded (no capitals)
+		String sadSigSerialNr = sadSignCert.getSerialNumber().toString(16);
+		System.out.println("SAD Serial number: " + sadSigSerialNr);
+
+		JWSObject jwsObject = new JWSObject(
+				new JWSHeader.Builder(JWSAlgorithm.ES384).keyID(sadSigSerialNr).build(),
+				new Payload(sadData));
+
+		// Sign the JWS
+		jwsObject.sign(new ECDSASigner((ECPrivateKey) sadSignKey));
+		String sad = jwsObject.serialize();
+
+		return sad;
+	}
+
+	private String makeJson(String rawJson) throws Exception {
 		StringBuilder sb = new StringBuilder();
 		int len = rawJson.length();
 		int off = 0;
@@ -264,8 +492,11 @@ public class Main implements HttpHandler {
 					break;
 			}
 		}
+		return sb.toString();
+	}
 
-		String json = sb.toString();
+	private void handleJsonSign(HttpExchange httpExch, Map<String, String> queryParams) throws Exception {
+		String json = makeJson(queryParams.get("json"));
 
 		List<String> filesToUpload = new ArrayList<String>();
 		String outFiles;
@@ -276,10 +507,12 @@ public class Main implements HttpHandler {
 					"\"password\":\"" + s3Passwd + "\",");
 
 			outFiles = getToken(json, "outFilePath");
-			addTokens(json, "filePath", filesToUpload);
+			if (outFiles != null && outFiles.length() ==0) outFiles = null;
+
+				addTokens(json, "filePath", filesToUpload);
 			if (outFiles == null) {
-				outFiles = "";
 				String prefix = getToken(json, "outPathPrefix");
+				outFiles = "";
 				for(String inFile : filesToUpload) outFiles = outFiles + prefix + inFile + ",";
 				outFiles = outFiles.substring(0, outFiles.length() - 1);
 			}
@@ -299,11 +532,14 @@ public class Main implements HttpHandler {
 
 			outFiles = getToken(json, "out");
 		}
+
+		for(int i = filesToUpload.size() - 1; i >= 0; i--) if (filesToUpload.get(i).startsWith("notFound")) filesToUpload.remove(i);
+
 		uploadFiles(filesToUpload);
 
 		System.out.println("Out file(s) : " + outFiles);
 
-		createTokenAndRedirect(getTokenUrl + (multidoc ? "s" : ""), json, outFiles, String.join(",", filesToUpload), queryParams, httpExch);
+		createTokenAndRedirect(signValidationSvcUrl + "/signing/getTokenForDocument" + (multidoc ? "s" : ""), json, outFiles, String.join(",", filesToUpload), queryParams, httpExch);
 	}
 
 	private String getToken(String json, String tokenName) {
@@ -337,9 +573,9 @@ public class Main implements HttpHandler {
 		}
 	}
 
-	private void createTokenAndRedirect(String url, String json, String out, String filesToDelete, String[] queryParams, HttpExchange httpExch) throws Exception {
+	private void createTokenAndRedirect(String url, String json, String out, String filesToDelete, Map<String, String> queryParams, HttpExchange httpExch) throws Exception {
 		System.out.println("JSON for the getToken call:\n" + json);
-		String token = postJson(url, json);
+		String token = postJson(url, json, false);
 
 		System.out.println("  DONE, received token = " + token);
 
@@ -351,10 +587,10 @@ public class Main implements HttpHandler {
 		System.out.println("  Callback: " + callbackURL);
 		String redirectUrl = bosaDssFrontend + "/sign/" + URLEncoder.encode(token) +
 				"?redirectUrl=" + URLEncoder.encode(callbackURL);
-		redirectUrl += "&HookURL=" + URLEncoder.encode(localUrl + "/hook");
+				redirectUrl += "&HookURL=" + URLEncoder.encode(localUrl + "/hook");
 
-		for(String queryParam : queryParams) {
-			if (!queryParam.startsWith("json")) redirectUrl += "&" + queryParam;
+		for(String key : queryParams.keySet()) {
+			if (!key.equals("json")) redirectUrl += "&" + key + "=" + queryParams.get(key);
 		}
 
 		System.out.println("  URL: " + redirectUrl);
@@ -370,16 +606,16 @@ public class Main implements HttpHandler {
 	 * The first part has been specified completely by us previously, only the 'err' and 'details'
 	 * have been added by the caller
 	 */
-	private void handleCallback(HttpExchange httpExch, String[] queryParams) throws Exception {
+	private void handleCallback(HttpExchange httpExch, Map<String, String> queryParams) throws Exception {
 
 		System.out.println("\n4. Callback");
 
-		String outFiles = getParam(queryParams, "out"); // this one we specified ourselves in handleSign()
+		String outFiles = queryParams.get("out"); // this one we specified ourselves in handleSign()
 
 		// These params were added by the BOSA DSS/front-end in case of an error
-		String ref = getParam(queryParams, "ref");
-		String err = getParam(queryParams, "err");
-		String details = getParam(queryParams, "details");
+		String ref = queryParams.get("ref");
+		String err = queryParams.get("err");
+		String details = queryParams.get("details");
 
 		String htmlBody = "";
 		if (null == err) {
@@ -418,7 +654,7 @@ public class Main implements HttpHandler {
 
 		// Delete everything the S3 server
 		MinioClient minioClient = getClient();
-		for(String fileToDelete : getParam(queryParams, "toDelete").split(",")) {
+		for(String fileToDelete : queryParams.get("toDelete").split(",")) {
 			deleteFileFromBucket(fileToDelete);
 		}
 
@@ -432,36 +668,39 @@ public class Main implements HttpHandler {
 		respond(httpExch, 200, "text/html", html.getBytes());
 	}
 
-	private void copyStream(InputStream in, OutputStream out) throws IOException {
-		byte[] buf = new byte[16384];
-		int bytesRead;
-		while ((bytesRead = in.read(buf, 0, buf.length)) >= 0)
-			out.write(buf, 0, bytesRead);
-		in.close();
-		out.close();
-	}
-
 	private void deleteFileFromBucket(String fileToDelete) throws Exception {
 		System.out.println("    Deleting from the S3 server :" + fileToDelete);
 		minioClient.removeObject(RemoveObjectArgs.builder().bucket(s3UserName).object(fileToDelete).build());
 	}
 
 	/** Do an HTTP POST of a json (a REST call) */
-	private String postJson(String urlStr, String json) throws Exception {
-		URL url = new URL(urlStr);
-		HttpURLConnection urlConn = (HttpURLConnection) url.openConnection();
-		urlConn.setRequestProperty("Content-Type", "application/json; utf-8");
-		urlConn.setDoOutput(true);
+	private static String postJson(String urlStr, String json, boolean addSealAuth) throws IOException {
+		System.out.println("Request from " + urlStr + " :" + json);
+		HttpURLConnection urlConn = null;
+		try {
+			URL url = new URL(urlStr);
+			urlConn = (HttpURLConnection) url.openConnection();
+			if (addSealAuth) {
+				System.out.println("Authorization Basic " + Base64.getEncoder().encodeToString("selor:test123".getBytes(StandardCharsets.UTF_8)));
+				System.out.println("Authorization Basic " + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8)));
+				urlConn.setRequestProperty("Authorization", "Basic " + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8)));
+			}
+			urlConn.setRequestProperty("Content-Type", "application/json; utf-8");
+			urlConn.setDoOutput(true);
 
-		OutputStream os = urlConn.getOutputStream();
-		os.write(json.getBytes("utf-8"));
+			OutputStream os = urlConn.getOutputStream();
+			os.write(json.getBytes("utf-8"));
 
-		InputStream is = urlConn.getInputStream();
-		byte[] buf = new byte[5000];
-		int len = is.read(buf);
-		String ret = new String(buf, 0, len).trim();
-
-		return ret;
+			String reply = streamToString(urlConn.getInputStream());
+			System.out.println("Reply from " + urlStr + " :" + reply);
+			return reply;
+		}
+		catch(Exception e) {
+			if (urlConn != null) {
+				throw new IOException(streamToString(urlConn.getErrorStream()));
+			}
+		}
+		return null;
 	}
 		
 	/** Send back a response to the client */
@@ -495,15 +734,6 @@ public class Main implements HttpHandler {
 		return minioClient;
 	}
 
-	/** 'params' consist of name=value pairs, we want the value for the requested name */
-	private String getParam(String[] params, String name) throws Exception {
-		for (String p : params) {
-			if (p.startsWith(name))
-				return p.substring(p.indexOf("=") + 1);
-		}
-		return null;
-	}
-
 	private void uploadFiles(List<String> filePaths) throws Exception {
 		for(String filePath : filePaths) uploadFile(filePath);
 	}
@@ -520,6 +750,25 @@ public class Main implements HttpHandler {
 				.object(f.getName())
 				.stream(fis, f.length(), S3_PART_SIZE)
 			.build());
+	}
+
+	private static String mimeTypeFor(String filename) {
+		String type = "text/plain";
+		int pos = filename.lastIndexOf('.');
+		if (pos >= 0) {
+			String extension = filename.substring(pos + 1).toLowerCase(Locale.ROOT);
+			if (extension.equals("xml")) type = "application/xml";
+			if (extension.equals("pdf")) type = "application/pdf";
+			if (extension.equals("js")) type = "text/javascript";
+			if (extension.equals("html") || extension.equals("htm")) type = "text/html";
+		}
+		return type;
+	}
+
+	/** Map filename to profile name */
+	private String profileFor(String filename) {
+		String type = mimeTypeFor(filename);
+		return sigProfiles.containsKey(type) ? sigProfiles.get(type) : "CADES_1";
 	}
 
 	private JSONObject decodeJWTToken(String jwtToken) throws Exception {
@@ -539,4 +788,59 @@ public class Main implements HttpHandler {
 
 		return new JSONObject(new String(java.util.Base64.getDecoder().decode(parts[1])));
 	}
+
+	private static String toStringJWT(String rawJwt) {
+		String bits[] = rawJwt.split("\\.");
+		return "HEADER: " + toStringB64JSON(bits[0]) + "\nPAYLOAD: " + toStringB64JSON(bits[1]) + "\nSIGNATURE: " + bits[2];
+	}
+
+	private static String toStringB64JSON(String b64) {
+		return new JSONObject(new String(Base64.getDecoder().decode(b64))).toString(4);
+	}
+
+	private static String toStringJSON(String json) {
+		return new JSONObject(json).toString(4);
+	}
+
+	private static String streamToString(InputStream in) throws IOException {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream(4096*4);
+		copyStream(in, baos);
+		baos.close();
+		in.close();
+		return new String(baos.toByteArray());
+	}
+
+	private static String getDocumentAsB64(File folder, String inFile) throws IOException {
+		return Base64.getEncoder().encodeToString(getDocument(folder, inFile));
+	}
+	private static String getDocumentAsString(File folder, String inFile) throws IOException {
+		return streamToString(new FileInputStream(new File(folder, inFile)));
+	}
+	private static byte[] getDocument(File folder, String inFile) throws IOException {
+		FileInputStream fis = new FileInputStream(new File(folder, inFile));
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		copyStream(fis, baos);
+		baos.close();
+		fis.close();
+		return baos.toByteArray();
+	}
+
+	private static void copyStream(InputStream in, OutputStream out) throws IOException {
+		byte[] buf = new byte[16384];
+		int bytesRead;
+		while ((bytesRead = in.read(buf, 0, buf.length)) >= 0)
+			out.write(buf, 0, bytesRead);
+		in.close();
+		out.close();
+	}
+
+	private static String getDelimitedValue(String str, String beginMark, String endMark) throws Exception {
+		int pos = str.indexOf(beginMark);
+		if (pos < 0) throw new Exception("No " + beginMark + " ?");
+		pos += beginMark.length();
+		int endPos = str.indexOf(endMark, pos);
+		if (endPos < 0) throw new Exception("No "+ endMark + " after " + beginMark + " ?");
+		return str.substring(pos, endPos);
+	}
+
 }
