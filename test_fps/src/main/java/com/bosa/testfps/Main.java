@@ -35,14 +35,14 @@ import org.json.JSONObject;
  *      optionally, in case of an xml, a corresponding .xslt file can be uploaded
  *      optionally, in case of PDF visible signature, a .psp file can be uploaded
  * - the FPS obtains a token (a string) for this doc from the BOSA DSS server
-         remark: this 'token' has nothing to do with OAuth or OpenID
+ remark: this 'token' has nothing to do with OAuth or OpenID
  * - the FPS redirects the user to the BOSA DSS front-end server
  * - after a signed doc is created (and put on the BOSA S3 server), the user does a callback to the FPS
  * - the FPS retreives the signed doc from the BOSA S3 server and deletes the unsigned and signed docs (and xslt, psp)
  * </pre>
  *
  * Documentation: https://github.com/Fedict/fts-documentation
- * 
+ *
  * S3 info (to upload, download and delete files to/from an S3 server):
  *   https://docs.min.io/docs/minio-quickstart-guide.html
  *   https://github.com/minio/minio-java/tree/master/examples
@@ -83,14 +83,14 @@ public class Main implements HttpHandler {
 	private static final String SIGNED_DIR = "signed";
 
 	private static final String HTML_START =
-		"<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\">\n" +
-		"<title>FPS test signing service</title>\n  </head>\n  <body>\n";
+			"<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\">\n" +
+					"<title>FPS test signing service</title>\n  </head>\n  <body>\n";
 
 	private static final String HTML_END = "</body>\n</html>\n";
 
 	// This is defined by the firewall settings, don't change!
 	private static int S3_PART_SIZE = 5 * 1024 * 1024;
-	
+
 	private static final Map<String, String> sigProfiles = new HashMap<String, String>();
 
 	/** Start of the program */
@@ -154,8 +154,8 @@ public class Main implements HttpHandler {
 	 *  - the home page, where the user starts the signature process
 	 *  - /sign, where
 	 *      - the unsigned doc is uploaded to the S3,
-	        - a getToken is done and
-		- the user is redirected to the BOSA DSS front-endpoint
+	 - a getToken is done and
+	 - the user is redirected to the BOSA DSS front-endpoint
 	 *  - /callback, where we are notified that the signature process is done (or failed/aborted)
 	 *        and we download the signed doc and then delete the unsigned/signed docs
 	 * </pre>
@@ -389,7 +389,7 @@ public class Main implements HttpHandler {
 				",\"validity_period\":null,\"credentialID\":\"" + queryParams.get("cred") +
 				"\",\"lang\":\"" + lang + "\"," +
 				"\"numSignatures\":1,\"policy\":null,\"signaturePolicyID\":null,\"signAlgo\":\"1.2.840.10045.4.3.2\",\"signAlgoParams\":null,\"response_uri\":null,\"documentDigests\":{\"hashes\":[\"" + hashToSign +
-				"\"],\"hashAlgorithmOID\":\"2.16.840.1.101.3.4.2.1\"},\"sad\":\"" + sad + "\"}";
+				"\"],\"hashAlgorithmOID\":\"" + digestAlgo.oid + "\"},\"sad\":\"" + sad + "\"}";
 
 		reply = postJson(esealingUrl + "/signatures/signHash", json, true);
 
@@ -509,7 +509,7 @@ public class Main implements HttpHandler {
 			outFiles = getToken(json, "outFilePath");
 			if (outFiles != null && outFiles.length() ==0) outFiles = null;
 
-				addTokens(json, "filePath", filesToUpload);
+			addTokens(json, "filePath", filesToUpload);
 			if (outFiles == null) {
 				String prefix = getToken(json, "outPathPrefix");
 				outFiles = "";
@@ -587,7 +587,7 @@ public class Main implements HttpHandler {
 		System.out.println("  Callback: " + callbackURL);
 		String redirectUrl = bosaDssFrontend + "/sign/" + URLEncoder.encode(token) +
 				"?redirectUrl=" + URLEncoder.encode(callbackURL);
-				redirectUrl += "&HookURL=" + URLEncoder.encode(localUrl + "/hook");
+		redirectUrl += "&HookURL=" + URLEncoder.encode(localUrl + "/hook");
 
 		for(String key : queryParams.keySet()) {
 			if (!key.equals("json")) redirectUrl += "&" + key + "=" + queryParams.get(key);
@@ -648,8 +648,8 @@ public class Main implements HttpHandler {
 			System.out.println("  Details: " + details);
 
 			htmlBody = "Signing failed\n\n<br><br>\nReference: " + ref + "<br>\nError: " + err +
-				(null == details ? "" : ("\n<br>\nDetails: " + URLDecoder.decode(details))) +
-				"<br><br>\n\nClick <a href=\"/\">here</a> to try again\n";
+					(null == details ? "" : ("\n<br>\nDetails: " + URLDecoder.decode(details))) +
+					"<br><br>\n\nClick <a href=\"/\">here</a> to try again\n";
 		}
 
 		// Delete everything the S3 server
@@ -702,7 +702,7 @@ public class Main implements HttpHandler {
 		}
 		return null;
 	}
-		
+
 	/** Send back a response to the client */
 	private void respond(HttpExchange httpExch, int status, String contentType, byte[] data) {
 		try {
@@ -726,10 +726,10 @@ public class Main implements HttpHandler {
 		if (null == minioClient) {
 			// Create client
 			minioClient =
-				MinioClient.builder()
-					.endpoint(s3Url)
-					.credentials(s3UserName, s3Passwd)
-					.build();
+					MinioClient.builder()
+							.endpoint(s3Url)
+							.credentials(s3UserName, s3Passwd)
+							.build();
 		}
 		return minioClient;
 	}
@@ -745,11 +745,11 @@ public class Main implements HttpHandler {
 		FileInputStream fis = new FileInputStream(f);
 
 		getClient().putObject(
-			PutObjectArgs.builder()
-				.bucket(s3UserName)
-				.object(f.getName())
-				.stream(fis, f.length(), S3_PART_SIZE)
-			.build());
+				PutObjectArgs.builder()
+						.bucket(s3UserName)
+						.object(f.getName())
+						.stream(fis, f.length(), S3_PART_SIZE)
+						.build());
 	}
 
 	private static String mimeTypeFor(String filename) {
