@@ -49,6 +49,7 @@ import org.json.JSONObject;
  */
 public class Main implements HttpHandler {
 
+	private static Boolean cleanupTempFiles = true;
 	private static String s3Url;
 	private static String s3UserName;
 	private static String s3Passwd;
@@ -101,6 +102,8 @@ public class Main implements HttpHandler {
 		config.load(new FileInputStream("config.txt"));
 
 		int port =     Integer.parseInt(config.getProperty("port"));
+
+		cleanupTempFiles =   Boolean.valueOf(config.getProperty("cleanupTempFiles"));
 
 		s3UserName =   config.getProperty("s3UserName");
 		s3Passwd =     config.getProperty("s3Passwd");
@@ -654,13 +657,16 @@ public class Main implements HttpHandler {
 
 		// Delete everything the S3 server
 		MinioClient minioClient = getClient();
-		for(String fileToDelete : queryParams.get("toDelete").split(",")) {
-			deleteFileFromBucket(fileToDelete);
-		}
 
-		for(String fileToDelete : outFiles.split(",")) {
-			deleteFileFromBucket(fileToDelete);
-			deleteFileFromBucket(fileToDelete + ".validationreport.json");
+		if (cleanupTempFiles) {
+			for(String fileToDelete : queryParams.get("toDelete").split(",")) {
+				deleteFileFromBucket(fileToDelete);
+			}
+
+			for(String fileToDelete : outFiles.split(",")) {
+				deleteFileFromBucket(fileToDelete);
+				deleteFileFromBucket(fileToDelete + ".validationreport.json");
+			}
 		}
 
 		// Return a message to the user
