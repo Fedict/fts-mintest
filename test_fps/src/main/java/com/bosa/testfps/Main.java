@@ -49,7 +49,7 @@ import org.json.JSONObject;
  */
 public class Main implements HttpHandler {
 
-	private static Boolean cleanupTempFiles = true;
+	private static Boolean cleanupTempFiles;
 	private static String s3Url;
 	private static String s3UserName;
 	private static String s3Passwd;
@@ -103,7 +103,8 @@ public class Main implements HttpHandler {
 
 		int port =     Integer.parseInt(config.getProperty("port"));
 
-		cleanupTempFiles =   Boolean.valueOf(config.getProperty("cleanupTempFiles"));
+		String cleanupTempFilesStr = config.getProperty("cleanupTempFiles");
+		cleanupTempFiles =  cleanupTempFilesStr != null ? Boolean.valueOf(cleanupTempFilesStr) : true;
 
 		s3UserName =   config.getProperty("s3UserName");
 		s3Passwd =     config.getProperty("s3Passwd");
