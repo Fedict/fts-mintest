@@ -660,8 +660,11 @@ public class Main implements HttpHandler {
 		MinioClient minioClient = getClient();
 
 		if (cleanupTempFiles) {
-			for(String fileToDelete : queryParams.get("toDelete").split(",")) {
-				deleteFileFromBucket(fileToDelete);
+			String filesToDelete = queryParams.get("toDelete");
+			if (!filesToDelete.equals("")) {
+				for(String fileToDelete : queryParams.get("toDelete").split(",")) {
+					deleteFileFromBucket(fileToDelete);
+				}
 			}
 
 			for(String fileToDelete : outFiles.split(",")) {
