@@ -278,8 +278,10 @@ public class Main implements HttpHandler {
 		try {
 			uri = uri.substring(1);
 			if (uri.length() == 0) uri = "static/index.html";
-			else if (!uri.startsWith("static")) throw new NoSuchFileException("Not so fast here !");
-			uri = uri.replaceAll("\\.\\.", "").replaceAll("~", "");
+			else {
+				if (!uri.startsWith("static")) throw new NoSuchFileException("Not so fast here !");
+				uri = uri.replaceAll("\\.\\.", "").replaceAll("~", "");
+			}
 
 			Path path = Paths.get(uri);
 
@@ -633,7 +635,7 @@ public class Main implements HttpHandler {
 					InputStream stream = minioClient.getObject(GetObjectArgs.builder().bucket(s3UserName).object(out).build());
 					if (!outFilesDir.exists()) outFilesDir.mkdirs();
 
-					File f = new File(outFilesDir, out);
+					File f = new File(outFilesDir, sanitize(out));
 					copyStream(stream, new FileOutputStream(f));
 					System.out.println("    File is downloaded to " + f.getAbsolutePath());
 				} catch(ErrorResponseException e) {
@@ -678,7 +680,12 @@ public class Main implements HttpHandler {
 		respond(httpExch, 200, "text/html", html.getBytes());
 	}
 
+	private static String sanitize(String path) {
+		return path.replaceAll("/", "");
+	}
+
 	private void deleteFileFromBucket(String fileToDelete) throws Exception {
+		fileToDelete = sanitize(fileToDelete);
 		System.out.println("    Deleting from the S3 server :" + fileToDelete);
 		minioClient.removeObject(RemoveObjectArgs.builder().bucket(s3UserName).object(fileToDelete).build());
 	}
@@ -750,6 +757,7 @@ public class Main implements HttpHandler {
 
 	private void uploadFile(String fileName) throws Exception {
 
+		fileName = sanitize(fileName);
 		System.out.println("   Uploading " + fileName + " to the S3 server...");
 		File f = new File(inFilesDir, fileName);
 		FileInputStream fis = new FileInputStream(f);
@@ -827,7 +835,7 @@ public class Main implements HttpHandler {
 		return streamToString(new FileInputStream(new File(folder, inFile)));
 	}
 	private static byte[] getDocument(File folder, String inFile) throws IOException {
-		FileInputStream fis = new FileInputStream(new File(folder, inFile));
+		FileInputStream fis = new FileInputStream(new File(folder, sanitize(inFile)));
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		copyStream(fis, baos);
 		baos.close();
