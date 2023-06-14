@@ -52,6 +52,10 @@
             <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'selectDocuments'@strue@S'previewDocuments'@strue@S'outFilePath'@s'sig_test.xml'@S'signProfile'@s'XADES_1'@S'signTimeout'@s2@S'inputs'@s@O@o'filePath'@s'test.xml'@c@C@c&language=nl">test.xml with signTimeout=2</a></li>
             <li><a href="/sign?json=@o'in'@s'notFound.xml'@S'out'@s'no.xml'@S'prof'@s'XADES_LTA'@S'signTimeout'@s9999@c">Sign a missing bucket file</a></li>
         </ul>
+        <p>Select a validateSignature test case</p>
+        <ul>
+            <li><a href="/validate_jump?file=Foreign_trust_signed.xml&extra_trust=extra_trust.der">Validate with extra trust root</a></li>
+        </ul>
     </div>
     <div style="padding: 30px">
         <p>Select an IDP test case (<a href="/swagger?to=idp">SWAGGER API Doc</a>):</p>
@@ -70,7 +74,6 @@
             <li><a href="/seal?inFile=test.json&outFile=out.json&profile=JADES_LT&lang=de&cred=final_sealing&displayAs=JSON">Seal JADES_LT(FLATTENED_JSON_SERIALIZATION) "test.pdf" with "Final Sealing" cert</a></li>
             <li><a href="/seal?inFile=test.json&outFile=out.json&profile=JADES_LTA&lang=nl&cred=interm_sealing&displayAs=JSON">Seal JADES_LTA(JSON_SERIALIZATION) "test.pdf" with "Intermediate Sealing" cert</a></li>
         </ul>
-
     </div>
 </div>
 </body>

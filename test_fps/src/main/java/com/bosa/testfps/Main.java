@@ -61,7 +61,6 @@ public class Main implements HttpHandler {
 	private static String signValidationUrl;
 	private static String idpGuiUrl;
 	private static String idpUrl;
-	private static String esealingSvcUrl;
 	private static String esealingUrl;
 	private static String sadKeyFile;
 	private static String sadKeyPwd;
@@ -75,10 +74,6 @@ public class Main implements HttpHandler {
 	// Default profiles
 	private static String XADES_DEF_PROFILE = "XADES_1";
 	private static String PADES_DEF_PROFILE = "PADES_1";
-
-	private static String NAME = "FPS XXX"; // is displayed in user's browser
-
-	private static String LANGUAGE = "en"; // options: en, nl, fr, de
 
 	private static final String UNSIGNED_DIR = "unsigned";
 	private static final String SIGNED_DIR = "signed";
@@ -115,7 +110,6 @@ public class Main implements HttpHandler {
 		sadKeyFile =   config.getProperty("sadKeyFile");
 		sadKeyPwd =   config.getProperty("sadKeyPwd");
 
-		esealingSvcUrl = config.getProperty("easealingSvcUrl");
 		esealingUrl = config.getProperty("easealingUrl");
 
 		signValidationSvcUrl =  config.getProperty("getTokenUrl").replace("/signing/getTokenForDocument", "");
@@ -189,6 +183,8 @@ public class Main implements HttpHandler {
 				handleHook(httpExch);
 			} else if (uri.startsWith("/getFileList")) {
 				getFileList(httpExch);
+			} else if (uri.startsWith("/validate_jump")) {
+				validate(httpExch, queryParams);
 			} else if (uri.startsWith("/sign?json=")) {
 				handleJsonSign(httpExch, queryParams);
 			} else if (uri.startsWith("/seal?")) {
@@ -268,6 +264,21 @@ public class Main implements HttpHandler {
 		httpExch.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
 		httpExch.sendResponseHeaders(200, 0);
 		httpExch.close();
+	}
+
+	private void validate(HttpExchange httpExch, Map<String, String> queryParams) throws Exception {
+
+		System.out.println("Validating file : " + queryParams);
+
+		String json = "{\"signedDocument\": {" + getValidateFileAsJSONField("bytes", queryParams.get("file")) + "}," + getValidateFileAsJSONField("extraTrustCertificate", queryParams.get("extra_trust")) + "}";
+		String reply = postJson(signValidationUrl + "/validation/validateSignature", json, false);
+		respond(httpExch, 200, "text/plain", reply.getBytes());
+	}
+
+	private String getValidateFileAsJSONField(String jsonFieldName, String fileName) throws IOException {
+		System.out.println("Reading file : " + fileName + " as field " + jsonFieldName);
+		Path filePath = Paths.get("files/validate/" + sanitize(fileName));
+		return "\"" + jsonFieldName + "\": \"" + Base64.getEncoder().encodeToString(Files.readAllBytes(filePath)) + "\"";
 	}
 
 	private void handleStatic(HttpExchange httpExch, String uri) {
@@ -698,8 +709,8 @@ public class Main implements HttpHandler {
 			URL url = new URL(urlStr);
 			urlConn = (HttpURLConnection) url.openConnection();
 			if (addSealAuth) {
-				System.out.println("Authorization Basic " + Base64.getEncoder().encodeToString("selor:test123".getBytes(StandardCharsets.UTF_8)));
-				System.out.println("Authorization Basic " + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8)));
+				System.out.println("Authorization Basic (selor:test123) =" + Base64.getEncoder().encodeToString("selor:test123".getBytes(StandardCharsets.UTF_8)));
+				System.out.println("Authorization Basic (sealing:123456) =" + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8)));
 				urlConn.setRequestProperty("Authorization", "Basic " + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8)));
 			}
 			urlConn.setRequestProperty("Content-Type", "application/json; utf-8");
@@ -713,7 +724,8 @@ public class Main implements HttpHandler {
 			return reply;
 		}
 		catch(Exception e) {
-			if (urlConn != null) {
+			e.printStackTrace();
+			if (urlConn != null && urlConn.getErrorStream() != null) {
 				throw new IOException(streamToString(urlConn.getErrorStream()));
 			}
 		}
