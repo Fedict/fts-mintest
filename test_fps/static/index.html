@@ -54,7 +54,10 @@
         </ul>
         <p>Select a validateSignature test case</p>
         <ul>
-            <li><a href="/validate_jump?file=Foreign_trust_signed.xml&extra_trust=extra_trust.der">Validate with extra trust root</a></li>
+            <li><a href="/validate_jump?file=Foreign_trust_signed.xml&cert0=extra_trust.der">Validate with 1 cert as extra trust root</a></li>
+            <li><a href="/validate_jump?file=Foreign_trust_signed.xml&cert0=extra_trust.der&cert1=BelgiumRootCA4.DER">Validate with 2 certs as extra trust root</a></li>
+            <li><a href="/validate_jump?file=Foreign_trust_signed.xml&keystore=extra_trust.p12&password=123456">Validate with 1 keystore as extra trust root</a></li>
+            <li><a href="/validate_jump?file=Foreign_trust_signed.xml&cert0=extra_trust.der&cert1=BelgiumRootCA4.DER&keystore=extra_trust.p12&password=123456">Validate with 1 keystore and 2 certs extra trust root</a></li>
         </ul>
     </div>
     <div style="padding: 30px">

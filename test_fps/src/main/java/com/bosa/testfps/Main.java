@@ -270,15 +270,56 @@ public class Main implements HttpHandler {
 
 		System.out.println("Validating file : " + queryParams);
 
-		String json = "{\"signedDocument\": {" + getValidateFileAsJSONField("bytes", queryParams.get("file")) + "}," + getValidateFileAsJSONField("extraTrustCertificate", queryParams.get("extra_trust")) + "}";
+		String json = "{" +
+						"\"signedDocument\": {" + getValidateFileAsJSONField("bytes", queryParams, "file") + "}," +
+						"\"trust\": {";
+
+		String certs = getValidateFileAsJSONField("certs", queryParams, "cert*");
+		if (certs.length() != 0) json += certs + ",";
+
+		String keyStore = getValidateFileAsJSONField("keystore", queryParams, "keystore");
+		if (keyStore.length() != 0) {
+			json += keyStore + ",";
+			String password = queryParams.get("password");
+			if (password != null) json += "\"password\": \"" + password + "\",";
+		}
+
+		if (json.endsWith(",")) json = json.substring(0, json.length() -1);
+		json += "} }";
 		String reply = postJson(signValidationUrl + "/validation/validateSignature", json, false);
 		respond(httpExch, 200, "text/plain", reply.getBytes());
 	}
 
-	private String getValidateFileAsJSONField(String jsonFieldName, String fileName) throws IOException {
-		System.out.println("Reading file : " + fileName + " as field " + jsonFieldName);
+	private String getValidateFileAsJSONField(String jsonFieldName, Map<String, String> queryParams, String fieldName) throws IOException {
+		StringBuffer sb = new StringBuffer();
+		sb.append("\"").append(jsonFieldName).append("\": ");
+		if (fieldName.endsWith("*")) {
+			sb.append("[ ");
+			fieldName = fieldName.substring(0, fieldName.length() - 1);
+			int count = 0;
+			while(true) {
+				String fName = queryParams.get(fieldName + Integer.toString(count++));
+				if (fName == null) {
+					if (count == 1) return "";
+					break;
+				}
+				getValidateFile(sb, fName);
+				sb.append(",");
+			}
+			sb.setLength(sb.length() - 1);
+			sb.append(" ]");
+		} else {
+			String fName = queryParams.get(fieldName);
+			if (fName == null) return "";
+			getValidateFile(sb, fName);
+		}
+		return sb.toString();
+	}
+
+	private void getValidateFile(StringBuffer sb, String fileName) throws IOException {
+		System.out.println("Reading file : " + fileName);
 		Path filePath = Paths.get("files/validate/" + sanitize(fileName));
-		return "\"" + jsonFieldName + "\": \"" + Base64.getEncoder().encodeToString(Files.readAllBytes(filePath)) + "\"";
+		sb.append("\"").append(Base64.getEncoder().encodeToString(Files.readAllBytes(filePath)) ).append("\"");
 	}
 
 	private void handleStatic(HttpExchange httpExch, String uri) {
