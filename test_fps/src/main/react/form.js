@@ -11,7 +11,7 @@ class NameForm extends React.Component {
 
     this.profilePerType = {
         pdf: ["PADES_1", "PADES_LTA", "PADES_LTA_EXP_ALLOW", "PADES_LTA_TST_TSS"],
-        xml: ["XADES_1", "XADES_2", "XADES_LT", "XADES_LTA"],
+        xml: ["XADES_1", "XADES_2", "XADES_LT", "XADES_LTA", "XADES_DETACHED_LTA"],
         bin: ["CADES_1", "CADES_2", "CADES_LTA", "CADES_LTA_ENVELOPING"]
     }
 
