@@ -1,8 +1,8 @@
 {
   "bgColor" : "#D0D0D0",
   "texts" : {
-    "en": "Signed by %gn% %sn%\nOn %d(YYYY d MMM HH mm z)%",
-    "nl": "Getekend door %gn% %sn%\nOp %d(YYYY d MMM HH mm z)%",
+    "en": "Signed by %gn% %sn%\nOn %d(YYYY d MMM HH mm Z)%",
+    "nl": "Getekend door %gn% %sn%\nOp %d(YYYY d MMM HH mm X)%",
     "fr": "Signé par %gn% %sn%\nLe %d(YYYY d MMM HH mm z)%",
     "de": "Unterzeichnet von %gn% %sn%\nAm %d(YYYY d MMM HH mm z)%"
   },
