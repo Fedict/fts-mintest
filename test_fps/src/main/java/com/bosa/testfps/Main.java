@@ -64,6 +64,8 @@ public class Main implements HttpHandler {
 	private static String esealingUrl;
 	private static String sadKeyFile;
 	private static String sadKeyPwd;
+	private static boolean showSealing;
+	private static boolean showIDP;
 
 	private static String bosaDssFrontend;
 
@@ -101,28 +103,31 @@ public class Main implements HttpHandler {
 		String cleanupTempFilesStr = config.getProperty("cleanupTempFiles");
 		cleanupTempFiles =  cleanupTempFilesStr != null ? Boolean.valueOf(cleanupTempFilesStr) : true;
 
-		s3UserName =   config.getProperty("s3UserName");
-		s3Passwd =     config.getProperty("s3Passwd");
-		s3Url =        config.getProperty("s3Url");
-		idpGuiUrl =	   config.getProperty("idpGuiUrl");
-		idpUrl = 	   config.getProperty("idpUrl");
+		s3UserName		= config.getProperty("s3UserName");
+		s3Passwd		= config.getProperty("s3Passwd");
+		s3Url			= config.getProperty("s3Url");
+		idpGuiUrl		= config.getProperty("idpGuiUrl");
+		idpUrl			= config.getProperty("idpUrl");
 
-		sadKeyFile =   config.getProperty("sadKeyFile");
-		sadKeyPwd =   config.getProperty("sadKeyPwd");
+		sadKeyFile		= config.getProperty("sadKeyFile");
+		sadKeyPwd		= config.getProperty("sadKeyPwd");
 
-		esealingUrl = config.getProperty("easealingUrl");
+		esealingUrl		= config.getProperty("easealingUrl");
 
 		signValidationSvcUrl =  config.getProperty("getTokenUrl").replace("/signing/getTokenForDocument", "");
 		signValidationUrl =  config.getProperty("signValidationUrl");
 
-		filesDir =     new File(config.getProperty("fileDir"));
-		inFilesDir =   new File(filesDir, UNSIGNED_DIR);
-		String tmp  =  config.getProperty("outFileDir");
-		outFilesDir =  (null == tmp) ? new File(filesDir, SIGNED_DIR) : new File(tmp);
+		filesDir		= new File(config.getProperty("fileDir"));
+		inFilesDir		= new File(filesDir, UNSIGNED_DIR);
+		String tmp		= config.getProperty("outFileDir");
+		outFilesDir		= (null == tmp) ? new File(filesDir, SIGNED_DIR) : new File(tmp);
 
-		bosaDssFrontend =  config.getProperty("bosaDssFrontend");
+		bosaDssFrontend = config.getProperty("bosaDssFrontend");
 
-		localUrl =     config.getProperty("localUrl");
+		localUrl		= config.getProperty("localUrl");
+
+		showSealing = "true".equals(config.getProperty("showSealing"));
+		showIDP			= "true".equals(config.getProperty("showIDP"));
 
 		String xadesProfile = config.getProperty("xadesProfile");
 		sigProfiles.put("application/xml", (null == xadesProfile) ? XADES_DEF_PROFILE : xadesProfile);
@@ -323,23 +328,28 @@ public class Main implements HttpHandler {
 	}
 
 	private void handleStatic(HttpExchange httpExch, String uri) {
+		List<String> tagsToFilter = new ArrayList<>();
 		int httpStatus = 200;
 		byte[] bytes = null;
 		String contentType = "text/plain";
 
 		try {
 			uri = uri.substring(1);
-			if (uri.length() == 0) uri = "static/index.html";
+			if (uri.length() == 0) {
+				uri = "static/index.html";
+				if (!showSealing) tagsToFilter.add("SEALING");
+				if (!showIDP) tagsToFilter.add("IDP");
+			}
 			else {
-				if (!uri.startsWith("static")) throw new NoSuchFileException("Not so fast here !");
 				// Harden inputs
+				if (!uri.startsWith("static")) throw new NoSuchFileException("Not so fast here !");
 				uri = uri.replaceAll("\\.\\.", "").replaceAll("~", "");
 			}
 
 			Path path = Paths.get(uri);
 
 			System.out.println("Reading static file: " + uri);
-			bytes = Files.readAllBytes(path);
+			bytes = filterTags(Files.readAllBytes(path), tagsToFilter);
 
 			contentType = mimeTypeFor(path.getFileName().toString());
 
@@ -352,6 +362,20 @@ public class Main implements HttpHandler {
 		}
 		System.out.println("Returning : " + httpStatus + " - " + contentType + " - " + bytes.length);
 		respond(httpExch, httpStatus, contentType, bytes);
+	}
+
+	private byte[] filterTags(byte[] bytes, List<String> tagsToFilter) {
+		String bytesStr = null;
+		for (String tag : tagsToFilter) {
+			if (bytesStr == null) bytesStr = new String(bytes);
+			int beginPos = bytesStr.indexOf('<' + tag + '>');
+			if (beginPos != -1) {
+				String end = "</" + tag + '>';
+				int endPos = bytesStr.indexOf(end, beginPos);
+				if (endPos != -1) bytesStr = bytesStr.substring(0, beginPos) + bytesStr.substring(endPos + end.length());
+			}
+		}
+		return bytesStr != null ? bytesStr.getBytes() : bytes;
 	}
 
 	/**
