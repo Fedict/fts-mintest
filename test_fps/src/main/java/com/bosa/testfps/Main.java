@@ -332,6 +332,7 @@ public class Main implements HttpHandler {
 			if (uri.length() == 0) uri = "static/index.html";
 			else {
 				if (!uri.startsWith("static")) throw new NoSuchFileException("Not so fast here !");
+				// Harden inputs
 				uri = uri.replaceAll("\\.\\.", "").replaceAll("~", "");
 			}
 
