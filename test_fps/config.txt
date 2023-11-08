@@ -44,3 +44,5 @@ xadesProfile = XADES_LTA
 # Options: PADES_1, PADES_LTA, PADES_LTA_EXP_ALLOW
 padesProfile = PADES_1
 
+showSealing=true
+showIDP=true

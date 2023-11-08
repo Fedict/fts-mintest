@@ -3,9 +3,10 @@
 <head>
     <meta charset="utf-8">
     <title>FPS test signing service</title>
-    <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
-    <script src="https://unpkg.com/babel-standalone@6/babel.min.js">
+    <!-- Files copied locally following pentest -->
+    <script src="/static/react@17.0.2/umd/react.development.js" crossorigin></script>
+    <script src="/static/react-dom@17.0.2/umd/react-dom.development.js" crossorigin></script>
+    <script src="/static/babel-standalone@6.26.0/babel.min.js">
     </script><script src="/static/form.js"></script>
     <style>
         input {
@@ -37,39 +38,51 @@
             <li><a href="/sign?json=@o'in'@s'psf2_test.pdf'@S'psp'@s'test2.psp'@S'psfC'@s'1%2C30%2C20%2C180%2C60'@S'psfP'@s'true'@S'out'@s'signed_psf2_test.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&language=en">PDF with photo in the PDF visible signature and profile 'test2.psp'</a></li>
             <li><a href="/sign?json=@o'in'@s'quotes.xml'@S'xslt'@s'quotes.xslt'@S'out'@s'signed_quotes.xml'@S'lang'@s'en'@S'prof'@s'XADES_LTA'@S'signTimeout'@s9999@c&language=en">quotes.xml with xslt</a></li>
             <li><a href="/sign?json=@o'in'@s'test.pdf'@S'out'@s'signed_test.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&name=CFPO&name_fr=CsFaPeOr&language=en">test.pdf</a></li>
+            <li><a href="/sign?json=@o'in'@s'test.pdf'@S'out'@s'signed_test.pdf'@S'lang'@s'fr'@S'prof'@s'PADES_LTA_TST_TSS'@S'signTimeout'@s9999@c&name=TEST_TSS&name_fr=CsFaPeOr&language=en">test.pdf with TST TSS</a></li>
             <li><a href="/sign?json=@o'in'@s'test.xml'@S'out'@s'signed_test.xml'@S'lang'@s'en'@S'prof'@s'XADES_LTA'@S'signTimeout'@s9999@c&name=ORG&name_nl=XXXXX">test.xml</a></li>
 
             <li><a href="/sign?json=@o'outDownload'@strue@S'previewDocuments'@strue@S'requestDocumentReadConfirm'@strue@S'outFilePath'@s'out.xml'@S'signProfile'@s'MDOC_XADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O @o'filePath'@s'psf2_test.pdf'@S'xmlEltId'@s'PDF1'@c@S@o'filePath'@s'quotes.xml'@S'xmlEltId'@s'XML1'@S'displayXsltPath'@s'quotes.xslt'@c@S@o'filePath'@s'test.pdf'@S'xmlEltId'@s'PDF2'@c@S@o'filePath'@s'test.xml'@S'xmlEltId'@s'ID3'@c @C @c">XADES Multifile (Preview)</a></li>
             <li><a href="/sign?json=@o'outDownload'@strue@S'previewDocuments'@sfalse@S'requestDocumentReadConfirm'@strue@S'outFilePath'@s'Xades_JUST.xml'@S'outXsltPath'@s'JUST.xslt'@S'signProfile'@s'MDOC_XADES_LTA'@S'signTimeout'@s9999@S'policy'@s@o'id'@s'http://signinfo.eda.just.fgov.be/SignaturePolicy/pdf/PrivateSeal/BE_Justice_Signature_Policy_PrivateSeal_Hum_v0.12_202204_Fr.pdf'@S'digestAlgorithm'@s'SHA512'@S'description'@s'null'@c@S'inputs'@s@O@o'filePath'@s'test.pdf'@S'xmlEltId'@s'ID1'@c@S@o'filePath'@s'annexeRefs.xml'@S'xmlEltId'@s'ID2'@c@S@o'filePath'@s'nd_test.pdf'@S'xmlEltId'@s'ID3'@c@C@c">Multifile (No preview) Justice Xades with all options</a></li>
 
-            <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'selectDocuments'@strue@S'previewDocuments'@strue@S'outPathPrefix'@s'OUT_'@S'signProfile'@s'PADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O@o'filePath'@s'psf1_test.pdf'@S'pspFilePath'@s'test1.psp'@S'psfC'@s'1%2C30%2C20%2C180%2C60'@S'signLanguage'@s'fr'@c@S@o'filePath'@s'nd_test.pdf'@S'pspFilePath'@s'test1.psp'@c@C@c&language=en">Bulk signing</a></li>
+            <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'selectDocuments'@strue@S'noSkipErrors'@strue@S'previewDocuments'@strue@S'outPathPrefix'@s'OUT_'@S'signProfile'@s'PADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O@o'filePath'@s'psf1_test.pdf'@S'pspFilePath'@s'test1.psp'@S'psfC'@s'1%2C30%2C20%2C180%2C60'@S'signLanguage'@s'fr'@c@S@o'filePath'@s'nd_test.pdf'@S'pspFilePath'@s'test1.psp'@c@C@c&language=en">Bulk signing (no skip Errors)</a></li>
             <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'previewDocuments'@strue@S'outPathPrefix'@s'OUT_'@S'signProfile'@s'PADES_LTA'@S'altSignProfile'@s'XADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O@o'filePath'@s'test.pdf'@c@S@o'filePath'@s'quotes.xml'@S'displayXsltPath'@s'quotes.xslt'@c@S@o'filePath'@s'psf0_visible_sigfields~signature_1.pdf'@S'psfN'@s'signature_1'@S'signLanguage'@s'en'@c@S@o'filePath'@s'test.xml'@c@C@c&language=en">Bulk signing - XML and PDF - No selection</a></li>
-            <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'selectDocuments'@strue@S'previewDocuments'@strue@S'outPathPrefix'@s'OUT_'@S'signProfile'@s'PADES_LTA'@S'altSignProfile'@s'XADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O@o'filePath'@s'psf2_test.pdf'@S'pspFilePath'@s'test2.psp'@S'psfC'@s'1%2C30%2C20%2C180%2C60'@S'psfP'@strue@S'signLanguage'@s'fr'@c@S@o'filePath'@s'quotes.xml'@S'displayXsltPath'@s'quotes.xslt'@c@S@o'filePath'@s'nd_test.pdf'@c@S@o'filePath'@s'test.xml'@c@C@c&language=en">Bulk signing Mix XML and PDF</a></li>
+            <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'noSkipErrors'@strue@S'selectDocuments'@strue@S'previewDocuments'@strue@S'outPathPrefix'@s'OUT_'@S'signProfile'@s'PADES_LTA'@S'altSignProfile'@s'XADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O@o'filePath'@s'psf2_test.pdf'@S'pspFilePath'@s'test2.psp'@S'psfC'@s'1%2C30%2C20%2C180%2C60'@S'psfP'@strue@S'signLanguage'@s'fr'@c@S@o'filePath'@s'quotes.xml'@S'displayXsltPath'@s'quotes.xslt'@c@S@o'filePath'@s'nd_test.pdf'@c@S@o'filePath'@s'test.xml'@c@C@c&language=en">Bulk signing Mix XML and PDF (no skip errors)</a></li>
             <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'selectDocuments'@strue@S'previewDocuments'@strue@S'outFilePath'@s'sig.xml'@S'signProfile'@s'XADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O@o'filePath'@s'test.xml'@c@C@c&language=de">Bulk signing single XML file preview</a></li>
             <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'selectDocuments'@strue@S'previewDocuments'@strue@S'outFilePath'@s'sig_test.pdf'@S'signProfile'@s'PADES_LTA'@S'signTimeout'@s9999@S'inputs'@s@O@o'filePath'@s'test.pdf'@c@C@c&language=nl">Bulk signing single PDF file preview</a></li>
 
             <li><a href="/sign?json=@o'signType'@s'Standard'@S'outDownload'@strue@S'selectDocuments'@strue@S'previewDocuments'@strue@S'outFilePath'@s'sig_test.xml'@S'signProfile'@s'XADES_1'@S'signTimeout'@s2@S'inputs'@s@O@o'filePath'@s'test.xml'@c@C@c&language=nl">test.xml with signTimeout=2</a></li>
             <li><a href="/sign?json=@o'in'@s'notFound.xml'@S'out'@s'no.xml'@S'prof'@s'XADES_LTA'@S'signTimeout'@s9999@c">Sign a missing bucket file</a></li>
+            <li><a href="/sign?json=@o'in'@s'test.xml'@S'out'@s'signed_test.xml'@S'prof'@s'XADES_DETACHED_LTA'@S'signTimeout'@s9999@c">Sign with a detached profile</a></li>
         </ul>
-    </div>
-    <div style="padding: 30px">
-        <p>Select an IDP test case (<a href="/swagger?to=idp">SWAGGER API Doc</a>):</p>
+        <p>Select a validateSignature test case</p>
         <ul>
-            <li><a href="/idp_jump?client_id=IAMFAS&scope=profile%20openid">IDP Fas redirect</a></li>
+            <li><a href="/validate_jump?file=Foreign_trust_signed.xml&cert0=extra_trust.der">Validate with 1 cert as extra trust root</a></li>
+            <li><a href="/validate_jump?file=Foreign_trust_signed.xml&cert0=extra_trust.der&cert1=BelgiumRootCA4.DER">Validate with 2 certs as extra trust root</a></li>
+            <li><a href="/validate_jump?file=Foreign_trust_signed.xml&keystore=extra_trust.p12&password=123456">Validate with 1 keystore as extra trust root</a></li>
+            <li><a href="/validate_jump?file=Foreign_trust_signed.xml&cert0=extra_trust.der&cert1=BelgiumRootCA4.DER&keystore=extra_trust.p12&password=123456">Validate with 1 keystore and 2 certs extra trust root</a></li>
         </ul>
-
-        <p>Select an ESealing test case (<a href="/swagger?to=seal">SWAGGER API Doc</a>):</p>
+        <p>Select a JADES signature test case</p>
         <ul>
-            <li><a href="/seal?inFile=test.pdf&outFile=out.pdf&profile=PADES_1&lang=en&cred=final_sealing">Seal PADES_1 "test.pdf" with "Final Sealing" cert</a></li>
-            <li><a href="/seal?inFile=test.xml&outFile=out.xml&profile=XADES_LTA&lang=fr&cred=interm_sealing">Seal XADES_LTA "test.xml" with "Intermediate Sealing" cert</a></li>
-
-            <p>JADES</p>
             <li><a href="/seal?inFile=test.json&outFile=out.json&profile=JADES_B&lang=en&cred=final_sealing&displayAs=JWT">Seal JADES_B(COMPACT_SERIALIZATION) "test.pdf" with "Final Sealing" cert</a></li>
             <li><a href="/seal?inFile=test.json&outFile=out.json&profile=JADES_T&lang=fr&cred=interm_sealing&displayAs=JSON">Seal JADES_T(JSON_SERIALIZATION) "test.pdf" with "Intermediate Sealing" cert</a></li>
             <li><a href="/seal?inFile=test.json&outFile=out.json&profile=JADES_LT&lang=de&cred=final_sealing&displayAs=JSON">Seal JADES_LT(FLATTENED_JSON_SERIALIZATION) "test.pdf" with "Final Sealing" cert</a></li>
             <li><a href="/seal?inFile=test.json&outFile=out.json&profile=JADES_LTA&lang=nl&cred=interm_sealing&displayAs=JSON">Seal JADES_LTA(JSON_SERIALIZATION) "test.pdf" with "Intermediate Sealing" cert</a></li>
         </ul>
-
+    </div>
+    <div style="padding: 30px">
+        <IDP>
+            <p>Select an IDP test case (<a href="/swagger?to=idp">SWAGGER API Doc</a>):</p>
+            <ul>
+                <li><a href="/idp_jump?client_id=IAMFAS&scope=profile%20openid">IDP Fas redirect</a></li>
+            </ul>
+        </IDP>
+        <SEALING>
+            <p>Select an ESealing test case (<a href="/swagger?to=seal">SWAGGER API Doc</a>):</p>
+            <ul>
+                <li><a href="/seal?inFile=test.pdf&outFile=out.pdf&profile=PADES_1&lang=en&cred=final_sealing">Seal PADES_1 "test.pdf" with "Final Sealing" cert</a></li>
+                <li><a href="/seal?inFile=test.xml&outFile=out.xml&profile=XADES_LTA&lang=fr&cred=interm_sealing">Seal XADES_LTA "test.xml" with "Intermediate Sealing" cert</a></li>
+            </ul>
+        </SEALING>
     </div>
 </div>
 </body>

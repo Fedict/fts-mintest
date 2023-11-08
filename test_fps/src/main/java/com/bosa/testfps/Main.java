@@ -49,6 +49,7 @@ import org.json.JSONObject;
  */
 public class Main implements HttpHandler {
 
+	private static Boolean cleanupTempFiles;
 	private static String s3Url;
 	private static String s3UserName;
 	private static String s3Passwd;
@@ -60,10 +61,11 @@ public class Main implements HttpHandler {
 	private static String signValidationUrl;
 	private static String idpGuiUrl;
 	private static String idpUrl;
-	private static String esealingSvcUrl;
 	private static String esealingUrl;
 	private static String sadKeyFile;
 	private static String sadKeyPwd;
+	private static boolean showSealing;
+	private static boolean showIDP;
 
 	private static String bosaDssFrontend;
 
@@ -74,10 +76,6 @@ public class Main implements HttpHandler {
 	// Default profiles
 	private static String XADES_DEF_PROFILE = "XADES_1";
 	private static String PADES_DEF_PROFILE = "PADES_1";
-
-	private static String NAME = "FPS XXX"; // is displayed in user's browser
-
-	private static String LANGUAGE = "en"; // options: en, nl, fr, de
 
 	private static final String UNSIGNED_DIR = "unsigned";
 	private static final String SIGNED_DIR = "signed";
@@ -102,29 +100,34 @@ public class Main implements HttpHandler {
 
 		int port =     Integer.parseInt(config.getProperty("port"));
 
-		s3UserName =   config.getProperty("s3UserName");
-		s3Passwd =     config.getProperty("s3Passwd");
-		s3Url =        config.getProperty("s3Url");
-		idpGuiUrl =	   config.getProperty("idpGuiUrl");
-		idpUrl = 	   config.getProperty("idpUrl");
+		String cleanupTempFilesStr = config.getProperty("cleanupTempFiles");
+		cleanupTempFiles =  cleanupTempFilesStr != null ? Boolean.valueOf(cleanupTempFilesStr) : true;
 
-		sadKeyFile =   config.getProperty("sadKeyFile");
-		sadKeyPwd =   config.getProperty("sadKeyPwd");
+		s3UserName		= config.getProperty("s3UserName");
+		s3Passwd		= config.getProperty("s3Passwd");
+		s3Url			= config.getProperty("s3Url");
+		idpGuiUrl		= config.getProperty("idpGuiUrl");
+		idpUrl			= config.getProperty("idpUrl");
 
-		esealingSvcUrl = config.getProperty("easealingSvcUrl");
-		esealingUrl = config.getProperty("easealingUrl");
+		sadKeyFile		= config.getProperty("sadKeyFile");
+		sadKeyPwd		= config.getProperty("sadKeyPwd");
+
+		esealingUrl		= config.getProperty("easealingUrl");
 
 		signValidationSvcUrl =  config.getProperty("getTokenUrl").replace("/signing/getTokenForDocument", "");
 		signValidationUrl =  config.getProperty("signValidationUrl");
 
-		filesDir =     new File(config.getProperty("fileDir"));
-		inFilesDir =   new File(filesDir, UNSIGNED_DIR);
-		String tmp  =  config.getProperty("outFileDir");
-		outFilesDir =  (null == tmp) ? new File(filesDir, SIGNED_DIR) : new File(tmp);
+		filesDir		= new File(config.getProperty("fileDir"));
+		inFilesDir		= new File(filesDir, UNSIGNED_DIR);
+		String tmp		= config.getProperty("outFileDir");
+		outFilesDir		= (null == tmp) ? new File(filesDir, SIGNED_DIR) : new File(tmp);
 
-		bosaDssFrontend =  config.getProperty("bosaDssFrontend");
+		bosaDssFrontend = config.getProperty("bosaDssFrontend");
 
-		localUrl =     config.getProperty("localUrl");
+		localUrl		= config.getProperty("localUrl");
+
+		showSealing = "true".equals(config.getProperty("showSealing"));
+		showIDP			= "true".equals(config.getProperty("showIDP"));
 
 		String xadesProfile = config.getProperty("xadesProfile");
 		sigProfiles.put("application/xml", (null == xadesProfile) ? XADES_DEF_PROFILE : xadesProfile);
@@ -185,6 +188,8 @@ public class Main implements HttpHandler {
 				handleHook(httpExch);
 			} else if (uri.startsWith("/getFileList")) {
 				getFileList(httpExch);
+			} else if (uri.startsWith("/validate_jump")) {
+				validate(httpExch, queryParams);
 			} else if (uri.startsWith("/sign?json=")) {
 				handleJsonSign(httpExch, queryParams);
 			} else if (uri.startsWith("/seal?")) {
@@ -266,21 +271,85 @@ public class Main implements HttpHandler {
 		httpExch.close();
 	}
 
+	private void validate(HttpExchange httpExch, Map<String, String> queryParams) throws Exception {
+
+		System.out.println("Validating file : " + queryParams);
+
+		String json = "{" +
+						"\"signedDocument\": {" + getValidateFileAsJSONField("bytes", queryParams, "file") + "}," +
+						"\"trust\": {";
+
+		String certs = getValidateFileAsJSONField("certs", queryParams, "cert*");
+		if (certs.length() != 0) json += certs + ",";
+
+		String keyStore = getValidateFileAsJSONField("keystore", queryParams, "keystore");
+		if (keyStore.length() != 0) {
+			json += keyStore + ",";
+			String password = queryParams.get("password");
+			if (password != null) json += "\"password\": \"" + password + "\",";
+		}
+
+		if (json.endsWith(",")) json = json.substring(0, json.length() -1);
+		json += "} }";
+		String reply = postJson(signValidationUrl + "/validation/validateSignature", json, false);
+		respond(httpExch, 200, "text/plain", reply.getBytes());
+	}
+
+	private String getValidateFileAsJSONField(String jsonFieldName, Map<String, String> queryParams, String fieldName) throws IOException {
+		StringBuffer sb = new StringBuffer();
+		sb.append("\"").append(jsonFieldName).append("\": ");
+		if (fieldName.endsWith("*")) {
+			sb.append("[ ");
+			fieldName = fieldName.substring(0, fieldName.length() - 1);
+			int count = 0;
+			while(true) {
+				String fName = queryParams.get(fieldName + Integer.toString(count++));
+				if (fName == null) {
+					if (count == 1) return "";
+					break;
+				}
+				getValidateFile(sb, fName);
+				sb.append(",");
+			}
+			sb.setLength(sb.length() - 1);
+			sb.append(" ]");
+		} else {
+			String fName = queryParams.get(fieldName);
+			if (fName == null) return "";
+			getValidateFile(sb, fName);
+		}
+		return sb.toString();
+	}
+
+	private void getValidateFile(StringBuffer sb, String fileName) throws IOException {
+		System.out.println("Reading file : " + fileName);
+		Path filePath = Paths.get("files/validate/" + sanitize(fileName));
+		sb.append("\"").append(Base64.getEncoder().encodeToString(Files.readAllBytes(filePath)) ).append("\"");
+	}
+
 	private void handleStatic(HttpExchange httpExch, String uri) {
+		List<String> tagsToFilter = new ArrayList<>();
 		int httpStatus = 200;
 		byte[] bytes = null;
 		String contentType = "text/plain";
 
 		try {
 			uri = uri.substring(1);
-			if (uri.length() == 0) uri = "static/index.html";
-			else if (!uri.startsWith("static")) throw new NoSuchFileException("Not so fast here !");
-			uri = uri.replaceAll("\\.\\.", "").replaceAll("~", "");
+			if (uri.length() == 0) {
+				uri = "static/index.html";
+				if (!showSealing) tagsToFilter.add("SEALING");
+				if (!showIDP) tagsToFilter.add("IDP");
+			}
+			else {
+				// Harden inputs
+				if (!uri.startsWith("static")) throw new NoSuchFileException("Not so fast here !");
+				uri = uri.replaceAll("\\.\\.", "").replaceAll("~", "");
+			}
 
 			Path path = Paths.get(uri);
 
 			System.out.println("Reading static file: " + uri);
-			bytes = Files.readAllBytes(path);
+			bytes = filterTags(Files.readAllBytes(path), tagsToFilter);
 
 			contentType = mimeTypeFor(path.getFileName().toString());
 
@@ -293,6 +362,20 @@ public class Main implements HttpHandler {
 		}
 		System.out.println("Returning : " + httpStatus + " - " + contentType + " - " + bytes.length);
 		respond(httpExch, httpStatus, contentType, bytes);
+	}
+
+	private byte[] filterTags(byte[] bytes, List<String> tagsToFilter) {
+		String bytesStr = null;
+		for (String tag : tagsToFilter) {
+			if (bytesStr == null) bytesStr = new String(bytes);
+			int beginPos = bytesStr.indexOf('<' + tag + '>');
+			if (beginPos != -1) {
+				String end = "</" + tag + '>';
+				int endPos = bytesStr.indexOf(end, beginPos);
+				if (endPos != -1) bytesStr = bytesStr.substring(0, beginPos) + bytesStr.substring(endPos + end.length());
+			}
+		}
+		return bytesStr != null ? bytesStr.getBytes() : bytes;
 	}
 
 	/**
@@ -629,7 +712,7 @@ public class Main implements HttpHandler {
 					InputStream stream = minioClient.getObject(GetObjectArgs.builder().bucket(s3UserName).object(out).build());
 					if (!outFilesDir.exists()) outFilesDir.mkdirs();
 
-					File f = new File(outFilesDir, out);
+					File f = new File(outFilesDir, sanitize(out));
 					copyStream(stream, new FileOutputStream(f));
 					System.out.println("    File is downloaded to " + f.getAbsolutePath());
 				} catch(ErrorResponseException e) {
@@ -654,13 +737,19 @@ public class Main implements HttpHandler {
 
 		// Delete everything the S3 server
 		MinioClient minioClient = getClient();
-		for(String fileToDelete : queryParams.get("toDelete").split(",")) {
-			deleteFileFromBucket(fileToDelete);
-		}
 
-		for(String fileToDelete : outFiles.split(",")) {
-			deleteFileFromBucket(fileToDelete);
-			deleteFileFromBucket(fileToDelete + ".validationreport.json");
+		if (cleanupTempFiles) {
+			String filesToDelete = queryParams.get("toDelete");
+			if (!filesToDelete.equals("")) {
+				for(String fileToDelete : queryParams.get("toDelete").split(",")) {
+					deleteFileFromBucket(fileToDelete);
+				}
+			}
+
+			for(String fileToDelete : outFiles.split(",")) {
+				deleteFileFromBucket(fileToDelete);
+				deleteFileFromBucket(fileToDelete + ".validationreport.json");
+			}
 		}
 
 		// Return a message to the user
@@ -668,7 +757,12 @@ public class Main implements HttpHandler {
 		respond(httpExch, 200, "text/html", html.getBytes());
 	}
 
+	private static String sanitize(String path) {
+		return path.replaceAll("/", "");
+	}
+
 	private void deleteFileFromBucket(String fileToDelete) throws Exception {
+		fileToDelete = sanitize(fileToDelete);
 		System.out.println("    Deleting from the S3 server :" + fileToDelete);
 		minioClient.removeObject(RemoveObjectArgs.builder().bucket(s3UserName).object(fileToDelete).build());
 	}
@@ -681,8 +775,8 @@ public class Main implements HttpHandler {
 			URL url = new URL(urlStr);
 			urlConn = (HttpURLConnection) url.openConnection();
 			if (addSealAuth) {
-				System.out.println("Authorization Basic " + Base64.getEncoder().encodeToString("selor:test123".getBytes(StandardCharsets.UTF_8)));
-				System.out.println("Authorization Basic " + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8)));
+				System.out.println("Authorization Basic (selor:test123) =" + Base64.getEncoder().encodeToString("selor:test123".getBytes(StandardCharsets.UTF_8)));
+				System.out.println("Authorization Basic (sealing:123456) =" + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8)));
 				urlConn.setRequestProperty("Authorization", "Basic " + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8)));
 			}
 			urlConn.setRequestProperty("Content-Type", "application/json; utf-8");
@@ -696,7 +790,8 @@ public class Main implements HttpHandler {
 			return reply;
 		}
 		catch(Exception e) {
-			if (urlConn != null) {
+			e.printStackTrace();
+			if (urlConn != null && urlConn.getErrorStream() != null) {
 				throw new IOException(streamToString(urlConn.getErrorStream()));
 			}
 		}
@@ -740,6 +835,7 @@ public class Main implements HttpHandler {
 
 	private void uploadFile(String fileName) throws Exception {
 
+		fileName = sanitize(fileName);
 		System.out.println("   Uploading " + fileName + " to the S3 server...");
 		File f = new File(inFilesDir, fileName);
 		FileInputStream fis = new FileInputStream(f);
@@ -817,7 +913,7 @@ public class Main implements HttpHandler {
 		return streamToString(new FileInputStream(new File(folder, inFile)));
 	}
 	private static byte[] getDocument(File folder, String inFile) throws IOException {
-		FileInputStream fis = new FileInputStream(new File(folder, inFile));
+		FileInputStream fis = new FileInputStream(new File(folder, sanitize(inFile)));
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		copyStream(fis, baos);
 		baos.close();

@@ -10,8 +10,8 @@ class NameForm extends React.Component {
                     "SHAKE256_512","RIPEMD160","MD2","MD5","WHIRLPOOL","Dummy for out of range test"];
 
     this.profilePerType = {
-        pdf: ["PADES_1", "PADES_LTA", "PADES_LTA_EXP_ALLOW"],
-        xml: ["XADES_1", "XADES_2", "XADES_LT", "XADES_LTA"],
+        pdf: ["PADES_1", "PADES_LTA", "PADES_LTA_EXP_ALLOW", "PADES_LTA_TST_TSS"],
+        xml: ["XADES_1", "XADES_2", "XADES_LT", "XADES_LTA", "XADES_DETACHED_LTA"],
         bin: ["CADES_1", "CADES_2", "CADES_LTA", "CADES_LTA_ENVELOPING"]
     }
 

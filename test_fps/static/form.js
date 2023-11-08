@@ -24,8 +24,8 @@ var NameForm = function (_React$Component) {
         _this.policyDigestAlgorithms = ["SHA1", "SHA224", "SHA256", "SHA384", "SHA512", "SHA3_224", "SHA3_256", "SHA3_384", "SHA3_512", "SHAKE128", "SHAKE256", "SHAKE256_512", "RIPEMD160", "MD2", "MD5", "WHIRLPOOL", "Dummy for out of range test"];
 
         _this.profilePerType = {
-            pdf: ["PADES_1", "PADES_LTA", "PADES_LTA_EXP_ALLOW"],
-            xml: ["XADES_1", "XADES_2", "XADES_LT", "XADES_LTA"],
+            pdf: ["PADES_1", "PADES_LTA", "PADES_LTA_EXP_ALLOW", "PADES_LTA_TST_TSS"],
+            xml: ["XADES_1", "XADES_2", "XADES_LT", "XADES_LTA", "XADES_DETACHED_LTA"],
             bin: ["CADES_1", "CADES_2", "CADES_LTA", "CADES_LTA_ENVELOPING"]
         };
 

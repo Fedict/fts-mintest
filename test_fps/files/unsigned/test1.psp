@@ -1,10 +1,10 @@
 {
   "bgColor" : "#D0D0D0",
   "texts" : {
-    "en": "Signed by %gn% %sn%\nOn %d(MMM d YYYY)%",
-    "nl": "Getekend door %gn% %sn%\nOp %d(MMM d YYYY)%",
-    "fr": "Signé par %gn% %sn%\nLe %d(MMM d YYYY)%",
-    "de": "Unterzeichnet von %gn% %sn%\nAm %d(MMM d YYYY)%"
+    "en": "Signed by %gn% %sn%\nOn %d(YYYY d MMM HH mm Z)%",
+    "nl": "Getekend door %gn% %sn%\nOp %d(YYYY d MMM HH mm X)%",
+    "fr": "Signé par %gn% %sn%\nLe %d(YYYY d MMM HH mm z)%",
+    "de": "Unterzeichnet von %gn% %sn%\nAm %d(YYYY d MMM HH mm z)%"
   },
   "font": "freescpt",
   "textSize" : 14,
