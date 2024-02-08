@@ -1,10 +1,10 @@
 {
   "bgColor" : "#D0D0D0",
   "texts" : {
-    "en": "%gn% %sn%",
-    "nl": "%gn% %sn%",
-    "fr": "%gn% %sn%",
-    "de": "%gn% %sn%"
+    "en": "EN %gn% %sn%",
+    "nl": "NL %gn% %sn%",
+    "fr": "FR %gn% %sn%",
+    "de": "DE %gn% %sn%"
   },
   "font": "freescpt",
   "textSize" : 14,
