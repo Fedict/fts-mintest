@@ -6,16 +6,19 @@ import com.nimbusds.jose.crypto.*;
 
 
 import java.io.*;
+import java.math.BigInteger;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.KeyFactory;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.ECPrivateKey;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.*;
 import java.util.List;
 
@@ -436,12 +439,21 @@ public class Main implements HttpHandler {
 		String outFilename = queryParams.get("outFile");
 		String lang = queryParams.get("lang");
 
-		String json = "{\"requestID\":\"11668786643409505247592754000\",\"credentialID\":\"" + queryParams.get("cred") +
-				"\",\"lang\":\"" + lang + "\",\"returnCertificates\":\"chain\",\"certInfo\":true,\"authInfo\":true,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/credentialinfoprotocol#\"}";
+		String payLoad;
+		String certs[];
+		String reply;
+		String cred = queryParams.get("cred");
+		if (cred != null) {
+			payLoad = "{\"requestID\":\"11668786643409505247592754000\",\"credentialID\":\"" + cred +
+					"\",\"lang\":\"" + lang + "\",\"returnCertificates\":\"chain\",\"certInfo\":true,\"authInfo\":true,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/credentialinfoprotocol#\"}";
+			reply = postJson(esealingUrl + "/credentials/info", payLoad, true);
 
-		String reply = postJson(esealingUrl + "/credentials/info", json, true);
-
-		String certs[] = getDelimitedValue(reply, "\"certificates\":[", "]").split(",");
+			certs = getDelimitedValue(reply, "\"certificates\":[", "]").split(",");
+		} else {
+			payLoad = "{\"ssin\":\"XXXX\",\"enterpriseNumber\":\"YYYYYY\"}";
+			reply = postJson("https://services-int.socialsecurity.be/REST/electronicSignature/v1/certificates", payLoad, false);
+			certs = null;
+		}
 
 		String cert = null;
 		int i = certs.length;
@@ -453,40 +465,48 @@ public class Main implements HttpHandler {
 
 		String document = getDocumentAsB64(inFilesDir, queryParams.get("inFile"));
 
-		json = "{\"clientSignatureParameters\":{\"signingCertificate\":" + cert +
+		payLoad = "{\"clientSignatureParameters\":{\"signingCertificate\":" + cert +
 				",\"certificateChain\":[" + String.join(",", certChain) +"]},\"signingProfileId\":\"" + queryParams.get("profile") +
 				"\",\"toSignDocument\":{\"bytes\":\"" + document + "\"}}";
 
-		reply = postJson(signValidationUrl + "/signing/getDataToSign", json, false);
+		reply = postJson(signValidationUrl + "/signing/getDataToSign", payLoad, false);
 
 		String hashToSign = getDelimitedValue(reply, "\"digest\" : \"", "\",");
 		String signingDate = getDelimitedValue(reply,"\"signingDate\" : \"", "\"");
 		DigestAlgorithm digestAlgo = DigestAlgorithm.valueOf(getDelimitedValue(reply, "digestAlgorithm\" : \"", "\","));
 
-		Digest digest = new Digest();
-		digest.setHashes(new String[] { hashToSign });
-		digest.setHashAlgorithmOID(digestAlgo.oid);
-		String sad = makeSAD(digest);
-		json = "{\"operationMode\":\"S\",\"requestID\":\"11668768431957487036136225500\"," +
-				"\"optionalData\":{\"returnSigningCertificateInfo\":true,\"returnSupportMultiSignatureInfo\":true,\"returnServicePolicyInfo\":true,\"returnSignatureCreationPolicyInfo\":true,\"returnCredentialAuthorizationModeInfo\":true,\"returnSoleControlAssuranceLevelInfo\":true}" +
-				",\"validity_period\":null,\"credentialID\":\"" + queryParams.get("cred") +
-				"\",\"lang\":\"" + lang + "\"," +
-				"\"numSignatures\":1,\"policy\":null,\"signaturePolicyID\":null,\"signAlgo\":\"1.2.840.10045.4.3.2\",\"signAlgoParams\":null,\"response_uri\":null,\"documentDigests\":{\"hashes\":[\"" + hashToSign +
-				"\"],\"hashAlgorithmOID\":\"" + digestAlgo.oid + "\"},\"sad\":\"" + sad + "\"}";
+		String signedHash = null;
+		if (cred != null) {
+			Digest digest = new Digest();
+			digest.setHashes(new String[] { hashToSign });
+			digest.setHashAlgorithmOID(digestAlgo.oid);
+			String sad = makeSAD(digest);
+			payLoad = "{\"operationMode\":\"S\",\"requestID\":\"11668768431957487036136225500\"," +
+					"\"optionalData\":{\"returnSigningCertificateInfo\":true,\"returnSupportMultiSignatureInfo\":true,\"returnServicePolicyInfo\":true,\"returnSignatureCreationPolicyInfo\":true,\"returnCredentialAuthorizationModeInfo\":true,\"returnSoleControlAssuranceLevelInfo\":true}" +
+					",\"validity_period\":null,\"credentialID\":\"" + queryParams.get("cred") +
+					"\",\"lang\":\"" + lang + "\"," +
+					"\"numSignatures\":1,\"policy\":null,\"signaturePolicyID\":null,\"signAlgo\":\"1.2.840.10045.4.3.2\",\"signAlgoParams\":null,\"response_uri\":null,\"documentDigests\":{\"hashes\":[\"" + hashToSign +
+					"\"],\"hashAlgorithmOID\":\"" + digestAlgo.oid + "\"},\"sad\":\"" + sad + "\"}";
 
-		reply = postJson(esealingUrl + "/signatures/signHash", json, true);
+			reply = postJson(esealingUrl + "/signatures/signHash", payLoad, true);
 
-		String signedHash = getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
+			signedHash = getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
+		} else {
+			// Get OAuth access token with a signed JWT
+			payLoad ="grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=" + createSepiaOAuthJWT();
+			reply = postURLEncoded("https://services-int.socialsecurity.be/REST/oauth/v5/token", payLoad);
+
+		}
 
 		// Since eSealing is using TEST (see testpki) certificates with their own lifecycles, CRL, no-OCSP, ... influencing revocation freshness
 		// We must request a custom policy/constraint to validate those in TA/QA/...
 		String validatePolicy = getDocumentAsB64(filesDir, "esealingConstraint.xml");
-		json = "{\"toSignDocument\":{\"bytes\":\"" + document + "\",\"digestAlgorithm\":null,\"name\":\"RemoteDocument\"},\"signingProfileId\":\"" + queryParams.get("profile") +
+		payLoad = "{\"toSignDocument\":{\"bytes\":\"" + document + "\",\"digestAlgorithm\":null,\"name\":\"RemoteDocument\"},\"signingProfileId\":\"" + queryParams.get("profile") +
 				"\",\"clientSignatureParameters\":{\"signingCertificate\":" + cert +
 				",\"certificateChain\":[" + String.join(",", certChain) + "],\"detachedContents\":null,\"signingDate\":\"" + signingDate +
 				"\"},\"signatureValue\":\"" + signedHash + "\", \"validatePolicy\": { \"bytes\": \"" + validatePolicy + "\"}}\n";
 
-		reply = postJson(signValidationUrl + "/signing/signDocument", json, false);
+		reply = postJson(signValidationUrl + "/signing/signDocument", payLoad, false);
 
 		byte outDoc[] = Base64.getDecoder().decode(getDelimitedValue(reply, "\"bytes\" : \"", "\","));
 		String outDocString = new String(outDoc);
@@ -507,6 +527,66 @@ public class Main implements HttpHandler {
 		}
 
 		respond(httpExch, 200, "text/html", reply.getBytes());
+	}
+
+	private static byte[] buildPkcs8KeyFromPkcs1Key(byte[] innerKey) {
+		byte result[] = new byte[innerKey.length + 26];
+		System.arraycopy(Base64.getDecoder().decode("MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKY="), 0, result, 0, 26);
+		System.arraycopy(BigInteger.valueOf(result.length - 4).toByteArray(), 0, result, 2, 2);
+		System.arraycopy(BigInteger.valueOf(innerKey.length).toByteArray(), 0, result, 24, 2);
+		System.arraycopy(innerKey, 0, result, 26, innerKey.length);
+		return result;
+	}
+
+	private static byte ftsSealPrivateKey[] = buildPkcs8KeyFromPkcs1Key(Base64.getDecoder().decode("MIIEogIBAAKCAQEAs3LsYwdpGgs5X57VnSR5WFHDZTgwFnZ//e/DYm8vZv84F4e2" +
+			"3YFjojqqKUP1tvfbJB4AdydZtlMtoDJax+j4T1k7AyAi8L4/Cat89eVQHQVgfVHK" +
+			"OLCvT6SouBL85GDs940hKjwF/i1Zi0dAyy++HWsAw9Yzij0x9zbLeDMY8NIP3wmX" +
+			"66g3xJPw3mjb/Cmxc79pk1drzFMi0cVaBh0XcHkeb4J0Pj4MkK2Gkbf7t9zjZYSR" +
+			"X82E9HbOaefsTjzqKVMpYOwDCER9NClhbu4Qb5Tn1Z4xa1wSDgqYSWUg2WeHFzXN" +
+			"hDyDT2Vlw/8hlxt1/0MddViCx16NFssFEOYkfQIDAQABAoIBAD0OCvOen9nmm7y2" +
+			"9AMlV8v+9bZIqcPaya2CmD2zirNGfrUyzbsLvPSDdUXZA48fQYZGVu4zi0iHgGyS" +
+			"9WQzFdkZiQSFOJ4kfJozqK6ZOOrG24+H9n/XTa6RXX5Tp4uklrubXv9ZsMhMcbz7" +
+			"n0YClnK352i6RorwS0HLeOsKp5+3pqyXcr3wrdqJghlGScyZfzB/F+hORS0DRzzI" +
+			"fgODuNW7afjHMIiw5yt0NNxupvGJx5bj3brI/mfsRiy2uet0r9fbXNChMiv9RVY6" +
+			"1Oz5CVFnzWcFYch0MYkyoprBFcFYr/AS7UjkV6e/BzC0fRiIKB0iAPm2j3ttPXqV" +
+			"seI3gFkCgYEA6JJSS0EFAAI2Ho6mMEaoz7B1MLemY91wOZ3CMANPXnrQXXSHYmfN" +
+			"4kczKGreHz3mTEugmzpestIRI9ccmG0c999afARUKJm03dKJ43Sq+U/8Q7GKhDYA" +
+			"Ayas7hgEoTcccuLUOmZ3PI1tgw7wDaVlY8C9WPUrCGjUmYzbnrSAuYsCgYEAxYal" +
+			"oGo2tAOVxZrRWpkbn4qYIGNNIW3KXK1GtVHLfb9l2Moa20gyZlnJuETj+LeVioiM" +
+			"lcqcbpuaqSlSIOb++0K/YUonoVXiM1oudhqdlDyVglT0DJH8xGxKCOq6ND7o8ubC" +
+			"u6VRXATqsd7r+MTOhJ/m2TFDfAuvTLN7e9qlixcCgYAtCWC8R+wC82qtgiw2fwhj" +
+			"p6UZ+QZUomYAEkevaoStJBVDc7Rf3wAkiGsksYUwAZmePqrsRGJgOIOvMBHOhpqs" +
+			"eWkZSPFPJ2y54/JlxIrzWoTcSv4q2hYohg3I0Yfb/EMbEEfOw1blt/F0Bql/yv6W" +
+			"UZWZK2jY6Qv6bCd/VS70PwKBgDYMoxOjHLbjaD87HuBIlwtv9DKgmYF1NnNnorqI" +
+			"2ELfdbH9k52/QrNJDG6Uw0DSk2Pl+3odh/KoN4jkWqnQK6N7Xzzy+qcmBhCBM8dz" +
+			"fv0KGusf7evmoqDo9NU9zZfwQvP8evq3wOyKF+J2GmHnEI+v5Y428b1mwSAe2MJK" +
+			"URQfAoGAC+fzkXwkFrf3uTWhLvYvNgzikbM2iYy9xiR0K7MonaBLJYsfrO9ObvVC" +
+			"T2JvDtEwmg/60pY5ediIc4GMQQhXJNPfBU+D8jORVAtHiaB/0oaciLB7XErxe0/P" +
+			"koGuKcRtfdtBjwxjKGtnJn7ZqjmT0iqdv1fvzwzQIS1gwZJ6bGU="));
+
+	private String createSepiaOAuthJWT() throws Exception {
+		// Create the JWS header,
+		long now = new Date().getTime();
+		String jwtPayload = "{ \"jti\": " + now + "," +
+				"\"iss\": \"https://oauth-v5.int.pub.socialsecurity.be\"," +
+				"\"sub\": \"fts:bosa:sepia:client:confidential\"," +
+				"\"aud\": \"https://oauth-v5.int.socialsecurity.be\"," +
+				"\"exp\":" + (now + 100000) + "," +
+				"\"nbf\":" + now + "," +
+				"\"iat\":" + now +
+				"}";
+		JWSObject jwsObject = new JWSObject(
+				new JWSHeader.Builder(JWSAlgorithm.RS256).build(),
+				new Payload(jwtPayload));
+
+		// Sign the JWS
+		KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+		PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(ftsSealPrivateKey);
+
+		jwsObject.sign(new RSASSASigner(keyFactory.generatePrivate(keySpec)));
+		String jwt = jwsObject.serialize();
+
+		return jwt;
 	}
 
 	protected String makeSAD(Digest documentDigests) throws Exception {
@@ -768,7 +848,15 @@ public class Main implements HttpHandler {
 	}
 
 	/** Do an HTTP POST of a json (a REST call) */
+	private static String postURLEncoded(String urlStr, String json) throws IOException {
+		return postRaw(urlStr, json, false, "application/x-www-form-urlencoded");
+	}
+
 	private static String postJson(String urlStr, String json, boolean addSealAuth) throws IOException {
+		return postRaw(urlStr, json, addSealAuth, "application/json; utf-8");
+	}
+
+	private static String postRaw(String urlStr, String json, boolean addSealAuth, String contentType) throws IOException {
 		System.out.println("Request from " + urlStr + " :" + json);
 		HttpURLConnection urlConn = null;
 		try {
@@ -779,7 +867,7 @@ public class Main implements HttpHandler {
 				System.out.println("Authorization Basic (sealing:123456) =" + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8)));
 				urlConn.setRequestProperty("Authorization", "Basic " + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8)));
 			}
-			urlConn.setRequestProperty("Content-Type", "application/json; utf-8");
+			urlConn.setRequestProperty("Content-Type", contentType);
 			urlConn.setDoOutput(true);
 
 			OutputStream os = urlConn.getOutputStream();
