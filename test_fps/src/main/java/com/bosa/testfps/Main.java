@@ -92,6 +92,10 @@ public class Main implements HttpHandler {
 	// This is defined by the firewall settings, don't change!
 	private static int S3_PART_SIZE = 5 * 1024 * 1024;
 
+	// System.out.println("Authorization Basic (selor:test123) =" + Base64.getEncoder().encodeToString("selor:test123".getBytes(StandardCharsets.UTF_8)));
+	// System.out.println("Authorization Basic (sealing:123456) =" + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8)));
+	private static final String AUTHORIZATION = "Basic " + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8));
+
 	private static final Map<String, String> sigProfiles = new HashMap<String, String>();
 
 	/** Start of the program */
@@ -294,7 +298,7 @@ public class Main implements HttpHandler {
 
 		if (json.endsWith(",")) json = json.substring(0, json.length() -1);
 		json += "} }";
-		String reply = postJson(signValidationUrl + "/validation/validateSignature", json, false);
+		String reply = postJson(signValidationUrl + "/validation/validateSignature", json, null);
 		respond(httpExch, 200, "text/plain", reply.getBytes());
 	}
 
@@ -394,7 +398,7 @@ public class Main implements HttpHandler {
 		try {
 			String json = "{\"requestID\":\"11668764926004483530182899800\",\"lang\":\"en\",\"certificates\":\"chain\",\"certInfo\":false,\"authInfo\":false,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/certificateslistprotocol#\",\"signerIdentity\":null}";
 
-			String reply = postJson(esealingUrl + "/credentials/list", json, true);
+			String reply = postJson(esealingUrl + "/credentials/list", json, AUTHORIZATION);
 
 			reply = getDelimitedValue(reply, "\"credentialIDs\":[", "]").replaceAll("\"", "");
 			System.out.println("Esealing credentials : " + reply);
@@ -439,6 +443,8 @@ public class Main implements HttpHandler {
 		String outFilename = queryParams.get("outFile");
 		String lang = queryParams.get("lang");
 
+		String access_token = null;
+		String rawAlias = null;
 		String payLoad;
 		String certs[];
 		String reply;
@@ -446,13 +452,23 @@ public class Main implements HttpHandler {
 		if (cred != null) {
 			payLoad = "{\"requestID\":\"11668786643409505247592754000\",\"credentialID\":\"" + cred +
 					"\",\"lang\":\"" + lang + "\",\"returnCertificates\":\"chain\",\"certInfo\":true,\"authInfo\":true,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/credentialinfoprotocol#\"}";
-			reply = postJson(esealingUrl + "/credentials/info", payLoad, true);
+			reply = postJson(esealingUrl + "/credentials/info", payLoad, AUTHORIZATION);
 
 			certs = getDelimitedValue(reply, "\"certificates\":[", "]").split(",");
 		} else {
-			payLoad = "{\"ssin\":\"XXXX\",\"enterpriseNumber\":\"YYYYYY\"}";
-			reply = postJson("https://services-int.socialsecurity.be/REST/electronicSignature/v1/certificates", payLoad, false);
-			certs = null;
+			// Get OAuth access token with a signed JWT
+			payLoad ="grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=" + createSepiaOAuthJWT();
+			reply = postURLEncoded("https://services-acpt.socialsecurity.be/REST/oauth/v5/token", payLoad);
+			access_token = getDelimitedValue(reply, "\"access_token\":\"", "\",\"scope");
+			System.out.println("Access token : " + access_token);
+
+			reply = getJson("https://services-acpt.socialsecurity.be/REST/electronicSignature/v1/certificates?enterpriseNumber=671516647", "Bearer " + access_token);
+			certs = reply.split("\\\\n-----END CERTIFICATE-----\\\\n-----BEGIN CERTIFICATE-----\\\\n");
+			certs[0] = certs[0].replaceAll("\\{\"certificateChain\":\"-----BEGIN CERTIFICATE-----\\\\n", "");
+			rawAlias = getDelimitedValue(reply, "\"alias\":\"", "\"");
+			certs[certs.length - 1] = certs[certs.length - 1].replaceAll("\\\\n-----END CERTIFICATE-----.*", "");
+			int i = certs.length;
+			while(i-- != 0) certs[i] = "\"" + certs[i] + "\"";
 		}
 
 		String cert = null;
@@ -469,7 +485,7 @@ public class Main implements HttpHandler {
 				",\"certificateChain\":[" + String.join(",", certChain) +"]},\"signingProfileId\":\"" + queryParams.get("profile") +
 				"\",\"toSignDocument\":{\"bytes\":\"" + document + "\"}}";
 
-		reply = postJson(signValidationUrl + "/signing/getDataToSign", payLoad, false);
+		reply = postJson(signValidationUrl + "/signing/getDataToSign", payLoad, null);
 
 		String hashToSign = getDelimitedValue(reply, "\"digest\" : \"", "\",");
 		String signingDate = getDelimitedValue(reply,"\"signingDate\" : \"", "\"");
@@ -488,14 +504,13 @@ public class Main implements HttpHandler {
 					"\"numSignatures\":1,\"policy\":null,\"signaturePolicyID\":null,\"signAlgo\":\"1.2.840.10045.4.3.2\",\"signAlgoParams\":null,\"response_uri\":null,\"documentDigests\":{\"hashes\":[\"" + hashToSign +
 					"\"],\"hashAlgorithmOID\":\"" + digestAlgo.oid + "\"},\"sad\":\"" + sad + "\"}";
 
-			reply = postJson(esealingUrl + "/signatures/signHash", payLoad, true);
+			reply = postJson(esealingUrl + "/signatures/signHash", payLoad, AUTHORIZATION);
 
 			signedHash = getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
 		} else {
-			// Get OAuth access token with a signed JWT
-			payLoad ="grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=" + createSepiaOAuthJWT();
-			reply = postURLEncoded("https://services-int.socialsecurity.be/REST/oauth/v5/token", payLoad);
-
+			payLoad = "{ \"signatureLevel\":\"RAW\", \"digest\":\"" + hashToSign + "\", \"digestAlgorithm\":\"" + digestAlgo + "\", \"signer\":{\"enterpriseNumber\": 671516647,\"certificateAlias\":\"" + rawAlias + "\"}}";
+			reply = postJson("https://services-acpt.socialsecurity.be/REST/electronicSignature/v1/sign", payLoad, "Bearer " + access_token);
+			signedHash = getDelimitedValue(reply, "\"signature\":\"", "\"}");
 		}
 
 		// Since eSealing is using TEST (see testpki) certificates with their own lifecycles, CRL, no-OCSP, ... influencing revocation freshness
@@ -506,7 +521,7 @@ public class Main implements HttpHandler {
 				",\"certificateChain\":[" + String.join(",", certChain) + "],\"detachedContents\":null,\"signingDate\":\"" + signingDate +
 				"\"},\"signatureValue\":\"" + signedHash + "\", \"validatePolicy\": { \"bytes\": \"" + validatePolicy + "\"}}\n";
 
-		reply = postJson(signValidationUrl + "/signing/signDocument", payLoad, false);
+		reply = postJson(signValidationUrl + "/signing/signDocument", payLoad, null);
 
 		byte outDoc[] = Base64.getDecoder().decode(getDelimitedValue(reply, "\"bytes\" : \"", "\","));
 		String outDocString = new String(outDoc);
@@ -566,13 +581,13 @@ public class Main implements HttpHandler {
 
 	private String createSepiaOAuthJWT() throws Exception {
 		// Create the JWS header,
-		long now = new Date().getTime();
-		String jwtPayload = "{ \"jti\": " + now + "," +
-				"\"iss\": \"https://oauth-v5.int.pub.socialsecurity.be\"," +
+		long now = new Date().getTime() / 1000;
+		String jwtPayload = "{ \"jti\": \"" + now + "\"," +
+				"\"iss\": \"fts:bosa:sepia:client:confidential\"," +
 				"\"sub\": \"fts:bosa:sepia:client:confidential\"," +
-				"\"aud\": \"https://oauth-v5.int.socialsecurity.be\"," +
-				"\"exp\":" + (now + 100000) + "," +
-				"\"nbf\":" + now + "," +
+				"\"aud\": \"https://oauth-v5.acc.socialsecurity.be\"," +
+				"\"exp\":" + (now + 1000) + "," +
+				"\"nbf\":" + (now - 100) + "," +
 				"\"iat\":" + now +
 				"}";
 		JWSObject jwsObject = new JWSObject(
@@ -738,7 +753,7 @@ public class Main implements HttpHandler {
 
 	private void createTokenAndRedirect(String url, String json, String out, String filesToDelete, Map<String, String> queryParams, HttpExchange httpExch) throws Exception {
 		System.out.println("JSON for the getToken call:\n" + json);
-		String token = postJson(url, json, false);
+		String token = postJson(url, json, null);
 
 		System.out.println("  DONE, received token = " + token);
 
@@ -849,29 +864,32 @@ public class Main implements HttpHandler {
 
 	/** Do an HTTP POST of a json (a REST call) */
 	private static String postURLEncoded(String urlStr, String json) throws IOException {
-		return postRaw(urlStr, json, false, "application/x-www-form-urlencoded");
+		return postRaw(false, urlStr, json, null, "application/x-www-form-urlencoded");
 	}
 
-	private static String postJson(String urlStr, String json, boolean addSealAuth) throws IOException {
-		return postRaw(urlStr, json, addSealAuth, "application/json; utf-8");
+	private static String postJson(String urlStr, String json, String authorization) throws IOException {
+		return postRaw(false, urlStr, json, authorization, null);
 	}
 
-	private static String postRaw(String urlStr, String json, boolean addSealAuth, String contentType) throws IOException {
+	private static String getJson(String urlStr, String authorization) throws IOException {
+		return postRaw(true, urlStr, null, authorization, null);
+	}
+
+	private static String postRaw(boolean isGet, String urlStr, String json, String authorization, String contentType) throws IOException {
 		System.out.println("Request from " + urlStr + " :" + json);
 		HttpURLConnection urlConn = null;
 		try {
 			URL url = new URL(urlStr);
 			urlConn = (HttpURLConnection) url.openConnection();
-			if (addSealAuth) {
-				System.out.println("Authorization Basic (selor:test123) =" + Base64.getEncoder().encodeToString("selor:test123".getBytes(StandardCharsets.UTF_8)));
-				System.out.println("Authorization Basic (sealing:123456) =" + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8)));
-				urlConn.setRequestProperty("Authorization", "Basic " + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8)));
-			}
-			urlConn.setRequestProperty("Content-Type", contentType);
-			urlConn.setDoOutput(true);
+			urlConn.setRequestMethod(isGet ? "GET" : "POST");
+			if (authorization != null) urlConn.setRequestProperty("Authorization", authorization);
 
-			OutputStream os = urlConn.getOutputStream();
-			os.write(json.getBytes("utf-8"));
+			urlConn.setRequestProperty("Content-Type", contentType == null ? "application/json; utf-8" : contentType);
+			if (!isGet) {
+				urlConn.setDoOutput(true);
+				OutputStream os = urlConn.getOutputStream();
+				os.write(json.getBytes("utf-8"));
+			}
 
 			String reply = streamToString(urlConn.getInputStream());
 			System.out.println("Reply from " + urlStr + " :" + reply);
