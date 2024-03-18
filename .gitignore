@@ -1,0 +1,3 @@
+/test_fps/target/*
+/test_fps/node_modules/*
+/test_fps/files/signed/*
