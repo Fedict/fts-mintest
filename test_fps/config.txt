@@ -27,6 +27,9 @@ idpUrl = http://localhost:8753
 
 easealingUrl = http://localhost:8752
 easealingSvcUrl = http://localhost:8752
+
+sepiaSealingUrl = https://services-acpt.socialsecurity.be
+
 sadKeyFile = src/main/resources/sealing_sad.p12
 sadKeyPwd = 123456
 

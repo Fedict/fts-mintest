@@ -65,6 +65,8 @@ public class Main implements HttpHandler {
 	private static String idpGuiUrl;
 	private static String idpUrl;
 	private static String esealingUrl;
+	private static String sepiaSealingUrl;
+
 	private static String sadKeyFile;
 	private static String sadKeyPwd;
 	private static boolean showSealing;
@@ -120,6 +122,7 @@ public class Main implements HttpHandler {
 		sadKeyPwd		= config.getProperty("sadKeyPwd");
 
 		esealingUrl		= config.getProperty("easealingUrl");
+		sepiaSealingUrl	= config.getProperty("sepiaSealingUrl");
 
 		signValidationSvcUrl =  config.getProperty("getTokenUrl").replace("/signing/getTokenForDocument", "");
 		signValidationUrl =  config.getProperty("signValidationUrl");
@@ -458,11 +461,11 @@ public class Main implements HttpHandler {
 		} else {
 			// Get OAuth access token with a signed JWT
 			payLoad ="grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=" + createSepiaOAuthJWT();
-			reply = postURLEncoded("https://services-acpt.socialsecurity.be/REST/oauth/v5/token", payLoad);
+			reply = postURLEncoded(sepiaSealingUrl + "/REST/oauth/v5/token", payLoad);
 			access_token = getDelimitedValue(reply, "\"access_token\":\"", "\",\"scope");
 			System.out.println("Access token : " + access_token);
 
-			reply = getJson("https://services-acpt.socialsecurity.be/REST/electronicSignature/v1/certificates?enterpriseNumber=671516647", "Bearer " + access_token);
+			reply = getJson(sepiaSealingUrl + "/REST/electronicSignature/v1/certificates?enterpriseNumber=671516647", "Bearer " + access_token);
 			certs = reply.split("\\\\n-----END CERTIFICATE-----\\\\n-----BEGIN CERTIFICATE-----\\\\n");
 			certs[0] = certs[0].replaceAll("\\{\"certificateChain\":\"-----BEGIN CERTIFICATE-----\\\\n", "");
 			rawAlias = getDelimitedValue(reply, "\"alias\":\"", "\"");
@@ -509,7 +512,7 @@ public class Main implements HttpHandler {
 			signedHash = getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
 		} else {
 			payLoad = "{ \"signatureLevel\":\"RAW\", \"digest\":\"" + hashToSign + "\", \"digestAlgorithm\":\"" + digestAlgo + "\", \"signer\":{\"enterpriseNumber\": 671516647,\"certificateAlias\":\"" + rawAlias + "\"}}";
-			reply = postJson("https://services-acpt.socialsecurity.be/REST/electronicSignature/v1/sign", payLoad, "Bearer " + access_token);
+			reply = postJson(sepiaSealingUrl + "/REST/electronicSignature/v1/sign", payLoad, "Bearer " + access_token);
 			signedHash = getDelimitedValue(reply, "\"signature\":\"", "\"}");
 		}
 
