@@ -106,11 +106,12 @@ public class Main implements HttpHandler {
 	/** Start of the program */
 	public static final void main(String[] args) throws Exception {
 
-		Authenticator.setDefault(new Authenticator() {
-			public PasswordAuthentication getPasswordAuthentication() {
-				return (new PasswordAuthentication(proxyUser, proxyPassword.toCharArray()));
-			}
-		});
+		if (Boolean.parseBoolean(proxyEnabled)) {
+			System.setProperty("http.proxyHost", proxyHost);
+			System.setProperty("http.proxyPort", proxyPort);
+			System.setProperty("http.proxyUser", proxyUser);
+			System.setProperty("http.proxyPassword", proxyPassword);
+		}
 
 		// Read the config file
 		Properties config = new Properties();
@@ -900,12 +901,7 @@ public class Main implements HttpHandler {
 		try {
 			URL url = new URL(urlStr);
 
-			if (Boolean.parseBoolean(proxyEnabled)) {
-				Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress( proxyHost, Integer.parseInt(proxyPort)));
-				urlConn = (HttpURLConnection) url.openConnection(proxy);
-			} else {
-				urlConn = (HttpURLConnection) url.openConnection();
-			}
+			urlConn = (HttpURLConnection) url.openConnection();
 			urlConn.setRequestMethod(isGet ? "GET" : "POST");
 			if (authorization != null) urlConn.setRequestProperty("Authorization", authorization);
 
