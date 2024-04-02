@@ -50,6 +50,11 @@ import org.json.JSONObject;
  */
 public class Main implements HttpHandler {
 
+	private static String proxyEnabled;
+	private static String proxyHost;
+	private static String proxyPort;
+	private static String proxyUser;
+	private static String proxyPassword;
 	private static Boolean cleanupTempFiles;
 	private static String s3Url;
 	private static String s3UserName;
@@ -100,8 +105,14 @@ public class Main implements HttpHandler {
 
 	/** Start of the program */
 	public static final void main(String[] args) throws Exception {
-		// Read the config file
 
+		Authenticator.setDefault(new Authenticator() {
+			public PasswordAuthentication getPasswordAuthentication() {
+				return (new PasswordAuthentication(proxyUser, proxyPassword.toCharArray()));
+			}
+		});
+
+		// Read the config file
 		Properties config = new Properties();
 		config.load(new FileInputStream("config.txt"));
 
@@ -109,6 +120,12 @@ public class Main implements HttpHandler {
 
 		String cleanupTempFilesStr = config.getProperty("cleanupTempFiles");
 		cleanupTempFiles =  cleanupTempFilesStr != null ? Boolean.valueOf(cleanupTempFilesStr) : true;
+
+		proxyEnabled	= config.getProperty("proxy.http.enabled");
+		proxyHost		= config.getProperty("proxy.http.host");
+		proxyPort		= config.getProperty("proxy.http.port");
+		proxyUser		= config.getProperty("proxy.http.user");
+		proxyPassword	= config.getProperty("proxy.http.password");
 
 		s3UserName		= config.getProperty("s3UserName");
 		s3Passwd		= config.getProperty("s3Passwd");
@@ -882,7 +899,13 @@ public class Main implements HttpHandler {
 		HttpURLConnection urlConn = null;
 		try {
 			URL url = new URL(urlStr);
-			urlConn = (HttpURLConnection) url.openConnection();
+
+			if (Boolean.parseBoolean(proxyEnabled)) {
+				Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress( proxyHost, Integer.parseInt(proxyPort)));
+				urlConn = (HttpURLConnection) url.openConnection(proxy);
+			} else {
+				urlConn = (HttpURLConnection) url.openConnection();
+			}
 			urlConn.setRequestMethod(isGet ? "GET" : "POST");
 			if (authorization != null) urlConn.setRequestProperty("Authorization", authorization);
 

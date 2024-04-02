@@ -49,3 +49,5 @@ padesProfile = PADES_1
 
 showSealing=true
 showIDP=true
+
+proxyEnabled=false
