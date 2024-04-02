@@ -14,9 +14,6 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.*;
-import java.security.cert.Certificate;
-import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.ECPrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -30,11 +27,6 @@ import com.sun.net.httpserver.HttpExchange;
 import io.minio.*;
 import io.minio.errors.*;
 import org.json.JSONObject;
-
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 
 /**
  * Test/sample code for an FPS service where users (citizens) can sign documents.
@@ -451,6 +443,7 @@ public class Main implements HttpHandler {
 
 		String outFilename = queryParams.get("outFile");
 		String lang = queryParams.get("lang");
+		String enterpriseNumber = "671516647"; // 308357753
 
 		String access_token = null;
 		String rawAlias = null;
@@ -471,7 +464,7 @@ public class Main implements HttpHandler {
 			access_token = getDelimitedValue(reply, "\"access_token\":\"", "\",\"scope");
 			System.out.println("Access token : " + access_token);
 
-			reply = getJson(sepiaSealingUrl + "/REST/electronicSignature/v1/certificates?enterpriseNumber=671516647", "Bearer " + access_token);
+			reply = getJson(sepiaSealingUrl + "/REST/electronicSignature/v1/certificates?enterpriseNumber=" + enterpriseNumber, "Bearer " + access_token);
 			certs = reply.split("\\\\n-----END CERTIFICATE-----\\\\n-----BEGIN CERTIFICATE-----\\\\n");
 			certs[0] = certs[0].replaceAll("\\{\"certificateChain\":\"-----BEGIN CERTIFICATE-----\\\\n", "");
 			rawAlias = getDelimitedValue(reply, "\"alias\":\"", "\"");
@@ -517,7 +510,7 @@ public class Main implements HttpHandler {
 
 			signedHash = getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
 		} else {
-			payLoad = "{ \"signatureLevel\":\"RAW\", \"digest\":\"" + hashToSign + "\", \"digestAlgorithm\":\"" + digestAlgo + "\", \"signer\":{\"enterpriseNumber\": 671516647,\"certificateAlias\":\"" + rawAlias + "\"}}";
+			payLoad = "{ \"signatureLevel\":\"RAW\", \"digest\":\"" + hashToSign + "\", \"digestAlgorithm\":\"" + digestAlgo + "\", \"signer\":{\"enterpriseNumber\": " + enterpriseNumber + ",\"certificateAlias\":\"" + rawAlias + "\"}}";
 			reply = postJson(sepiaSealingUrl + "/REST/electronicSignature/v1/sign", payLoad, "Bearer " + access_token);
 			signedHash = getDelimitedValue(reply, "\"signature\":\"", "\"}");
 		}
