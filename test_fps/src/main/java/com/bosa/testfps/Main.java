@@ -106,13 +106,6 @@ public class Main implements HttpHandler {
 	/** Start of the program */
 	public static final void main(String[] args) throws Exception {
 
-		if (Boolean.parseBoolean(proxyEnabled)) {
-			System.setProperty("http.proxyHost", proxyHost);
-			System.setProperty("http.proxyPort", proxyPort);
-			System.setProperty("http.proxyUser", proxyUser);
-			System.setProperty("http.proxyPassword", proxyPassword);
-		}
-
 		// Read the config file
 		Properties config = new Properties();
 		config.load(new FileInputStream("config.txt"));
@@ -122,11 +115,11 @@ public class Main implements HttpHandler {
 		String cleanupTempFilesStr = config.getProperty("cleanupTempFiles");
 		cleanupTempFiles =  cleanupTempFilesStr != null ? Boolean.valueOf(cleanupTempFilesStr) : true;
 
-		proxyEnabled	= config.getProperty("proxy.http.enabled");
-		proxyHost		= config.getProperty("proxy.http.host");
-		proxyPort		= config.getProperty("proxy.http.port");
-		proxyUser		= config.getProperty("proxy.http.user");
-		proxyPassword	= config.getProperty("proxy.http.password");
+		proxyEnabled	= config.getProperty("proxy.https.enabled");
+		proxyHost		= config.getProperty("proxy.https.host");
+		proxyPort		= config.getProperty("proxy.https.port");
+		proxyUser		= config.getProperty("proxy.https.user");
+		proxyPassword	= config.getProperty("proxy.https.password");
 
 		s3UserName		= config.getProperty("s3UserName");
 		s3Passwd		= config.getProperty("s3Passwd");
@@ -160,6 +153,21 @@ public class Main implements HttpHandler {
 
 		String padesProfile = config.getProperty("padesProfile");
 		sigProfiles.put("application/pdf", (null == padesProfile) ? PADES_DEF_PROFILE : padesProfile);
+
+		proxyEnabled = "true";
+		proxyUser = "iaa-fts-pr";
+		proxyPassword = "CSO4qoHdtY2wPr3E";
+		proxyPort = "3128";
+		proxyHost = "dc-proxy.names.belgium.be";
+
+		// Proxy if needed
+		if (Boolean.parseBoolean(proxyEnabled)) {
+			System.out.println("Setting proxy :" + proxyHost + " - " + proxyPort + " - " + proxyUser + " - " + proxyPassword);
+			System.setProperty("https.proxyHost", proxyHost);
+			System.setProperty("https.proxyPort", proxyPort);
+			System.setProperty("https.proxyUser", proxyUser);
+			System.setProperty("https.proxyPassword", proxyPassword);
+		}
 
 		// Start the HTTP server
 		startService(port);
