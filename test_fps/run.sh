@@ -1,2 +1,2 @@
 #!/bin/sh
-java -cp "target/lib/*":target/test_fps-0.0.6-SNAPSHOT.jar com.bosa.testfps.Main -Dhttps.proxyHost=dc-proxy.names.belgium.be -Dhttps.proxyPort=3128 -Dhttps.proxyUser=iaa-fts-pr -Dhttps.proxyPassword=CSO4qoHdtY2wPr3E "$@"
+java -cp "target/lib/*":target/test_fps-0.0.6-SNAPSHOT.jar com.bosa.testfps.Main -Dproxy.https.enabled=${PROXY_ENABLED:-true} -Dproxy.https.user=$PROXY_USER -Dproxy.https.password=$PROXY_PASSWORD -Dproxy.https.host=$PROXY_HOST -Dproxy.https.port=$PROXY_PORT -Dproxy.https.exclude=$PROXY_NONPROXYHOST "$@"
