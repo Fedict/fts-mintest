@@ -101,6 +101,9 @@ public class Main implements HttpHandler {
 	/** Start of the program */
 	public static final void main(String[] args) throws Exception {
 
+		Properties properties = System.getProperties();
+		properties.forEach((k, v) -> System.out.println(k + ":" + v));
+
 		// Read the config file
 		Properties config = new Properties();
 		config.load(new FileInputStream("config.txt"));
