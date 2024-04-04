@@ -59,8 +59,9 @@ public class Main implements HttpHandler {
 	private static File inFilesDir;
 	private static File outFilesDir;
 	private static String signValidationSvcUrl;
-	private static String signValidationUrl;
-	private static String sealingSignValidationUrl;
+	private static String validationUrl;
+	private static String signUrl;
+	private static String sealingSignUrl;
 	private static String idpGuiUrl;
 	private static String idpUrl;
 	private static String esealingUrl;
@@ -127,9 +128,11 @@ public class Main implements HttpHandler {
 		sepiaSealingUrl	= config.getProperty("sepiaSealingUrl");
 
 		signValidationSvcUrl =  config.getProperty("getTokenUrl").replace("/signing/getTokenForDocument", "");
-		signValidationUrl =  config.getProperty("signValidationUrl");
-		sealingSignValidationUrl =  config.getProperty("sealingSignValidationUrl");
-		if (sealingSignValidationUrl == null) sealingSignValidationUrl = signValidationUrl;
+		signUrl			= config.getProperty("signUrl");
+		sealingSignUrl =  config.getProperty("sealingSignUrl");
+		if (sealingSignUrl == null) sealingSignUrl = signUrl;
+		validationUrl	= config.getProperty("validationUrl");
+		if (validationUrl == null) validationUrl = signUrl;
 
 		filesDir		= new File(config.getProperty("fileDir"));
 		inFilesDir		= new File(filesDir, UNSIGNED_DIR);
@@ -234,7 +237,7 @@ public class Main implements HttpHandler {
 		String URL = "";
 		switch(queryParams.get("to")) {
 			case "signval":
-				URL = signValidationUrl;
+				URL = signUrl;
 				break;
 			case "idp":
 				URL = idpUrl;
@@ -305,7 +308,7 @@ public class Main implements HttpHandler {
 
 		if (json.endsWith(",")) json = json.substring(0, json.length() -1);
 		json += "} }";
-		String reply = postJson(signValidationUrl + "/validation/validateSignature", json, null);
+		String reply = postJson(validationUrl + "/validation/validateSignature", json, null);
 		respond(httpExch, 200, "text/plain", reply.getBytes());
 	}
 
@@ -493,7 +496,7 @@ public class Main implements HttpHandler {
 				",\"certificateChain\":[" + String.join(",", certChain) +"]},\"signingProfileId\":\"" + queryParams.get("profile") +
 				"\",\"toSignDocument\":{\"bytes\":\"" + document + "\"}}";
 
-		reply = postJson(sealingSignValidationUrl + "/signing/getDataToSign", payLoad, null);
+		reply = postJson(sealingSignUrl + "/signing/getDataToSign", payLoad, null);
 
 		String hashToSign = getDelimitedValue(reply, "\"digest\" : \"", "\",");
 		String signingDate = getDelimitedValue(reply,"\"signingDate\" : \"", "\"");
@@ -529,7 +532,7 @@ public class Main implements HttpHandler {
 				",\"certificateChain\":[" + String.join(",", certChain) + "],\"detachedContents\":null,\"signingDate\":\"" + signingDate +
 				"\"},\"signatureValue\":\"" + signedHash + "\", \"validatePolicy\": { \"bytes\": \"" + validatePolicy + "\"}}\n";
 
-		reply = postJson(sealingSignValidationUrl + "/signing/signDocument", payLoad, null);
+		reply = postJson(sealingSignUrl + "/signing/signDocument", payLoad, null);
 
 		byte outDoc[] = Base64.getDecoder().decode(getDelimitedValue(reply, "\"bytes\" : \"", "\","));
 		String outDocString = new String(outDoc);

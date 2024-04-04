@@ -34,7 +34,7 @@ sadKeyFile = src/main/resources/sealing_sad.p12
 sadKeyPwd = 123456
 
 getTokenUrl = http://localhost:8751/signing/getTokenForDocument
-signValidationUrl = http://localhost:8751
+signUrl = http://localhost:8751
 
 # The redirect URL to the BOSA DSS front-end
 #bosaDssFrontend = https://sign.qa.fts.bosa.belgium.be
