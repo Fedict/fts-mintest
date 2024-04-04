@@ -60,6 +60,7 @@ public class Main implements HttpHandler {
 	private static File outFilesDir;
 	private static String signValidationSvcUrl;
 	private static String signValidationUrl;
+	private static String sealingSignValidationUrl;
 	private static String idpGuiUrl;
 	private static String idpUrl;
 	private static String esealingUrl;
@@ -127,6 +128,8 @@ public class Main implements HttpHandler {
 
 		signValidationSvcUrl =  config.getProperty("getTokenUrl").replace("/signing/getTokenForDocument", "");
 		signValidationUrl =  config.getProperty("signValidationUrl");
+		sealingSignValidationUrl =  config.getProperty("sealingSignValidationUrl");
+		if (sealingSignValidationUrl == null) sealingSignValidationUrl = signValidationUrl;
 
 		filesDir		= new File(config.getProperty("fileDir"));
 		inFilesDir		= new File(filesDir, UNSIGNED_DIR);
@@ -490,7 +493,7 @@ public class Main implements HttpHandler {
 				",\"certificateChain\":[" + String.join(",", certChain) +"]},\"signingProfileId\":\"" + queryParams.get("profile") +
 				"\",\"toSignDocument\":{\"bytes\":\"" + document + "\"}}";
 
-		reply = postJson(signValidationUrl + "/signing/getDataToSign", payLoad, null);
+		reply = postJson(sealingSignValidationUrl + "/signing/getDataToSign", payLoad, null);
 
 		String hashToSign = getDelimitedValue(reply, "\"digest\" : \"", "\",");
 		String signingDate = getDelimitedValue(reply,"\"signingDate\" : \"", "\"");
@@ -526,7 +529,7 @@ public class Main implements HttpHandler {
 				",\"certificateChain\":[" + String.join(",", certChain) + "],\"detachedContents\":null,\"signingDate\":\"" + signingDate +
 				"\"},\"signatureValue\":\"" + signedHash + "\", \"validatePolicy\": { \"bytes\": \"" + validatePolicy + "\"}}\n";
 
-		reply = postJson(signValidationUrl + "/signing/signDocument", payLoad, null);
+		reply = postJson(sealingSignValidationUrl + "/signing/signDocument", payLoad, null);
 
 		byte outDoc[] = Base64.getDecoder().decode(getDelimitedValue(reply, "\"bytes\" : \"", "\","));
 		String outDocString = new String(outDoc);
