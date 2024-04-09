@@ -101,7 +101,7 @@ public class Main implements HttpHandler {
 	private static final Map<String, String> sigProfiles = new HashMap<String, String>();
 
 	/** Start of the program */
-	public static final void main(String[] args) throws Exception {
+	public static void main(String[] args) throws Exception {
 
 		Properties properties = System.getProperties();
 		System.out.println("************************* System Properties *****************************************");
@@ -109,7 +109,7 @@ public class Main implements HttpHandler {
 
 		// Read the config file
 		Properties config = new Properties();
-		config.load(new FileInputStream("config.txt"));
+		config.load(Files.newInputStream(Paths.get("config.txt")));
 
 		System.out.println("*********************** Application Properties ***************************************");
 		config.forEach((k, v) -> System.out.println(k + ":" + v));
@@ -119,7 +119,7 @@ public class Main implements HttpHandler {
 		int port =     Integer.parseInt(config.getProperty("port"));
 
 		String cleanupTempFilesStr = config.getProperty("cleanupTempFiles");
-		cleanupTempFiles =  cleanupTempFilesStr != null ? Boolean.valueOf(cleanupTempFilesStr) : true;
+		cleanupTempFiles = cleanupTempFilesStr == null || Boolean.parseBoolean(cleanupTempFilesStr);
 
 		s3UserName		= config.getProperty("s3UserName");
 		s3Passwd		= config.getProperty("s3Passwd");
