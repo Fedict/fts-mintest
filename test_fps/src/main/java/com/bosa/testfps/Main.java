@@ -104,11 +104,17 @@ public class Main implements HttpHandler {
 	public static final void main(String[] args) throws Exception {
 
 		Properties properties = System.getProperties();
+		System.out.println("************************* System Properties *****************************************");
 		properties.forEach((k, v) -> System.out.println(k + ":" + v));
 
 		// Read the config file
 		Properties config = new Properties();
 		config.load(new FileInputStream("config.txt"));
+
+		System.out.println("*********************** Application Properties ***************************************");
+		config.forEach((k, v) -> System.out.println(k + ":" + v));
+
+		System.out.println("********************************* Go *************************************************");
 
 		int port =     Integer.parseInt(config.getProperty("port"));
 
