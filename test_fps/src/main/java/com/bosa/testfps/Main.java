@@ -545,7 +545,7 @@ public class Main implements HttpHandler {
 		enterpriseNumber = "308357753";										// Justice
 		sepiaClientId = "spf-justice:justact:client:confidential";
 		privateKey = justiceSealPrivateKey;
-		*/
+		 */
 
 		String outFilename = queryParams.get("outFile");
 		String lang = queryParams.get("lang");
@@ -622,11 +622,10 @@ public class Main implements HttpHandler {
 
 		// Since eSealing is using TEST (see testpki) certificates with their own lifecycles, CRL, no-OCSP, ... influencing revocation freshness
 		// We must request a custom policy/constraint to validate those in TA/QA/...
-		String validatePolicy = getDocumentAsB64(filesDir, "esealingConstraint.xml");
 		payLoad = "{\"toSignDocument\":{\"bytes\":\"" + document + "\",\"digestAlgorithm\":null,\"name\":\"RemoteDocument\"},\"signingProfileId\":\"" + queryParams.get("profile") +
 				"\",\"clientSignatureParameters\":{\"signingCertificate\":" + cert +
 				",\"certificateChain\":[" + String.join(",", certChain) + "],\"detachedContents\":null,\"signingDate\":\"" + signingDate +
-				"\"},\"signatureValue\":\"" + signedHash + "\", \"validatePolicy\": { \"bytes\": \"" + validatePolicy + "\"}}\n";
+				"\"},\"signatureValue\":\"" + signedHash + "\"}\n";
 
 		reply = postJson(sealingSignUrl + "/signing/signDocument", payLoad, null);
 
