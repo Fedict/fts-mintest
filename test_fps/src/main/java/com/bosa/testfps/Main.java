@@ -50,6 +50,7 @@ import org.json.JSONObject;
  */
 public class Main implements HttpHandler {
 
+	private static final String PERFTEST_FILE = "perfTest.html";
 	private static Boolean cleanupTempFiles;
 	private static String s3Url;
 	private static String s3UserName;
@@ -225,6 +226,8 @@ public class Main implements HttpHandler {
 				handleGetFile(httpExch, queryParams);
 			} else if (uri.startsWith("/perf")) {
 				perfTest(httpExch);
+			} else if (uri.startsWith("/viewPerf")) {
+				viewPerf(httpExch);
 			} else {
 				handleStatic(httpExch, uri);
 			}
@@ -241,95 +244,109 @@ public class Main implements HttpHandler {
 		}
 	}
 
-	private void perfTest(HttpExchange httpExch) throws Exception {
-		initRespond(httpExch, "text/html", 200, "<HTML>");
+	private void viewPerf(HttpExchange httpExch) throws Exception {
+		String file = null;
 		try {
-			// Small file
-			multiUploadDelete(httpExch, "test.pdf", 400);
-			// Larger file
-			multiUploadDelete(httpExch, "Multi_acroforms.pdf", 200);
+			file = new String(fileFromMinio(PERFTEST_FILE));
+			if (!file.endsWith("</BODY>")) file = "<html><meta http-equiv=\"refresh\" content=\"2\">" + file + "</html>";
+			else deleteMinioFile(PERFTEST_FILE);
+		} catch (Exception e) {
+			file = "<html><meta http-equiv=\"refresh\" content=\"2\">" + e.getMessage() + "</html>";
+		}
+		respond(httpExch, 200, "text/html", file.getBytes());
+	}
 
-			// Full Sign roundtrip
-			int count = 10;
-			multiUpload(null, "test.pdf", count);
-			// getTokenForDocuments
-			String json = "{ \"bucket\":\"" + s3UserName + "\", \"password\":\"" + s3Passwd +
-					"\", \"outDownload\": true, \"previewDocuments\": true, \"outPathPrefix\": \"OUT_\", \"signProfile\": \"PADES_MINTEST_SEALING\"," +
-					"\"signTimeout\": 9999, \"inputs\": [";
-			for(int i = 0; i < count; i++) {
-				json += "{ \"filePath\": \"perf-" + i + "-test.pdf\", \"psfC\":\"1,100,100,200,300\"},";
-			}
-			json = json.substring(0, json.length() - 1);
-			json += "]}";
+	private void perfTest(HttpExchange httpExch) throws Exception {
+		System.out.println("\n3. Redirect to mintest perfViewer ");
+		httpExch.getResponseHeaders().add("Location", "/viewPerf");
+		httpExch.sendResponseHeaders(303, 0);
+		httpExch.close();
 
-			long time = System.currentTimeMillis();
-			String token = postJson(signValidationSvcUrl + "/signing/getTokenForDocuments", json, null);
-			sendRespond(httpExch, "getTokenForDocuments for " + count + " PDF (with psfC).<br>Time : " + (System.currentTimeMillis() - time) + "ms.<br>");
+		System.out.println("Running Perf test");
+		deleteMinioFile(PERFTEST_FILE);
+		appendToPerfTest("<BODY>");
 
-			SepiaInfo si = FTSSepia;
-			String certificateParameters = makeCertificateParameters(getSepiaCerts(si));
+		// Small file
+		multiUploadDelete("test.pdf", 400);
+		// Larger file
+		multiUploadDelete("Multi_acroforms.pdf", 200);
 
-			long getDataToSignTime = 0;
-			long signDocumentTime = 0;
-			long sealingTime = 0;
-			for(int i = 0; i < count; i++) {
-				String payLoad = "{\"token\":\"" + token + "\",\"fileIdToSign\":" + i + ",\"clientSignatureParameters\":{\"pdfSigParams\": {}," + certificateParameters;
-				time = System.currentTimeMillis();
-				String reply = postJson(signValidationSvcUrl + "/signing/getDataToSignForToken", payLoad + "}}", null);
-				getDataToSignTime += System.currentTimeMillis() - time;
-				String signingDate = getDelimitedValue(reply,"\"signingDate\" : \"", "\"");
-				String hashToSign = getDelimitedValue(reply, "\"digest\" : \"", "\",");
-				DigestAlgorithm digestAlgo = DigestAlgorithm.valueOf(getDelimitedValue(reply, "digestAlgorithm\" : \"", "\","));
+		// Full Sign roundtrip
+		int count = 40;
+		multiUpload("test.pdf", count);
+		// getTokenForDocuments
+		String json = "{ \"bucket\":\"" + s3UserName + "\", \"password\":\"" + s3Passwd +
+				"\", \"outDownload\": true, \"previewDocuments\": true, \"outPathPrefix\": \"OUT_\", \"signProfile\": \"PADES_MINTEST_SEALING\"," +
+				"\"signTimeout\": 9999, \"inputs\": [";
+		for(int i = 0; i < count; i++) {
+			json += "{ \"filePath\": \"perf-" + i + "-test.pdf\", \"psfC\":\"1,100,100,200,300\"},";
+		}
+		json = json.substring(0, json.length() - 1);
+		json += "]}";
 
-				time = System.currentTimeMillis();
-				reply = postJson(sepiaSealingUrl + "/REST/electronicSignature/v1/sign",
-						"{ \"signatureLevel\":\"RAW\", \"digest\":\"" + hashToSign + "\", \"digestAlgorithm\":\"" + digestAlgo +
-								"\", \"signer\":{\"enterpriseNumber\": " + si.enterpriseNumber + ",\"certificateAlias\":\"" + si.rawAlias + "\"}}",
-						"Bearer " + si.access_token);
-				sealingTime += System.currentTimeMillis() - time;
-				String signedHash = getDelimitedValue(reply, "\"signature\":\"", "\"}");
+		long time = System.currentTimeMillis();
+		String token = postJson(signValidationSvcUrl + "/signing/getTokenForDocuments", json, null);
+		appendToPerfTest("getTokenForDocuments for " + count + " PDF (with psfC).<br>Time : " + (System.currentTimeMillis() - time) + "ms.<br>");
 
-				time = System.currentTimeMillis();
-				reply = postJson(signValidationSvcUrl + "/signing/signDocumentForToken", payLoad + ",\"signingDate\":\"" + signingDate + "\" }, \"signatureValue\":\"" + signedHash + "\"}", null);
-				signDocumentTime += System.currentTimeMillis() - time;
-			}
-			sendRespond(httpExch, "Sign flow for " + count + " PDF.<br>Time  getDataToSign: " + getDataToSignTime + "ms.<br>Time sealing: " + sealingTime + "ms.<br>Time signDocument: " + signDocumentTime + "ms.<br>");
+		SepiaInfo si = FTSSepia;
+		String certificateParameters = makeCertificateParameters(getSepiaCerts(si));
 
-			multiDelete(null, "test.pdf", count);
+		long getDataToSignTime = 0;
+		long signDocumentTime = 0;
+		long sealingTime = 0;
+		for(int i = 0; i < count; i++) {
+			String payLoad = "{\"token\":\"" + token + "\",\"fileIdToSign\":" + i + ",\"clientSignatureParameters\":{\"pdfSigParams\": {}," + certificateParameters;
+			time = System.currentTimeMillis();
+			String reply = postJson(signValidationSvcUrl + "/signing/getDataToSignForToken", payLoad + "}}", null);
+			getDataToSignTime += System.currentTimeMillis() - time;
+			String signingDate = getDelimitedValue(reply,"\"signingDate\" : \"", "\"");
+			String hashToSign = getDelimitedValue(reply, "\"digest\" : \"", "\",");
+			DigestAlgorithm digestAlgo = DigestAlgorithm.valueOf(getDelimitedValue(reply, "digestAlgorithm\" : \"", "\","));
+
+			time = System.currentTimeMillis();
+			reply = postJson(sepiaSealingUrl + "/REST/electronicSignature/v1/sign",
+					"{ \"signatureLevel\":\"RAW\", \"digest\":\"" + hashToSign + "\", \"digestAlgorithm\":\"" + digestAlgo +
+							"\", \"signer\":{\"enterpriseNumber\": " + si.enterpriseNumber + ",\"certificateAlias\":\"" + si.rawAlias + "\"}}",
+					"Bearer " + si.access_token);
+			sealingTime += System.currentTimeMillis() - time;
+			String signedHash = getDelimitedValue(reply, "\"signature\":\"", "\"}");
+
+			time = System.currentTimeMillis();
+			reply = postJson(signValidationSvcUrl + "/signing/signDocumentForToken", payLoad + ",\"signingDate\":\"" + signingDate + "\" }, \"signatureValue\":\"" + signedHash + "\"}", null);
+			signDocumentTime += System.currentTimeMillis() - time;
+		}
+		appendToPerfTest("Sign flow for " + count + " PDF.<br>Time  getDataToSign: " + getDataToSignTime + "ms.<br>Time sealing: " + sealingTime + "ms.<br>Time signDocument: " + signDocumentTime + "ms.<br>");
+
+		multiDelete("test.pdf", count);
+
+		appendToPerfTest("</BODY>");
+	}
+
+	private void appendToPerfTest(String s) throws Exception {
+		try {
+			byte [] bytes = fileFromMinio(PERFTEST_FILE);
+			fileToMinio(PERFTEST_FILE, (new String(bytes) + s).getBytes());
 		} catch(Exception e) {
-			System.out.println("ERR in Perf test: " + e.toString());
-			e.printStackTrace();
-			sendRespond(httpExch, "<br><br><br>" + e.toString());
-		} finally {
-			closeRespond(httpExch, "<HTML>");
+			fileToMinio(PERFTEST_FILE, "".getBytes());
 		}
 	}
 
-	void multiUploadDelete(HttpExchange response, String fileName, int count) throws Exception {
-		multiUpload(response, fileName, count);
-		multiDelete(response, fileName, count);
+	void multiUploadDelete(String fileName, int count) throws Exception {
+		multiUpload(fileName, count);
+		multiDelete(fileName, count);
 	}
 
-	void multiUpload(HttpExchange httpExch, String fileName, int count) throws Exception {
+	void multiUpload(String fileName, int count) throws Exception {
 		byte[] fileData = getDocument(inFilesDir, fileName);
 		long time = System.currentTimeMillis();
-		for(int i = 0; i < count; i++) {
-			getClient().putObject(
-					PutObjectArgs.builder()
-							.bucket(s3UserName)
-							.object("perf-" + i + "-" + fileName)
-							.stream(new ByteArrayInputStream(fileData), fileData.length, S3_PART_SIZE)
-							.build());
-		}
-		sendRespond(httpExch,"Upload file " + fileName + " ( " + fileData.length + " bytes ) to Minio " + count + " times.<br>Time : " + (System.currentTimeMillis() - time) + "ms.<br>");
+		for(int i = 0; i < count; i++) fileToMinio("perf-" + i + "-" + fileName, fileData);
+		appendToPerfTest("Upload file " + fileName + " ( " + fileData.length + " bytes ) to Minio " + count + " times.<br>Time : " + (System.currentTimeMillis() - time) + "ms.<br>");
 	}
 
-	void multiDelete(HttpExchange httpExch, String fileName, int count) throws Exception {
+	void multiDelete(String fileName, int count) throws Exception {
 		long time = System.currentTimeMillis();
-		for(int i = 0; i < count; i++) {
-			minioClient.removeObject(RemoveObjectArgs.builder().bucket(s3UserName).object("perf-" + i + "-" + fileName).build());
-			}
-		sendRespond(httpExch, "Delete file " + fileName + " from Minio " + count + " times.<br>Time : " + (System.currentTimeMillis() - time) + "ms.<br>");
+		for(int i = 0; i < count; i++) deleteMinioFile("perf-" + i + "-" + fileName);
+		appendToPerfTest("Delete file " + fileName + " from Minio " + count + " times.<br>Time : " + (System.currentTimeMillis() - time) + "ms.<br>");
 	}
 
 	private void handleSwagger(Map<String, String> queryParams, HttpExchange httpExch) throws IOException {
@@ -1085,25 +1102,6 @@ public class Main implements HttpHandler {
 		httpExch.close();
 	}
 
-	private void closeRespond(HttpExchange httpExch, String data) throws IOException {
-		sendRespond(httpExch, data);
-		httpExch.getResponseBody().close();
-		httpExch.close();
-	}
-
-	private void sendRespond(HttpExchange httpExch, String data) throws IOException {
-		if (httpExch != null && data != null) httpExch.getResponseBody().write(data.getBytes());
-	}
-
-	private void initRespond(HttpExchange httpExch, String contentType, int status, String data) throws IOException {
-		httpExch.getResponseHeaders().add("Content-Type", contentType);
-		httpExch.getResponseHeaders().add("Cache-Control", "no-cache, no-store, must-revalidate");
-		httpExch.getResponseHeaders().add("Pragma", "no-cache");
-		httpExch.getResponseHeaders().add("Expires", "0");
-		httpExch.sendResponseHeaders(status, 0);
-		sendRespond(httpExch, data);
-	}
-
 	/** Get the client for the S3 server */
 	private MinioClient getClient() throws Exception {
 		if (null == minioClient) {
@@ -1227,4 +1225,26 @@ public class Main implements HttpHandler {
 		return str.substring(pos, endPos);
 	}
 
+	private void fileToMinio(String fileName, byte [] fileData) throws Exception {
+		getClient().putObject(
+				PutObjectArgs.builder()
+						.bucket(s3UserName)
+						.object(fileName)
+						.stream(new ByteArrayInputStream(fileData), fileData.length, S3_PART_SIZE)
+						.build());
+	}
+
+	private byte[] fileFromMinio(String fileName) throws Exception {
+		byte[] outBytes = null;
+		InputStream inStream = getClient().getObject(GetObjectArgs.builder().bucket(s3UserName).object(fileName).build());
+		ByteArrayOutputStream outStream = new ByteArrayOutputStream(8192);
+		copyStream(inStream, outStream);
+		outStream.close();
+		inStream.close();
+		return outStream.toByteArray();
+	}
+
+	private void deleteMinioFile(String fileName) throws Exception {
+		minioClient.removeObject(RemoveObjectArgs.builder().bucket(s3UserName).object(fileName).build());
+	}
 }
