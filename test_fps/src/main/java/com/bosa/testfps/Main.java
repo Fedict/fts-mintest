@@ -53,6 +53,7 @@ public class Main implements HttpHandler {
 	private static final String PERFTEST_FILE = "perfTest.html";
 	private static Boolean cleanupTempFiles;
 	private static String s3Url;
+	private static String dpS3Url;
 	private static String s3UserName;
 	private static String s3Passwd;
 
@@ -100,6 +101,7 @@ public class Main implements HttpHandler {
 	private static final String AUTHORIZATION = "Basic " + Base64.getEncoder().encodeToString("sealing:123456".getBytes(StandardCharsets.UTF_8));
 
 	private static final Map<String, String> sigProfiles = new HashMap<String, String>();
+	private boolean isDocker;
 
 	/** Start of the program */
 	public static void main(String[] args) throws Exception {
@@ -125,6 +127,7 @@ public class Main implements HttpHandler {
 		s3UserName		= config.getProperty("s3UserName");
 		s3Passwd		= config.getProperty("s3Passwd");
 		s3Url			= config.getProperty("s3Url");
+		dpS3Url			= config.getProperty("dps3Url");
 		idpGuiUrl		= config.getProperty("idpGuiUrl");
 		idpUrl			= config.getProperty("idpUrl");
 
@@ -266,13 +269,20 @@ public class Main implements HttpHandler {
 		deleteMinioFile(PERFTEST_FILE);
 		appendToPerfTest("<BODY>");
 
+		setMinioClientURL(false);
+		// Small file
+		multiUploadDelete("test.pdf", 400);
+		// Larger file
+		multiUploadDelete("Multi_acroforms.pdf", 200);
+
+		setMinioClientURL(true);
 		// Small file
 		multiUploadDelete("test.pdf", 400);
 		// Larger file
 		multiUploadDelete("Multi_acroforms.pdf", 200);
 
 		// Full Sign roundtrip
-		int count = 40;
+		int count = 100;
 		multiUpload("test.pdf", count);
 		// getTokenForDocuments
 		String json = "{ \"bucket\":\"" + s3UserName + "\", \"password\":\"" + s3Passwd +
@@ -1212,13 +1222,17 @@ public class Main implements HttpHandler {
 		return str.substring(pos, endPos);
 	}
 
-	/** Get the client for the S3 server */
+	private void setMinioClientURL(boolean isDocker) {
+		this.isDocker = isDocker;
+		minioClient = null;
+	}
+
+		/** Get the client for the S3 server */
 	private MinioClient getClient() throws Exception {
 		if (null == minioClient) {
 			// Create client
-			minioClient =
-					MinioClient.builder()
-							.endpoint(s3Url)
+			minioClient = MinioClient.builder()
+							.endpoint(isDocker ? s3Url : dpS3Url)
 							.credentials(s3UserName, s3Passwd)
 							.build();
 		}

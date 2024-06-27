@@ -11,6 +11,7 @@ localUrl = http://localhost:8081
 #s3Passwd = PASSWORD_HERE
 
 s3Url = http://127.0.0.1:9000
+dps3Url = http://127.0.0.1:9000
 s3UserName = 0qtp70go8n3gcxosz88z
 s3Passwd = Vt3e9QATFLYqfq42UFasOrlB9PXHYnILv2WAHfI3
 
