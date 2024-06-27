@@ -268,6 +268,7 @@ public class Main implements HttpHandler {
 		System.out.println("Running Perf test");
 		deleteMinioFile(PERFTEST_FILE);
 		appendToPerfTest("<BODY>");
+		appendToPerfTest("<H2>Minio access through (routed) 'https' URLs</H2><br>");
 
 		setMinioClientURL(false);
 		// Small file
@@ -275,12 +276,14 @@ public class Main implements HttpHandler {
 		// Larger file
 		multiUploadDelete("Multi_acroforms.pdf", 200);
 
+		appendToPerfTest("<br><H2>Minio access through 'docker direct' URLs</H2><br>");
 		setMinioClientURL(true);
 		// Small file
 		multiUploadDelete("test.pdf", 400);
 		// Larger file
 		multiUploadDelete("Multi_acroforms.pdf", 200);
 
+		appendToPerfTest("<br><H2>Full signature roundtrips with sealing</H2><br>");
 		// Full Sign roundtrip
 		int count = 100;
 		multiUpload("test.pdf", count);
