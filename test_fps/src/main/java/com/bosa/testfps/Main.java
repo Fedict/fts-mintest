@@ -1102,19 +1102,6 @@ public class Main implements HttpHandler {
 		httpExch.close();
 	}
 
-	/** Get the client for the S3 server */
-	private MinioClient getClient() throws Exception {
-		if (null == minioClient) {
-			// Create client
-			minioClient =
-					MinioClient.builder()
-							.endpoint(s3Url)
-							.credentials(s3UserName, s3Passwd)
-							.build();
-		}
-		return minioClient;
-	}
-
 	private void uploadFiles(List<String> filePaths) throws Exception {
 		for(String filePath : filePaths) uploadFile(filePath);
 	}
@@ -1225,6 +1212,19 @@ public class Main implements HttpHandler {
 		return str.substring(pos, endPos);
 	}
 
+	/** Get the client for the S3 server */
+	private MinioClient getClient() throws Exception {
+		if (null == minioClient) {
+			// Create client
+			minioClient =
+					MinioClient.builder()
+							.endpoint(s3Url)
+							.credentials(s3UserName, s3Passwd)
+							.build();
+		}
+		return minioClient;
+	}
+
 	private void fileToMinio(String fileName, byte [] fileData) throws Exception {
 		getClient().putObject(
 				PutObjectArgs.builder()
@@ -1235,7 +1235,6 @@ public class Main implements HttpHandler {
 	}
 
 	private byte[] fileFromMinio(String fileName) throws Exception {
-		byte[] outBytes = null;
 		InputStream inStream = getClient().getObject(GetObjectArgs.builder().bucket(s3UserName).object(fileName).build());
 		ByteArrayOutputStream outStream = new ByteArrayOutputStream(8192);
 		copyStream(inStream, outStream);
@@ -1245,6 +1244,6 @@ public class Main implements HttpHandler {
 	}
 
 	private void deleteMinioFile(String fileName) throws Exception {
-		minioClient.removeObject(RemoveObjectArgs.builder().bucket(s3UserName).object(fileName).build());
+		getClient().removeObject(RemoveObjectArgs.builder().bucket(s3UserName).object(fileName).build());
 	}
 }
