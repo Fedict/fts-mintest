@@ -17,6 +17,7 @@ import java.security.*;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.ECPrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
 
@@ -223,6 +224,8 @@ public class Main implements HttpHandler {
 				handleIdp(httpExch, uri, queryParams);
 			} else if (uri.startsWith("/getFile")) {
 				handleGetFile(httpExch, queryParams);
+			} else if (uri.startsWith("/perf")) {
+				perfTest(httpExch);
 			} else {
 				handleStatic(httpExch, uri);
 			}
@@ -237,6 +240,91 @@ public class Main implements HttpHandler {
 				e1.printStackTrace();
 			}
 		}
+	}
+
+	private void perfTest(HttpExchange httpExch) throws Exception {
+		StringBuilder response = new StringBuilder();
+		int count = 20;
+		multiUpload(null, "test.pdf", count);
+		// getTokenForDocuments
+
+		String json = "{ \"bucket\":\"" + s3UserName + "\", \"password\":\"" + s3Passwd +
+				"\", \"outDownload\": true, \"previewDocuments\": true, \"outPathPrefix\": \"OUT_\", \"signProfile\": \"PADES_JUSTICE_SEPIA_TEST\"," +
+				"\"signTimeout\": 9999, \"inputs\": [";
+		for(int i = 0; i < count; i++) {
+			json += "{ \"filePath\": \"perf-" + i + "-test.pdf\", \"psfC\":\"1,100,100,200,300\"},";
+		}
+		json = json.substring(0, json.length() - 1);
+		json += "]}";
+
+		long time = System.currentTimeMillis();
+		String token = postJson(signValidationSvcUrl + "/signing/getTokenForDocuments", json, null);
+		response.append("getTokenForDocuments for " + count + " PDF (with psfC).<br>Time : " + (System.currentTimeMillis() - time) + "ms.<br>");
+
+		SepiaInfo si = FTSSepia;
+		String certificateParameters = makeCertificateParameters(getSepiaCerts(si));
+
+		long getDataToSignTime = 0;
+		long signDocumentTime = 0;
+		long sealingTime = 0;
+		for(int i = 0; i < count; i++) {
+			String payLoad = "{\"token\":\"" + token + "\",\"fileIdToSign\":" + i + ",\"clientSignatureParameters\":{\"pdfSigParams\": {}," + certificateParameters;
+			time = System.currentTimeMillis();
+			String reply = postJson(sealingSignUrl + "/signing/getDataToSignForToken", payLoad + "}}", null);
+			getDataToSignTime += System.currentTimeMillis() - time;
+			String signingDate = getDelimitedValue(reply,"\"signingDate\" : \"", "\"");
+			String hashToSign = getDelimitedValue(reply, "\"digest\" : \"", "\",");
+			DigestAlgorithm digestAlgo = DigestAlgorithm.valueOf(getDelimitedValue(reply, "digestAlgorithm\" : \"", "\","));
+
+			time = System.currentTimeMillis();
+			reply = postJson(sepiaSealingUrl + "/REST/electronicSignature/v1/sign",
+					"{ \"signatureLevel\":\"RAW\", \"digest\":\"" + hashToSign + "\", \"digestAlgorithm\":\"" + digestAlgo +
+							"\", \"signer\":{\"enterpriseNumber\": " + si.enterpriseNumber + ",\"certificateAlias\":\"" + si.rawAlias + "\"}}",
+					"Bearer " + si.access_token);
+			sealingTime += System.currentTimeMillis() - time;
+			String signedHash = getDelimitedValue(reply, "\"signature\":\"", "\"}");
+
+			time = System.currentTimeMillis();
+			reply = postJson(sealingSignUrl + "/signing/signDocumentForToken", payLoad + ",\"signingDate\":\"" + signingDate + "\" }, \"signatureValue\":\"" + signedHash + "\"}", null);
+			signDocumentTime += System.currentTimeMillis() - time;
+		}
+		response.append("Sign flow for " + count + " PDF.<br>Time  getDataToSign: " + getDataToSignTime + "ms.<br>Time sealing: " + sealingTime + "ms.<br>Time signDocument: " + signDocumentTime + "ms.<br>");
+
+		multiDelete(null, "test.pdf", count);
+
+		// Small file
+		multiUploadDelete(response, "test.pdf", 800);
+		// Larger file
+		multiUploadDelete(response, "Multi_acroforms.pdf", 400);
+
+		respond(httpExch, 200, "text/html", ("<HTML>" + response + "</HTML>").getBytes());
+	}
+
+	void multiUploadDelete(StringBuilder response, String fileName, int count) throws Exception {
+		multiUpload(response, fileName, count);
+		multiDelete(response, fileName, count);
+	}
+
+	void multiUpload(StringBuilder response, String fileName, int count) throws Exception {
+		byte[] fileData = getDocument(inFilesDir, fileName);
+		long time = System.currentTimeMillis();
+		for(int i = 0; i < count; i++) {
+			getClient().putObject(
+					PutObjectArgs.builder()
+							.bucket(s3UserName)
+							.object("perf-" + i + "-" + fileName)
+							.stream(new ByteArrayInputStream(fileData), fileData.length, S3_PART_SIZE)
+							.build());
+		}
+		if (response != null) response.append("Upload file " + fileName + " ( " + fileData.length + " bytes ) to Minio " + count + " times.<br>Time : " + (System.currentTimeMillis() - time) + "ms.<br>");
+	}
+
+	void multiDelete(StringBuilder response, String fileName, int count) throws Exception {
+		long time = System.currentTimeMillis();
+		for(int i = 0; i < count; i++) {
+			minioClient.removeObject(RemoveObjectArgs.builder().bucket(s3UserName).object("perf-" + i + "-" + fileName).build());
+			}
+		if (response != null) response.append("Delete file " + fileName + " from Minio " + count + " times.<br>Time : " + (System.currentTimeMillis() - time) + "ms.<br>");
 	}
 
 	private void handleSwagger(Map<String, String> queryParams, HttpExchange httpExch) throws IOException {
@@ -528,7 +616,8 @@ public class Main implements HttpHandler {
 			"4n2aQus3thbpOaRS0OI//a+iNaADj+/sdOvTZ1Vjpeot+mdrEo2ME3o8sgvpDl95" +
 			"YsTM+MgdZlTY4GPhDhcwjQhg9n5+Ccw=");
 
-
+	SepiaInfo FTSSepia = new SepiaInfo("671516647", "fts:bosa:sepia:client:confidential", ftsSealPrivateKey);
+	SepiaInfo JusticeSepia = new SepiaInfo("308357753", "spf-justice:justact:client:confidential", justiceSealPrivateKey);
 
 	// "Low footprint", "down to the bits", freestyle implementation (in the spirit of mintest) of an esal orchestration.
 	// We should use proper objects but I'd like to setup a structural solution to importing models from other applications
@@ -537,21 +626,10 @@ public class Main implements HttpHandler {
 	private void handleJsonSealing(HttpExchange httpExch, Map<String, String> queryParams) throws Exception {
 		//http://localhost:8081/seal?inFile=Riddled%20with%20errors.pdf&outFile=out.pdf&profile=PADES_1&lang=en&cred=final_sealing
 
-		String enterpriseNumber = "671516647";								// FTS
-		String sepiaClientId = "fts:bosa:sepia:client:confidential";
-		byte[] privateKey = ftsSealPrivateKey;
-
-		/*
-		enterpriseNumber = "308357753";										// Justice
-		sepiaClientId = "spf-justice:justact:client:confidential";
-		privateKey = justiceSealPrivateKey;
-		 */
-
 		String outFilename = queryParams.get("outFile");
 		String lang = queryParams.get("lang");
+		SepiaInfo si = FTSSepia;
 
-		String access_token = null;
-		String rawAlias = null;
 		String payLoad;
 		String certs[];
 		String reply;
@@ -563,33 +641,12 @@ public class Main implements HttpHandler {
 
 			certs = getDelimitedValue(reply, "\"certificates\":[", "]").split(",");
 		} else {
-			// Get OAuth access token with a signed JWT
-			payLoad ="grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=" + createSepiaOAuthJWT(sepiaClientId, privateKey);
-			reply = postURLEncoded(sepiaSealingUrl + "/REST/oauth/v5/token", payLoad);
-			access_token = getDelimitedValue(reply, "\"access_token\":\"", "\",\"scope");
-			System.out.println("Access token : " + access_token);
-
-			reply = getJson(sepiaSealingUrl + "/REST/electronicSignature/v1/certificates?enterpriseNumber=" + enterpriseNumber, "Bearer " + access_token);
-			certs = reply.split("\\\\n-----END CERTIFICATE-----\\\\n-----BEGIN CERTIFICATE-----\\\\n");
-			certs[0] = certs[0].replaceAll("\\{\"certificateChain\":\"-----BEGIN CERTIFICATE-----\\\\n", "");
-			rawAlias = getDelimitedValue(reply, "\"alias\":\"", "\"");
-			certs[certs.length - 1] = certs[certs.length - 1].replaceAll("\\\\n-----END CERTIFICATE-----.*", "");
-			int i = certs.length;
-			while(i-- != 0) certs[i] = "\"" + certs[i] + "\"";
+			certs = getSepiaCerts(si);
 		}
-
-		String cert = null;
-		int i = certs.length;
-		String certChain[] = new String[certs.length - 1];
-		while(i-- != 0) {
-			cert = "{\"encodedCertificate\":" + certs[i] + "}";
-			if(i != 0) certChain[i - 1] = cert;
-		}
-
+		String certificateParameters = makeCertificateParameters(certs);
 		String document = getDocumentAsB64(inFilesDir, queryParams.get("inFile"));
 
-		payLoad = "{\"clientSignatureParameters\":{\"signingCertificate\":" + cert +
-				",\"certificateChain\":[" + String.join(",", certChain) +"]},\"signingProfileId\":\"" + queryParams.get("profile") +
+		payLoad = "{\"clientSignatureParameters\":{" + certificateParameters + "},\"signingProfileId\":\"" + queryParams.get("profile") +
 				"\",\"toSignDocument\":{\"bytes\":\"" + document + "\"}}";
 
 		reply = postJson(sealingSignUrl + "/signing/getDataToSign", payLoad, null);
@@ -615,16 +672,15 @@ public class Main implements HttpHandler {
 
 			signedHash = getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
 		} else {
-			payLoad = "{ \"signatureLevel\":\"RAW\", \"digest\":\"" + hashToSign + "\", \"digestAlgorithm\":\"" + digestAlgo + "\", \"signer\":{\"enterpriseNumber\": " + enterpriseNumber + ",\"certificateAlias\":\"" + rawAlias + "\"}}";
-			reply = postJson(sepiaSealingUrl + "/REST/electronicSignature/v1/sign", payLoad, "Bearer " + access_token);
+			payLoad = "{ \"signatureLevel\":\"RAW\", \"digest\":\"" + hashToSign + "\", \"digestAlgorithm\":\"" + digestAlgo + "\", \"signer\":{\"enterpriseNumber\": " + si.enterpriseNumber + ",\"certificateAlias\":\"" + si.rawAlias + "\"}}";
+			reply = postJson(sepiaSealingUrl + "/REST/electronicSignature/v1/sign", payLoad, "Bearer " + si.access_token);
 			signedHash = getDelimitedValue(reply, "\"signature\":\"", "\"}");
 		}
 
 		// Since eSealing is using TEST (see testpki) certificates with their own lifecycles, CRL, no-OCSP, ... influencing revocation freshness
 		// We must request a custom policy/constraint to validate those in TA/QA/...
 		payLoad = "{\"toSignDocument\":{\"bytes\":\"" + document + "\",\"digestAlgorithm\":null,\"name\":\"RemoteDocument\"},\"signingProfileId\":\"" + queryParams.get("profile") +
-				"\",\"clientSignatureParameters\":{\"signingCertificate\":" + cert +
-				",\"certificateChain\":[" + String.join(",", certChain) + "],\"detachedContents\":null,\"signingDate\":\"" + signingDate +
+				"\",\"clientSignatureParameters\":{" + certificateParameters + ",\"detachedContents\":null,\"signingDate\":\"" + signingDate +
 				"\"},\"signatureValue\":\"" + signedHash + "\"}\n";
 
 		reply = postJson(sealingSignUrl + "/signing/signDocument", payLoad, null);
@@ -650,6 +706,17 @@ public class Main implements HttpHandler {
 		respond(httpExch, 200, "text/html", reply.getBytes());
 	}
 
+	private String makeCertificateParameters(String[] certs) {
+		String cert = null;
+		int i = certs.length;
+		String certChain[] = new String[certs.length - 1];
+		while(i-- != 0) {
+			cert = "{\"encodedCertificate\":" + certs[i] + "}";
+			if(i != 0) certChain[i - 1] = cert;
+		}
+		return "\"signingCertificate\":" + cert + ",\"certificateChain\":[" + String.join(",", certChain) +"]";
+	}
+
 	private static byte[] buildPkcs8KeyFromPkcs1Key(byte[] innerKey) {
 		byte result[] = new byte[innerKey.length + 26];
 		System.arraycopy(Base64.getDecoder().decode("MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKY="), 0, result, 0, 26);
@@ -659,12 +726,29 @@ public class Main implements HttpHandler {
 		return result;
 	}
 
-	private String createSepiaOAuthJWT(String sepiaClientId, byte[] privateKey) throws Exception {
+	private String[] getSepiaCerts(SepiaInfo si) throws Exception {
+		// Get OAuth access token with a signed JWT
+		String payLoad ="grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=" + createSepiaOAuthJWT(si);
+		String reply = postURLEncoded(sepiaSealingUrl + "/REST/oauth/v5/token", payLoad);
+		si.access_token = getDelimitedValue(reply, "\"access_token\":\"", "\",\"scope");
+		System.out.println("Access token : " + si.access_token);
+
+		reply = getJson(sepiaSealingUrl + "/REST/electronicSignature/v1/certificates?enterpriseNumber=" + si.enterpriseNumber, "Bearer " + si.access_token);
+		String [] certs = reply.split("\\\\n-----END CERTIFICATE-----\\\\n-----BEGIN CERTIFICATE-----\\\\n");
+		certs[0] = certs[0].replaceAll("\\{\"certificateChain\":\"-----BEGIN CERTIFICATE-----\\\\n", "");
+		si.rawAlias = getDelimitedValue(reply, "\"alias\":\"", "\"");
+		certs[certs.length - 1] = certs[certs.length - 1].replaceAll("\\\\n-----END CERTIFICATE-----.*", "");
+		int i = certs.length;
+		while(i-- != 0) certs[i] = "\"" + certs[i] + "\"";
+		return certs;
+	}
+
+	private String createSepiaOAuthJWT(SepiaInfo si) throws Exception {
 		// Create the JWS header,
 		long now = new Date().getTime() / 1000;
 		String jwtPayload = "{ \"jti\": \"" + now + "\"," +
-				"\"iss\": \"" + sepiaClientId + "\"," +
-				"\"sub\": \"" + sepiaClientId + "\"," +
+				"\"iss\": \"" + si.sepiaClientId + "\"," +
+				"\"sub\": \"" + si.sepiaClientId + "\"," +
 				"\"aud\": \"https://oauth-v5.acc.socialsecurity.be\"," +
 				"\"exp\":" + (now + 1000) + "," +
 				"\"nbf\":" + (now - 100) + "," +
@@ -676,7 +760,7 @@ public class Main implements HttpHandler {
 
 		// Sign the JWS
 		KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-		PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(privateKey);
+		PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(si.privateKey);
 
 		jwsObject.sign(new RSASSASigner(keyFactory.generatePrivate(keySpec)));
 
