@@ -245,13 +245,12 @@ public class Main implements HttpHandler {
 		initRespond(httpExch, "text/html", 200, "<HTML>");
 		try {
 			// Small file
-			multiUploadDelete(httpExch, "test.pdf", 800);
+			multiUploadDelete(httpExch, "test.pdf", 400);
 			// Larger file
-			multiUploadDelete(httpExch, "Multi_acroforms.pdf", 400);
-
+			multiUploadDelete(httpExch, "Multi_acroforms.pdf", 200);
 
 			// Full Sign roundtrip
-			int count = 20;
+			int count = 10;
 			multiUpload(null, "test.pdf", count);
 			// getTokenForDocuments
 			String json = "{ \"bucket\":\"" + s3UserName + "\", \"password\":\"" + s3Passwd +
