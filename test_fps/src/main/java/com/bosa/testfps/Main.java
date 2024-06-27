@@ -254,7 +254,7 @@ public class Main implements HttpHandler {
 			multiUpload(null, "test.pdf", count);
 			// getTokenForDocuments
 			String json = "{ \"bucket\":\"" + s3UserName + "\", \"password\":\"" + s3Passwd +
-					"\", \"outDownload\": true, \"previewDocuments\": true, \"outPathPrefix\": \"OUT_\", \"signProfile\": \"PADES_JUSTICE_SEPIA_TEST\"," +
+					"\", \"outDownload\": true, \"previewDocuments\": true, \"outPathPrefix\": \"OUT_\", \"signProfile\": \"PADES_MINTEST_SEALING\"," +
 					"\"signTimeout\": 9999, \"inputs\": [";
 			for(int i = 0; i < count; i++) {
 				json += "{ \"filePath\": \"perf-" + i + "-test.pdf\", \"psfC\":\"1,100,100,200,300\"},";
