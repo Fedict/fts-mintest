@@ -270,7 +270,7 @@ public class Main implements HttpHandler {
 		for(int i = 0; i < count; i++) {
 			String payLoad = "{\"token\":\"" + token + "\",\"fileIdToSign\":" + i + ",\"clientSignatureParameters\":{\"pdfSigParams\": {}," + certificateParameters;
 			time = System.currentTimeMillis();
-			String reply = postJson(sealingSignUrl + "/signing/getDataToSignForToken", payLoad + "}}", null);
+			String reply = postJson(signValidationSvcUrl + "/signing/getDataToSignForToken", payLoad + "}}", null);
 			getDataToSignTime += System.currentTimeMillis() - time;
 			String signingDate = getDelimitedValue(reply,"\"signingDate\" : \"", "\"");
 			String hashToSign = getDelimitedValue(reply, "\"digest\" : \"", "\",");
@@ -285,7 +285,7 @@ public class Main implements HttpHandler {
 			String signedHash = getDelimitedValue(reply, "\"signature\":\"", "\"}");
 
 			time = System.currentTimeMillis();
-			reply = postJson(sealingSignUrl + "/signing/signDocumentForToken", payLoad + ",\"signingDate\":\"" + signingDate + "\" }, \"signatureValue\":\"" + signedHash + "\"}", null);
+			reply = postJson(signValidationSvcUrl + "/signing/signDocumentForToken", payLoad + ",\"signingDate\":\"" + signingDate + "\" }, \"signatureValue\":\"" + signedHash + "\"}", null);
 			signDocumentTime += System.currentTimeMillis() - time;
 		}
 		response.append("Sign flow for " + count + " PDF.<br>Time  getDataToSign: " + getDataToSignTime + "ms.<br>Time sealing: " + sealingTime + "ms.<br>Time signDocument: " + signDocumentTime + "ms.<br>");
