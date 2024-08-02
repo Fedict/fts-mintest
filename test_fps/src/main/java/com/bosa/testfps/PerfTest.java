@@ -41,7 +41,7 @@ public class PerfTest {
 		try {
 			appendToPerfTest("<BODY><TABLE><TR><TD COLSPAN=2 style=\"width: 600px\"><BR><H2>Minio access through (routed) 'https' URLs</H2></TD></TR>");
 
-/*			setMinioClientURL(false);
+			setMinioClientURL(false);
 			// Small file
 			multiUploadDelete("test.pdf", 400);
 			// Larger file
@@ -54,9 +54,9 @@ public class PerfTest {
 			// Larger file
 			multiUploadDelete("Multi_acroforms.pdf", 200);
 
-			appendToPerfTest("<TR><TD COLSPAN=2><BR><H2>Full signature roundtrips with sealing</H2></TD></TR>");
 			// Full Sign roundtrip
 			int count = 100;
+			appendToPerfTest("<TR><TD COLSPAN=2><BR><H2>Full signature roundtrip with sealing " + count + " times</H2></TD></TR>");
 			multiUpload("test.pdf", count);
 			// getTokenForDocuments
 			String json = "{ \"bucket\":\"" + s3UserName + "\", \"password\":\"" + s3Passwd +
@@ -70,7 +70,7 @@ public class PerfTest {
 
 			long time = System.currentTimeMillis();
 			String token = postJson(signValidationSvcUrl + "/signing/getTokenForDocuments", json, null);
-			appendToPerfTest("<TR><TD>getTokenForDocuments for " + count + " PDF (with psfC).</TD><TD>" + (System.currentTimeMillis() - time) +  "ms</TD></TR>");
+			appendToPerfTest("<TR><TD>getTokenForDocuments for " + count + " PDFs (with psfC).</TD><TD>" + (System.currentTimeMillis() - time) +  "ms</TD></TR>");
 
 			SepiaInfo si = FTSSepia;
 			String certificateParameters = makeCertificateParameters(getSepiaCerts(si));
@@ -99,46 +99,47 @@ public class PerfTest {
 				reply = postJson(signValidationSvcUrl + "/signing/signDocumentForToken", payLoad + ",\"signingDate\":\"" + signingDate + "\" }, \"signatureValue\":\"" + signedHash + "\"}", null);
 				signDocumentTime += System.currentTimeMillis() - time;
 			}
-			appendToPerfTest("<TR><TD COLSPAN=2>Sign flow for " + count + " PDF.</TD></TR><TR><TD>getDataToSign</TD><TD>" + getDataToSignTime + " ms</TD></TR><TR><TD>sealing</TD><TD>" + sealingTime + " ms</TD></TR><TR><TD>signDocument</TD><TD>" + signDocumentTime + " ms</TD></TR>");
+			appendToPerfTest("<TR><TD>getDataToSign</TD><TD>" + getDataToSignTime + " ms</TD></TR><TR><TD>sealing</TD><TD>" + sealingTime + " ms</TD></TR><TR><TD>signDocument</TD><TD>" + signDocumentTime + " ms</TD></TR>");
 
 			multiDelete("test.pdf", count);
-*/
 
-			appendToPerfTest("<TR><TD COLSPAN=2><BR><H2>MultiSignature with sealing</H2></TD></TR>");
-			int count = 20;
-			SepiaInfo si = FTSSepia;
-			String certificateParameters = makeCertificateParameters(getSepiaCerts(si));
+			count = 20;
+			int nbFiles = 20;
+			appendToPerfTest("<TR><TD COLSPAN=2><BR><H2>MultiFile Signature(" + nbFiles + " files) with sealing " + count + " times</H2></TD></TR>");
 
 			String fileBase64 = Base64.getEncoder().encodeToString(getDocument(inFilesDir, "test.pdf"));
 
-			long time = 0;
-			long getDataToSignTime = 0;
-			long signDocumentTime = 0;
-			String payLoad = "{\"toSignDocuments\": [";
-			for(int i = 0; i < count; i++) {
-				payLoad += "{\"bytes\": \"" + fileBase64 + "\",\"name\": \"test_" + i + ".pdf\" }";
-				if (i < (count - 1)) payLoad += ",";
-			}
-			payLoad += "],\"token\":\"" + System.currentTimeMillis() + "\",\"signingProfileId\":\"XADES_TEST\",\"clientSignatureParameters\":{\"pdfSigParams\": {}," + certificateParameters;
+			getDataToSignTime = signDocumentTime = sealingTime = 0;
+			for(int i = 0; i < count ; i++) {
+				String payLoad = "{\"toSignDocuments\": [";
+				int index = nbFiles;
+				while(index != 0) {
+					payLoad += "{\"bytes\": \"" + fileBase64 + "\",\"name\": \"test_" + --index + ".pdf\" }";
+					if (index != 0) payLoad += ",";
+				}
+				payLoad += "],\"token\":\"" + System.currentTimeMillis() + "\",\"signingProfileId\":\"XADES_MINTEST_MULTIFILE\",\"clientSignatureParameters\":{\"pdfSigParams\": {}," + certificateParameters;
 
-			time = System.currentTimeMillis();
-			String reply = postJson(signValidationSvcUrl + "/signing/getDataToSignMultiple", payLoad + "}}", null);
-			getDataToSignTime += System.currentTimeMillis() - time;
-			String signingDate = getDelimitedValue(reply,"\"signingDate\" : \"", "\"");
-			String dataToSign = getDelimitedValue(reply, "\"digest\" : \"", "\",");
-			DigestAlgorithm digestAlgo = DigestAlgorithm.valueOf(getDelimitedValue(reply, "digestAlgorithm\" : \"", "\","));
+				time = System.currentTimeMillis();
+				String reply = postJson(signValidationSvcUrl + "/signing/getDataToSignMultiple", payLoad + "}}", null);
+				getDataToSignTime += System.currentTimeMillis() - time;
+				String signingDate = getDelimitedValue(reply,"\"signingDate\" : \"", "\"");
+				String dataToSign = getDelimitedValue(reply, "\"digest\" : \"", "\",");
+				DigestAlgorithm digestAlgo = DigestAlgorithm.valueOf(getDelimitedValue(reply, "digestAlgorithm\" : \"", "\","));
 
-			reply = postJson(sepiaSealingUrl + "/REST/electronicSignature/v1/sign",
-					"{ \"signatureLevel\":\"RAW\", \"digest\":\"" + dataToSign + "\", \"digestAlgorithm\":\"" + digestAlgo +
-						"\", \"signer\":{\"enterpriseNumber\": " + si.enterpriseNumber + ",\"certificateAlias\":\"" + si.rawAlias + "\"}}",
+				time = System.currentTimeMillis();
+				reply = postJson(sepiaSealingUrl + "/REST/electronicSignature/v1/sign",
+						"{ \"signatureLevel\":\"RAW\", \"digest\":\"" + dataToSign + "\", \"digestAlgorithm\":\"" + digestAlgo +
+								"\", \"signer\":{\"enterpriseNumber\": " + si.enterpriseNumber + ",\"certificateAlias\":\"" + si.rawAlias + "\"}}",
 						"Bearer " + si.access_token);
-			String signedData = getDelimitedValue(reply, "\"signature\":\"", "\"}");
+				sealingTime += System.currentTimeMillis() - time;
+				String signedData = getDelimitedValue(reply, "\"signature\":\"", "\"}");
 
-			time = System.currentTimeMillis();
-			reply = postJson(signValidationSvcUrl + "/signing/signDocumentMultiple", payLoad + ",\"signingDate\":\"" + signingDate + "\" }, \"signatureValue\":\"" + signedData + "\"}", null);
-			signDocumentTime += System.currentTimeMillis() - time;
+				time = System.currentTimeMillis();
+				reply = postJson(signValidationSvcUrl + "/signing/signDocumentMultiple", payLoad + ",\"signingDate\":\"" + signingDate + "\" }, \"signatureValue\":\"" + signedData + "\"}", null);
+				signDocumentTime += System.currentTimeMillis() - time;
+			}
 
-			appendToPerfTest("<TR><TD COLSPAN=2>Sign flow for " + count + " PDF.</TD></TR><TR><TD>getDataToSign</TD><TD>" + getDataToSignTime + " ms</TD></TR><TR><TD>signDocument</TD><TD>" + signDocumentTime + " ms</TD></TR>");
+			appendToPerfTest("<TR><TD>getDataToSignMultiple</TD><TD>" + getDataToSignTime + " ms</TD></TR><TR><TD>sealing</TD><TD>" + sealingTime + " ms</TD></TR><TR><TD>signDocumentMultiple</TD><TD>" + signDocumentTime + " ms</TD></TR>");
 
 			appendToPerfTest("</TABLE></BODY>");
 		} catch (Exception e) {
