@@ -117,7 +117,7 @@ public class PerfTest {
 					payLoad += "{\"bytes\": \"" + fileBase64 + "\",\"name\": \"test_" + --index + ".pdf\" }";
 					if (index != 0) payLoad += ",";
 				}
-				payLoad += "],\"token\":\"" + System.currentTimeMillis() + "\",\"signingProfileId\":\"XADES_MINTEST_MULTIFILE\",\"clientSignatureParameters\":{\"pdfSigParams\": {}," + certificateParameters;
+				payLoad += "],\"token\":\"" + System.currentTimeMillis() + "\",\"signingProfileId\":\"XADES_MINTEST_MULTIFILE_SEALING\",\"clientSignatureParameters\":{\"pdfSigParams\": {}," + certificateParameters;
 
 				time = System.currentTimeMillis();
 				String reply = postJson(signValidationSvcUrl + "/signing/getDataToSignMultiple", payLoad + "}}", null);
