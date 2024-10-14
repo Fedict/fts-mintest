@@ -9,6 +9,7 @@ import java.math.BigInteger;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.security.MessageDigest;
 import java.util.*;
 
 import static com.bosa.testfps.Main.*;
@@ -185,12 +186,16 @@ public class Tools {
 		return new JSONObject(json).toString(4);
 	}
 
-	static  String streamToString(InputStream in) throws IOException {
+	static byte[] streamToBytes(InputStream in) throws IOException {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream(4096*4);
 		copyStream(in, baos);
 		baos.close();
 		in.close();
-		return baos.toString();
+		return baos.toByteArray();
+	}
+
+	static  String streamToString(InputStream in) throws IOException {
+		return new String(streamToBytes(in));
 	}
 
 	static  String getDocumentAsB64(File folder, String inFile) throws IOException {
@@ -270,4 +275,16 @@ public class Tools {
 		return path.replaceAll("/", "");
 	}
 
+	static  String calcHash(String URL, String algo) {
+		try  {
+			HttpURLConnection urlConn = (HttpURLConnection) new URL(URL).openConnection();
+			byte[] digest = MessageDigest.getInstance(algo).digest(streamToBytes(urlConn.getInputStream()));
+			String b64Digest = Base64.getEncoder().encodeToString(digest);
+			System.out.printf("\"%s\" : %s\n", URL, b64Digest);
+			return b64Digest;
+		} catch(Exception e) {
+			System.out.printf("ERROR : \"%s\" : %s\n", URL, e.getMessage());
+		}
+		return null;
+	}
 }

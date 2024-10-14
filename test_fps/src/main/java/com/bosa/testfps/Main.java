@@ -99,6 +99,8 @@ public class Main implements HttpHandler {
 	/** Start of the program */
 	public static void main(String[] args) throws Exception {
 
+		//calcPolicyHashes();
+
 		Properties properties = System.getProperties();
 		System.out.println("************************* System Properties *****************************************");
 		properties.forEach((k, v) -> System.out.println(k + ":" + v));
@@ -592,5 +594,15 @@ public class Main implements HttpHandler {
 		// Return a message to the user
 		String html = HTML_START + htmlBody + HTML_END;
 		respond(httpExch, 200, "text/html", html.getBytes());
+	}
+
+	private static void calcPolicyHashes() {
+		calcHash("https://mintest.ta.fts.bosa.belgium.be/static/testPolicy.pdf", "SHA256");
+
+		calcHash("https://justact-acc.just.fgov.be/en/legal-documents/edepot/eseal-policy/eDepot_Bosa_ANNA_Test_SipENv1.0.pdf", "SHA256");
+		calcHash("https://justact-acc.just.fgov.be/en/legal-documents/edepot/eseal-policy/eDepot_Bosa_Naban_Test_SipENv1.0.pdf", "SHA256");
+		calcHash("https://justact-acc.just.fgov.be/de/legal-documents/justact/esign-policy/eSign_policy_JustAct_De_v1.pdf", "SHA256");
+		calcHash("https://justact-acc.just.fgov.be/fr/legal-documents/justact/esign-policy/eSign_policy_JustAct_Fr_v1.pdf", "SHA256");
+		calcHash("https://justact-acc.just.fgov.be/nl/legal-documents/justact/esign-policy/eSign_policy_JustAct_Nl_v1.pdf", "SHA256");
 	}
 }
