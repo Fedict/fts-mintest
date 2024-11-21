@@ -283,7 +283,7 @@ public class Tools {
 			System.out.printf("\"%s\" : %s\n", URL, b64Digest);
 			return b64Digest;
 		} catch(Exception e) {
-			System.out.printf("ERROR : \"%s\" : %s\n", URL, e.getMessage());
+			System.out.printf("ERROR : \"%s\" : %s\n", URL, e.toString());
 		}
 		return null;
 	}

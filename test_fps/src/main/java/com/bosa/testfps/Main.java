@@ -99,7 +99,7 @@ public class Main implements HttpHandler {
 	/** Start of the program */
 	public static void main(String[] args) throws Exception {
 
-		//calcPolicyHashes();
+		calcPolicyHashes();
 
 		Properties properties = System.getProperties();
 		System.out.println("************************* System Properties *****************************************");
@@ -597,12 +597,13 @@ public class Main implements HttpHandler {
 	}
 
 	private static void calcPolicyHashes() {
-		calcHash("https://mintest.ta.fts.bosa.belgium.be/static/testPolicy.pdf", "SHA256");
-
-		calcHash("https://justact-acc.just.fgov.be/en/legal-documents/edepot/eseal-policy/eDepot_Bosa_ANNA_Test_SipENv1.0.pdf", "SHA256");
-		calcHash("https://justact-acc.just.fgov.be/en/legal-documents/edepot/eseal-policy/eDepot_Bosa_Naban_Test_SipENv1.0.pdf", "SHA256");
-		calcHash("https://justact-acc.just.fgov.be/de/legal-documents/justact/esign-policy/eSign_policy_JustAct_De_v1.pdf", "SHA256");
-		calcHash("https://justact-acc.just.fgov.be/fr/legal-documents/justact/esign-policy/eSign_policy_JustAct_Fr_v1.pdf", "SHA256");
-		calcHash("https://justact-acc.just.fgov.be/nl/legal-documents/justact/esign-policy/eSign_policy_JustAct_Nl_v1.pdf", "SHA256");
+		calcHash("https://justonweb.be/en/legal-documents/edepot/eseal-policy/en/EdepotNABANSIPSignaturePolicyENv1.0.pdf", "SHA256");
+		calcHash("https://justact-acc.just.fgov.be/en/legal-documents/edepot/eseal-policy/en/eDepotANNASIPTestSignaturePolicyENv1.1.pdf", "SHA256");
+		calcHash("https://Justonweb.be/en/legal-documents/eDepot/eSeal policy/eDdepotANNASipSignaturePolicyENv1.1.pdf", "SHA256");
+		calcHash("https://justact-acc.just.fgov.be/en/legal-documents/edepot/eseal-policy/eDepotNABANSIPTestSignaturePolicyENv1.0.pdf", "SHA256");
+		calcHash("https://Justonweb.be/de/legal-documents/justact/esign-policy/eSign_policy_JustAct_De_v1.pdf", "SHA256");
+		calcHash("https://Justonweb.be/fr/legal-documents/justact/esign-policy/eSign_policy_JustAct_Fr_v1.pdf", "SHA256");
+		calcHash("https://Justonweb.be/fr/legal-documents/justact/esign-policy/eSign_policy_JustAct_Nl_v1.pdf", "SHA256");
+		calcHash("https://Justonweb.be/en/legal-documents/justact/eseal-policy/JustAct_Anna_SipENv1.0.pdf", "SHA256");
 	}
 }
