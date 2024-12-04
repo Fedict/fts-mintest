@@ -603,11 +603,9 @@ public class Main implements HttpHandler {
 		calcHash("https://justact-acc.just.fgov.be/en/legal-documents/edepot/eseal-policy/eDepot_Bosa_ANNA_Test_SipENv1.1.pdf", "SHA256");
 		calcHash("https://Justonweb.be/en/legal-documents/edepot/eseal-policy/eDepot_Bosa_Naban_SipENv1.0.pdf", "SHA256");
 		calcHash("https://justact-acc.just.fgov.be/en/legal-documents/edepot/eseal-policy/eDepot_Bosa_Naban_Test_SipENv1.1.pdf", "SHA256");
-
 		calcHash("https://Justonweb.be/en/legal-documents/justact/eseal-policy/JustAct_Anna_SipENv1.0.pdf", "SHA256");
 		calcHash("https://justact-acc.just.fgov.be/en/legal-documents/justact/eseal-policy/JustAct_Anna_Test_SipENv1.1.pdf", "SHA256");
 
-		calcHash("https://justact.just.fgov.be/en/legal-documents/edepot/eseal-policy/eDepot_Bosa_ANNA_Test_SipENv1.1.pdf", "SHA256");
 		calcHash("", "SHA256");
 
 
