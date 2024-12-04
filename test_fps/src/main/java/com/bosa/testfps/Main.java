@@ -10,6 +10,8 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
 
@@ -597,13 +599,18 @@ public class Main implements HttpHandler {
 	}
 
 	private static void calcPolicyHashes() {
-		calcHash("https://justonweb.be/en/legal-documents/edepot/eseal-policy/en/EdepotNABANSIPSignaturePolicyENv1.0.pdf", "SHA256");
-		calcHash("https://justact-acc.just.fgov.be/en/legal-documents/edepot/eseal-policy/en/eDepotANNASIPTestSignaturePolicyENv1.1.pdf", "SHA256");
-		calcHash("https://Justonweb.be/en/legal-documents/eDepot/eSeal policy/eDdepotANNASipSignaturePolicyENv1.1.pdf", "SHA256");
-		calcHash("https://justact-acc.just.fgov.be/en/legal-documents/edepot/eseal-policy/eDepotNABANSIPTestSignaturePolicyENv1.0.pdf", "SHA256");
-		calcHash("https://Justonweb.be/de/legal-documents/justact/esign-policy/eSign_policy_JustAct_De_v1.pdf", "SHA256");
-		calcHash("https://Justonweb.be/fr/legal-documents/justact/esign-policy/eSign_policy_JustAct_Fr_v1.pdf", "SHA256");
-		calcHash("https://Justonweb.be/fr/legal-documents/justact/esign-policy/eSign_policy_JustAct_Nl_v1.pdf", "SHA256");
+		calcHash("https://Justonweb.be/en/legal-documents/edepot/eseal-policy/eDepot_Bosa_ANNA_SipENv1.0.pdf", "SHA256");
+		calcHash("https://justact-acc.just.fgov.be/en/legal-documents/edepot/eseal-policy/eDepot_Bosa_ANNA_Test_SipENv1.1.pdf", "SHA256");
+		calcHash("https://Justonweb.be/en/legal-documents/edepot/eseal-policy/eDepot_Bosa_Naban_SipENv1.0.pdf", "SHA256");
+		calcHash("https://justact-acc.just.fgov.be/en/legal-documents/edepot/eseal-policy/eDepot_Bosa_Naban_Test_SipENv1.1.pdf", "SHA256");
+
 		calcHash("https://Justonweb.be/en/legal-documents/justact/eseal-policy/JustAct_Anna_SipENv1.0.pdf", "SHA256");
+		calcHash("https://justact-acc.just.fgov.be/en/legal-documents/justact/eseal-policy/JustAct_Anna_Test_SipENv1.1.pdf", "SHA256");
+
+		calcHash("https://justact.just.fgov.be/en/legal-documents/edepot/eseal-policy/eDepot_Bosa_ANNA_Test_SipENv1.1.pdf", "SHA256");
+		calcHash("", "SHA256");
+
+
+
 	}
 }
