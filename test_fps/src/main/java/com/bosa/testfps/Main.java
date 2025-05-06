@@ -73,6 +73,8 @@ public class Main implements HttpHandler {
 
 	static MinioClient minioClient;
 
+	static Properties config;
+
 	// Default profiles
 	static String XADES_DEF_PROFILE = "XADES_1";
 	static String PADES_DEF_PROFILE = "PADES_1";
@@ -106,7 +108,7 @@ public class Main implements HttpHandler {
 		properties.forEach((k, v) -> System.out.println(k + ":" + v));
 
 		// Read the config file
-		Properties config = new Properties();
+		config = new Properties();
 		config.load(Files.newInputStream(Paths.get("config.txt")));
 
 		System.out.println("*********************** Application Properties ***************************************");
@@ -228,6 +230,8 @@ public class Main implements HttpHandler {
 				PerfTest.view(httpExch);
 			} else if (uri.startsWith("/test")) {
 				randomTest(httpExch);
+			} else if (uri.startsWith("/onboarding")) {
+				onboarding(httpExch);
 			} else {
 				handleStatic(httpExch, uri);
 			}
@@ -242,6 +246,13 @@ public class Main implements HttpHandler {
 				e1.printStackTrace();
 			}
 		}
+	}
+
+	private void onboarding(HttpExchange httpExch) throws IOException {
+		String uri = httpExch.getRequestURI().getQuery();
+		httpExch.getResponseHeaders().add("Location", config.getProperty("onboardingURL") + "/?" + uri);
+		httpExch.sendResponseHeaders(303, 0);
+		httpExch.close();
 	}
 
 	private void randomTest(HttpExchange httpExch) {
