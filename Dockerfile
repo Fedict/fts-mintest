@@ -3,8 +3,6 @@ ADD test_fps /srv/test_fps
 COPY openshift-config /srv/test_fps/config.txt
 WORKDIR /srv/test_fps
 EXPOSE 8080
-RUN ls -l /bin/sh
-RUN ls -lR /
-RUN echo '#!/bin/sh\njava -Dhttps.proxyUser=$PROXY_USER -Dhttps.proxyPassword=$PROXY_PASSWORD -Dhttps.proxyHost=$PROXY_HOST -Dhttps.proxyPort=$PROXY_PORT -Dhttps.nonProxyHosts=$PROXY_NONPROXYHOST -cp "target/lib/*":target/test_fps-0.0.6-SNAPSHOT.jar com.bosa.testfps.Main "$@"' >./run.sh
+RUN echo '#!/bin/busybox\njava -Dhttps.proxyUser=$PROXY_USER -Dhttps.proxyPassword=$PROXY_PASSWORD -Dhttps.proxyHost=$PROXY_HOST -Dhttps.proxyPort=$PROXY_PORT -Dhttps.nonProxyHosts=$PROXY_NONPROXYHOST -cp "target/lib/*":target/test_fps-0.0.6-SNAPSHOT.jar com.bosa.testfps.Main "$@"' >./run.sh
 
 CMD ./run.sh
