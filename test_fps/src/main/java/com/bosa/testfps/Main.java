@@ -230,8 +230,8 @@ public class Main implements HttpHandler {
 				PerfTest.view(httpExch);
 			} else if (uri.startsWith("/test")) {
 				randomTest(httpExch);
-			} else if (uri.startsWith("/onboarding")) {
-				onboarding(httpExch);
+			} else if (uri.startsWith("/jumpToRemoteSign")) {
+				jumpToRemoteSign(httpExch);
 			} else {
 				handleStatic(httpExch, uri);
 			}
@@ -248,9 +248,22 @@ public class Main implements HttpHandler {
 		}
 	}
 
-	private void onboarding(HttpExchange httpExch) throws IOException {
-		String uri = httpExch.getRequestURI().getQuery();
-		httpExch.getResponseHeaders().add("Location", config.getProperty("onboardingURL") + "/?" + uri);
+	private void jumpToRemoteSign(HttpExchange httpExch) throws IOException {
+		String query = httpExch.getRequestURI().getQuery();
+		if (query == null) query = "";
+		String uri = "";
+		int pos = query.indexOf("uri=");
+		if (pos != -1) {
+			int endPos = query.indexOf('&', pos);
+			if (endPos != -1) {
+				uri = query.substring(pos + 4, endPos);
+				query = query.substring(0, pos) + query.substring(endPos +1);
+			}
+		}
+		String redirectURL = config.getProperty("remoteSignURL") + "/" + uri;
+		if (!query.isEmpty()) redirectURL += "?" + query;
+		System.out.println("Redirect to : " + redirectURL);
+		httpExch.getResponseHeaders().add("Location", redirectURL);
 		httpExch.sendResponseHeaders(303, 0);
 		httpExch.close();
 	}

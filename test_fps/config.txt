@@ -51,4 +51,4 @@ padesProfile = PADES_1
 showSealing=true
 showIDP=true
 
-onboardingURL=http://localhost:3002
+remoteSignURL=http://localhost:3002
