@@ -41,6 +41,7 @@ signUrl = http://localhost:8751
 #bosaDssFrontend = https://sign.qa.fts.bosa.belgium.be
 
 bosaDssFrontend = http://localhost:3000
+bosaGuiRemoteSign = http://localhost:3002
 
 # Options: XADES_1, XADES_2, XADES_LTA, XADES_TLA_EXP_ALLOW
 xadesProfile = XADES_LTA
