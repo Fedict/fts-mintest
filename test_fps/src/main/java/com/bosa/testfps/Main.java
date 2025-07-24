@@ -237,6 +237,7 @@ public class Main implements HttpHandler {
 				jumpToRemoteSign(httpExch);
 			} else if (uri.startsWith("/switchUI")) {
 				tokenRemoteSign = !tokenRemoteSign;
+				respond(httpExch, 200, "text/plain", (tokenRemoteSign ? "RemoteSign Active" : "GUI Sign Active").getBytes());
 			} else {
 				handleStatic(httpExch, uri);
 			}
