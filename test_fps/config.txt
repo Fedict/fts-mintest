@@ -37,12 +37,6 @@ sadKeyPwd = 123456
 getTokenUrl = http://localhost:8751/signing/getTokenForDocument
 signUrl = http://localhost:8751
 
-# The redirect URL to the BOSA DSS front-end
-#bosaDssFrontend = https://sign.qa.fts.bosa.belgium.be
-
-bosaDssFrontend = http://localhost:3000
-bosaGuiRemoteSign = http://localhost:3002
-
 # Options: XADES_1, XADES_2, XADES_LTA, XADES_TLA_EXP_ALLOW
 xadesProfile = XADES_LTA
 
@@ -52,4 +46,8 @@ padesProfile = PADES_1
 showSealing=true
 showIDP=true
 
-remoteSignURL=http://localhost:3002
+# The redirect URL to the BOSA DSS front-ends
+#bosaDssFrontend = https://sign.qa.fts.bosa.belgium.be
+bosaDssFrontend = http://localhost:3000
+remoteSignTokenURL = http://localhost:3000
+remoteSignBoxURL = http://localhost:3002

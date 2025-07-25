@@ -68,7 +68,7 @@ public class Main implements HttpHandler {
 	static boolean showIDP;
 
 	static String bosaGuiSign;
-	static String bosaGuiRemoteSign;
+	static String remoteSignTokenURL;
 	boolean tokenRemoteSign = false;
 
 	static String localUrl;
@@ -149,7 +149,7 @@ public class Main implements HttpHandler {
 		outFilesDir		= (null == tmp) ? new File(filesDir, SIGNED_DIR) : new File(tmp);
 
 		bosaGuiSign		= config.getProperty("bosaDssFrontend");
-		bosaGuiRemoteSign	= config.getProperty("bosaGuiRemoteSign");
+		remoteSignTokenURL = config.getProperty("remoteSignTokenURL");
 
 		localUrl		= config.getProperty("localUrl");
 
@@ -266,7 +266,8 @@ public class Main implements HttpHandler {
 				query = query.substring(0, pos) + query.substring(endPos +1);
 			}
 		}
-		String redirectURL = config.getProperty("remoteSignURL") + "/" + uri;
+
+		String redirectURL = config.getProperty("remoteSignBoxURL") + "/" + uri;
 		if (!query.isEmpty()) redirectURL += "?" + query;
 		System.out.println("Redirect to : " + redirectURL);
 		httpExch.getResponseHeaders().add("Location", redirectURL);
@@ -537,7 +538,7 @@ public class Main implements HttpHandler {
 		System.out.println("\n3. Redirect to the BOSA DSS front-end");
 		String callbackURL = localUrl + "/callback?out=" + out + "&toDelete=" + filesToDelete;
 		System.out.println("  Callback: " + callbackURL);
-		String redirectUrl = (tokenRemoteSign ? bosaGuiRemoteSign : bosaGuiSign) + "/sign/" + URLEncoder.encode(token) +
+		String redirectUrl = (tokenRemoteSign ? remoteSignTokenURL : bosaGuiSign) + "/sign/" + URLEncoder.encode(token) +
 				"?redirectUrl=" + URLEncoder.encode(callbackURL);
 		redirectUrl += "&HookURL=" + URLEncoder.encode(localUrl + "/hook");
 
