@@ -291,6 +291,9 @@ public class Main implements HttpHandler {
 			case "seal":
 				URL = esealingUrl;
 				break;
+			case "rsign":
+				URL = config.getProperty("remoteSignBoxSrvURL");
+				break;
 		}
 		httpExch.getResponseHeaders().add("Location", URL + "/swagger-ui/index.html");
 		httpExch.sendResponseHeaders(303, 0);

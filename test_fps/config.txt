@@ -49,5 +49,6 @@ showIDP=true
 # The redirect URL to the BOSA DSS front-ends
 #bosaDssFrontend = https://sign.qa.fts.bosa.belgium.be
 bosaDssFrontend = http://localhost:3000
-remoteSignTokenURL = http://localhost:3000
+remoteSignTokenURL = http://localhost:3002
 remoteSignBoxURL = http://localhost:3002
+remoteSignBoxSrvURL = http://localhost:8754
