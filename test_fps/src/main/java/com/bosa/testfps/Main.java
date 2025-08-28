@@ -544,6 +544,7 @@ public class Main implements HttpHandler {
 		String redirectUrl = (tokenRemoteSign ? remoteSignTokenURL : bosaGuiSign) + "/sign/" + URLEncoder.encode(token) +
 				"?redirectUrl=" + URLEncoder.encode(callbackURL);
 		redirectUrl += "&HookURL=" + URLEncoder.encode(localUrl + "/hook");
+        if (tokenRemoteSign) redirectUrl += "&logging=DEBUG";           // Activate debug log for gui-remotesign
 
 		for(String key : queryParams.keySet()) {
 			if (!key.equals("json")) redirectUrl += "&" + key + "=" + queryParams.get(key);
