@@ -111,14 +111,14 @@ public class Sealing {
 	static void handleJsonSealing(HttpExchange httpExch, Map<String, String> queryParams) throws Exception {
 		//http://localhost:8081/seal?inFile=Riddled%20with%20errors.pdf&outFile=out.pdf&profile=PADES_1&lang=en&cred=final_sealing
 
-		String outFilename = queryParams.get("outFile");
+		String outFilename = sanitize(queryParams.get("outFile"));
 		String lang = queryParams.get("lang");
 		SepiaInfo si = FTSSepia;
 
 		String payLoad;
 		String certs[];
 		String reply;
-		String cred = queryParams.get("cred");
+		String cred = sanitize(queryParams.get("cred"));
 		if (cred != null) {
 			payLoad = "{\"requestID\":\"11668786643409505247592754000\",\"credentialID\":\"" + cred +
 					"\",\"lang\":\"" + lang + "\",\"returnCertificates\":\"chain\",\"certInfo\":true,\"authInfo\":true,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/credentialinfoprotocol#\"}";
@@ -129,7 +129,7 @@ public class Sealing {
 			certs = getSepiaCerts(si);
 		}
 		String certificateParameters = makeCertificateParameters(certs);
-		String document = getDocumentAsB64(inFilesDir, queryParams.get("inFile"));
+		String document = getDocumentAsB64(inFilesDir, sanitize(queryParams.get("inFile")));
 
 		payLoad = "{\"clientSignatureParameters\":{" + certificateParameters + "},\"signingProfileId\":\"" + queryParams.get("profile") +
 				"\",\"toSignDocument\":{\"bytes\":\"" + document + "\"}}";
