@@ -272,7 +272,7 @@ public class Tools {
 	}
 
 	static  String sanitize(String path) {
-		return path.replaceAll("/", "");
+		return path.replaceAll("[()<>/\\\\]", "");
 	}
 
 	static  String calcHash(String URL, String algo) {
