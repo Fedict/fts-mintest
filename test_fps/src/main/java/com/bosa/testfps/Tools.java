@@ -271,8 +271,13 @@ public class Tools {
 		}
 	}
 
-	static  String sanitize(String path) {
-		return path.replaceAll("[()<>/\\\\]", "");
+	static  String sanitize(String rawString) {
+		String sanitized =  null;
+		if (rawString != null) {
+			sanitized = rawString.replaceAll("[^a-zA-Z0-9_.~]", "");
+			if (!sanitized.equals(rawString)) System.out.println("Sanitized : " + sanitized);
+		}
+        return sanitized;
 	}
 
 	static  String calcHash(String URL, String algo) {
