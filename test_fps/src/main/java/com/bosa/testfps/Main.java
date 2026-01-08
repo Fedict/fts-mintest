@@ -61,6 +61,11 @@ public class Main implements HttpHandler {
 	static String idpUrl;
 	static String esealingUrl;
 	static String sepiaSealingUrl;
+	static String fspClientId = "dfb0b573-9186-437b-a384-28f6d81f0c14"; // INT "dd8b7f8a-588b-4657-864d-7c063e17f9c3";
+	static String fspSealingUrl = "https://rsign.fsp.services.ta.belgium.be/api/seal/v1/";
+	static String fspAuthUrl = "https://rsign.fsp.services.ta.belgium.be/api/seal/oauth2/";
+	static String fspAuthAudience = "https://keycloak.qa2.bosa.be.zetes.internal/realms/RSSPSEALING";		// "https://za.pkiacc.tsp.zetes.com/realms/RSSPSEALING"
+	static String fspAuthValidAudience = "TestAudience";
 
 	static String sadKeyFile;
 	static String sadKeyPwd;
@@ -103,7 +108,7 @@ public class Main implements HttpHandler {
 	/** Start of the program */
 	public static void main(String[] args) throws Exception {
 
-		calcPolicyHashes();
+		//calcPolicyHashes();
 
 		Properties properties = System.getProperties();
 		System.out.println("************************* System Properties *****************************************");
@@ -135,6 +140,9 @@ public class Main implements HttpHandler {
 
 		esealingUrl		= config.getProperty("easealingUrl");
 		sepiaSealingUrl	= config.getProperty("sepiaSealingUrl");
+		fspSealingUrl	= config.getProperty("fspSealingUrl");
+
+
 
 		signValidationSvcUrl =  config.getProperty("getTokenUrl").replace("/signing/getTokenForDocument", "");
 		signUrl			= config.getProperty("signUrl");

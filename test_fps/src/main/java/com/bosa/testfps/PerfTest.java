@@ -72,8 +72,8 @@ public class PerfTest {
 			String token = postJson(signValidationSvcUrl + "/signing/getTokenForDocuments", json, null);
 			appendToPerfTest("<TR><TD>getTokenForDocuments for " + count + " PDFs (with psfC).</TD><TD>" + (System.currentTimeMillis() - time) +  "ms</TD></TR>");
 
-			SepiaInfo si = FTSSepia;
-			String certificateParameters = makeCertificateParameters(getSepiaCerts(si));
+			OAuthInfo oai = FTSSepia;
+			String certificateParameters = makeCertificateParameters(getSepiaCerts(oai));
 
 			long getDataToSignTime = 0;
 			long signDocumentTime = 0;
@@ -90,8 +90,8 @@ public class PerfTest {
 				time = System.currentTimeMillis();
 				reply = postJson(sepiaSealingUrl + "/REST/electronicSignature/v1/sign",
 						"{ \"signatureLevel\":\"RAW\", \"digest\":\"" + hashToSign + "\", \"digestAlgorithm\":\"" + digestAlgo +
-								"\", \"signer\":{\"enterpriseNumber\": " + si.enterpriseNumber + ",\"certificateAlias\":\"" + si.rawAlias + "\"}}",
-						"Bearer " + si.access_token);
+								"\", \"signer\":{\"enterpriseNumber\": " + oai.enterpriseNumber + ",\"certificateAlias\":\"" + oai.rawAlias + "\"}}",
+						"Bearer " + oai.access_token);
 				sealingTime += System.currentTimeMillis() - time;
 				String signedHash = getDelimitedValue(reply, "\"signature\":\"", "\"}");
 
@@ -129,8 +129,8 @@ public class PerfTest {
 				time = System.currentTimeMillis();
 				reply = postJson(sepiaSealingUrl + "/REST/electronicSignature/v1/sign",
 						"{ \"signatureLevel\":\"RAW\", \"digest\":\"" + dataToSign + "\", \"digestAlgorithm\":\"" + digestAlgo +
-								"\", \"signer\":{\"enterpriseNumber\": " + si.enterpriseNumber + ",\"certificateAlias\":\"" + si.rawAlias + "\"}}",
-						"Bearer " + si.access_token);
+								"\", \"signer\":{\"enterpriseNumber\": " + oai.enterpriseNumber + ",\"certificateAlias\":\"" + oai.rawAlias + "\"}}",
+						"Bearer " + oai.access_token);
 				sealingTime += System.currentTimeMillis() - time;
 				String signedData = getDelimitedValue(reply, "\"signature\":\"", "\"}");
 

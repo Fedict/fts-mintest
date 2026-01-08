@@ -24,7 +24,7 @@ import static com.bosa.testfps.Main.*;
 import static com.bosa.testfps.Tools.*;
 
 public class Sealing {
-	private static byte ftsSealPrivateKey[] = buildPkcs8KeyFromPkcs1Key(Base64.getDecoder().decode("MIIEogIBAAKCAQEAs3LsYwdpGgs5X57VnSR5WFHDZTgwFnZ//e/DYm8vZv84F4e2" +
+	private static JWTSigner ftsSealSigner = new RSAJWTSigner(buildPkcs8KeyspecFromPkcs1Key(Base64.getDecoder().decode("MIIEogIBAAKCAQEAs3LsYwdpGgs5X57VnSR5WFHDZTgwFnZ//e/DYm8vZv84F4e2" +
 			"3YFjojqqKUP1tvfbJB4AdydZtlMtoDJax+j4T1k7AyAi8L4/Cat89eVQHQVgfVHK" +
 			"OLCvT6SouBL85GDs940hKjwF/i1Zi0dAyy++HWsAw9Yzij0x9zbLeDMY8NIP3wmX" +
 			"66g3xJPw3mjb/Cmxc79pk1drzFMi0cVaBh0XcHkeb4J0Pj4MkK2Gkbf7t9zjZYSR" +
@@ -48,9 +48,10 @@ public class Sealing {
 			"fv0KGusf7evmoqDo9NU9zZfwQvP8evq3wOyKF+J2GmHnEI+v5Y428b1mwSAe2MJK" +
 			"URQfAoGAC+fzkXwkFrf3uTWhLvYvNgzikbM2iYy9xiR0K7MonaBLJYsfrO9ObvVC" +
 			"T2JvDtEwmg/60pY5ediIc4GMQQhXJNPfBU+D8jORVAtHiaB/0oaciLB7XErxe0/P" +
-			"koGuKcRtfdtBjwxjKGtnJn7ZqjmT0iqdv1fvzwzQIS1gwZJ6bGU="));
+			"koGuKcRtfdtBjwxjKGtnJn7ZqjmT0iqdv1fvzwzQIS1gwZJ6bGU=")));
 
-	private static byte justiceSealPrivateKey[] = Base64.getDecoder().decode("MIIJQwIBADANBgkqhkiG9w0BAQEFAASCCS0wggkpAgEAAoICAQC6qOCHYLvqOxxE" +
+	private static JWTSigner justiceSigner = new RSAJWTSigner(new PKCS8EncodedKeySpec(Base64.getDecoder().decode(
+			"MIIJQwIBADANBgkqhkiG9w0BAQEFAASCCS0wggkpAgEAAoICAQC6qOCHYLvqOxxE" +
 			"O8zJbx4FAk7C/57Uv8pv9kL+8UK9MryVOjeQySWdztcHa6ZnSf/2uWIqfvCQksbx" +
 			"25rMuT9szq58hMBvJ7NGSjnLMRkx3OmZ014qGk+nXbasJCiqjbG7FZH+SWIP+/s8" +
 			"ORCMY30tuRIWkE9czZ0umbxJE5L2/rQLqu55e3fHSfM9oC+XbR4SOHppRNIxGQe2" +
@@ -99,10 +100,38 @@ public class Sealing {
 			"HHie3xChZmeBhAwMllKW2heg8Au6xe8vL0xf1lZStGOFvUapDRDqTcacxK9liwfO" +
 			"J5i7yfBAGEkksbaoD+R59wuJsai5yHhdDuVjjUmnbf6/BLT8q4qkB6v7T8ZTv327" +
 			"4n2aQus3thbpOaRS0OI//a+iNaADj+/sdOvTZ1Vjpeot+mdrEo2ME3o8sgvpDl95" +
-			"YsTM+MgdZlTY4GPhDhcwjQhg9n5+Ccw=");
+			"YsTM+MgdZlTY4GPhDhcwjQhg9n5+Ccw=")));
 
-	static SepiaInfo FTSSepia = new SepiaInfo("671516647", "fts:bosa:sepia:client:confidential", ftsSealPrivateKey);
-	static SepiaInfo JusticeSepia = new SepiaInfo("308357753", "spf-justice:justact:client:confidential", justiceSealPrivateKey);
+
+	private static JWTSigner zetesSigner;
+	private static JWTSigner zetesSignerTa;
+    static {
+        try {
+/*
+			zetesSignerTa = new ECJWTSigner("""
+-----BEGIN PRIVATE KEY-----
+MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCAnCKSYqJqyyO9RlVOn
+BpwV5TntwOnuu2g0GOQTxqaeiw==
+-----END PRIVATE KEY-----
+					""");
+ */
+
+			zetesSigner = new ECJWTPEMSigner("""
+-----BEGIN PRIVATE KEY-----
+MHcCAQEEIFIzfpEmVMne4xFeRBX6RPc/JFlDZYFJDnubDKW9g0zgoAoGCCqGSM49
+AwEHoUQDQgAEJrzF5mbAPwDGq9F06ztRCC3Qkf6CEhHrW3E5BP8Ak14TIjmD7aua
+oP27WXTf5CnkKvWH0JYI55Wns2KXcLIhvg==
+-----END PRIVATE KEY-----
+					""");
+
+        } catch (IOException | NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    static OAuthInfo FSPAuth = new OAuthInfo(null, fspClientId, fspAuthAudience, JWSAlgorithm.ES256, zetesSignerTa);
+	static OAuthInfo FTSSepia = new OAuthInfo("671516647", "fts:bosa:sepia:client:confidential", "https://oauth-v5.acc.socialsecurity.be", JWSAlgorithm.RS256, ftsSealSigner);
+	static OAuthInfo JusticeSepia = new OAuthInfo("308357753", "spf-justice:justact:client:confidential", "https://oauth-v5.acc.socialsecurity.be", JWSAlgorithm.RS256, justiceSigner);
 
 	// "Low footprint", "down to the bits", freestyle implementation (in the spirit of mintest) of an esal orchestration.
 	// We should use proper objects but I'd like to setup a structural solution to importing models from other applications
@@ -113,20 +142,26 @@ public class Sealing {
 
 		String outFilename = sanitize(queryParams.get("outFile"));
 		String lang = queryParams.get("lang");
-		SepiaInfo si = FTSSepia;
+		String fspAccessToken = null;
+		OAuthInfo oai = FTSSepia;
 
 		String payLoad;
 		String certs[];
 		String reply;
 		String cred = sanitize(queryParams.get("cred"));
 		if (cred != null) {
-			payLoad = "{\"requestID\":\"11668786643409505247592754000\",\"credentialID\":\"" + cred +
-					"\",\"lang\":\"" + lang + "\",\"returnCertificates\":\"chain\",\"certInfo\":true,\"authInfo\":true,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/credentialinfoprotocol#\"}";
-			reply = postJson(esealingUrl + "/credentials/info", payLoad, AUTHORIZATION);
+			if (cred.startsWith("ZETES")) {
+				oai = FSPAuth;
+				certs = getZetesCerts(oai);
+			} else {
+				payLoad = "{\"requestID\":\"11668786643409505247592754000\",\"credentialID\":\"" + cred +
+						"\",\"lang\":\"" + lang + "\",\"returnCertificates\":\"chain\",\"certInfo\":true,\"authInfo\":true,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/credentialinfoprotocol#\"}";
+				reply = postJson(esealingUrl + "/credentials/info", payLoad, AUTHORIZATION);
 
-			certs = getDelimitedValue(reply, "\"certificates\":[", "]").split(",");
+				certs = getDelimitedValue(reply, "\"certificates\":[", "]").split(",");
+			}
 		} else {
-			certs = getSepiaCerts(si);
+			certs = getSepiaCerts(oai);
 		}
 		String certificateParameters = makeCertificateParameters(certs);
 		String document = getDocumentAsB64(inFilesDir, sanitize(queryParams.get("inFile")));
@@ -142,23 +177,28 @@ public class Sealing {
 
 		String signedHash = null;
 		if (cred != null) {
-			Digest digest = new Digest();
-			digest.setHashes(new String[] { hashToSign });
-			digest.setHashAlgorithmOID(digestAlgo.oid);
-			String sad = makeSAD(digest);
-			payLoad = "{\"operationMode\":\"S\",\"requestID\":\"11668768431957487036136225500\"," +
-					"\"optionalData\":{\"returnSigningCertificateInfo\":true,\"returnSupportMultiSignatureInfo\":true,\"returnServicePolicyInfo\":true,\"returnSignatureCreationPolicyInfo\":true,\"returnCredentialAuthorizationModeInfo\":true,\"returnSoleControlAssuranceLevelInfo\":true}" +
-					",\"validity_period\":null,\"credentialID\":\"" + queryParams.get("cred") +
-					"\",\"lang\":\"" + lang + "\"," +
-					"\"numSignatures\":1,\"policy\":null,\"signaturePolicyID\":null,\"signAlgo\":\"1.2.840.10045.4.3.2\",\"signAlgoParams\":null,\"response_uri\":null,\"documentDigests\":{\"hashes\":[\"" + hashToSign +
-					"\"],\"hashAlgorithmOID\":\"" + digestAlgo.oid + "\"},\"sad\":\"" + sad + "\"}";
+			if (cred.startsWith("ZETES")) {
+				reply = postJson(fspSealingUrl + "/signatures/signHash", payLoad, AUTHORIZATION);
 
-			reply = postJson(esealingUrl + "/signatures/signHash", payLoad, AUTHORIZATION);
+			} else {
+				Digest digest = new Digest();
+				digest.setHashes(new String[] { hashToSign });
+				digest.setHashAlgorithmOID(digestAlgo.oid);
+				String sad = makeSAD(digest);
+				payLoad = "{\"operationMode\":\"S\",\"requestID\":\"11668768431957487036136225500\"," +
+						"\"optionalData\":{\"returnSigningCertificateInfo\":true,\"returnSupportMultiSignatureInfo\":true,\"returnServicePolicyInfo\":true,\"returnSignatureCreationPolicyInfo\":true,\"returnCredentialAuthorizationModeInfo\":true,\"returnSoleControlAssuranceLevelInfo\":true}" +
+						",\"validity_period\":null,\"credentialID\":\"" + queryParams.get("cred") +
+						"\",\"lang\":\"" + lang + "\"," +
+						"\"numSignatures\":1,\"policy\":null,\"signaturePolicyID\":null,\"signAlgo\":\"1.2.840.10045.4.3.2\",\"signAlgoParams\":null,\"response_uri\":null,\"documentDigests\":{\"hashes\":[\"" + hashToSign +
+						"\"],\"hashAlgorithmOID\":\"" + digestAlgo.oid + "\"},\"sad\":\"" + sad + "\"}";
 
-			signedHash = getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
+				reply = postJson(esealingUrl + "/signatures/signHash", payLoad, AUTHORIZATION);
+
+				signedHash = getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
+			}
 		} else {
-			payLoad = "{ \"signatureLevel\":\"RAW\", \"digest\":\"" + hashToSign + "\", \"digestAlgorithm\":\"" + digestAlgo + "\", \"signer\":{\"enterpriseNumber\": " + si.enterpriseNumber + ",\"certificateAlias\":\"" + si.rawAlias + "\"}}";
-			reply = postJson(sepiaSealingUrl + "/REST/electronicSignature/v1/sign", payLoad, "Bearer " + si.access_token);
+			payLoad = "{ \"signatureLevel\":\"RAW\", \"digest\":\"" + hashToSign + "\", \"digestAlgorithm\":\"" + digestAlgo + "\", \"signer\":{\"enterpriseNumber\": " + oai.enterpriseNumber + ",\"certificateAlias\":\"" + oai.rawAlias + "\"}}";
+			reply = postJson(sepiaSealingUrl + "/REST/electronicSignature/v1/sign", payLoad, "Bearer " + oai.access_token);
 			signedHash = getDelimitedValue(reply, "\"signature\":\"", "\"}");
 		}
 
@@ -191,6 +231,7 @@ public class Sealing {
 		respond(httpExch, 200, "text/html", reply.getBytes());
 	}
 
+
 	static String makeCertificateParameters(String[] certs) {
 		String cert = null;
 		int i = certs.length;
@@ -202,43 +243,66 @@ public class Sealing {
 		return "\"signingCertificate\":" + cert + ",\"certificateChain\":[" + String.join(",", certChain) +"]";
 	}
 
-	static String[] getSepiaCerts(SepiaInfo si) throws Exception {
-		// Get OAuth access token with a signed JWT
-		String payLoad ="grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=" + createSepiaOAuthJWT(si);
-		String reply = postURLEncoded(sepiaSealingUrl + "/REST/oauth/v5/token", payLoad);
-		si.access_token = getDelimitedValue(reply, "\"access_token\":\"", "\",\"scope");
-		System.out.println("Access token : " + si.access_token);
+	static String[] getZetesCerts(OAuthInfo oai) throws Exception {
 
-		reply = getJson(sepiaSealingUrl + "/REST/electronicSignature/v1/certificates?enterpriseNumber=" + si.enterpriseNumber, "Bearer " + si.access_token);
+		String accessToken = getFSPAccessToken(oai,"service", null);
+		String reply = getJson(sepiaSealingUrl + "/REST/electronicSignature/v1/certificates?enterpriseNumber=" + oai.enterpriseNumber, "Bearer " + oai.access_token);
 		String [] certs = reply.split("\\\\n-----END CERTIFICATE-----\\\\n-----BEGIN CERTIFICATE-----\\\\n");
 		certs[0] = certs[0].replaceAll("\\{\"certificateChain\":\"-----BEGIN CERTIFICATE-----\\\\n", "");
-		si.rawAlias = getDelimitedValue(reply, "\"alias\":\"", "\"");
+		oai.rawAlias = getDelimitedValue(reply, "\"alias\":\"", "\"");
 		certs[certs.length - 1] = certs[certs.length - 1].replaceAll("\\\\n-----END CERTIFICATE-----.*", "");
 		int i = certs.length;
 		while(i-- != 0) certs[i] = "\"" + certs[i] + "\"";
 		return certs;
 	}
 
-	private static String createSepiaOAuthJWT(SepiaInfo si) throws Exception {
+	private static String getFSPAccessToken(OAuthInfo oai, String scope, String authorizationDetails) throws Exception {
+		String payLoad = "grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer" +
+				"&client_assertion=" + createOAuthJWT(oai) +
+				"&scope=" + scope;
+		if (authorizationDetails != null) payLoad += "&authorization_details=" + authorizationDetails;
+		String reply = postURLEncoded(fspAuthUrl + "token", payLoad);
+
+		String accToken = getDelimitedValue(reply, "\"access_token\":\"", "\",");
+		System.out.println("Access token : " + accToken);
+		return accToken;
+	}
+
+	static String[] getSepiaCerts(OAuthInfo oai) throws Exception {
+		// Get OAuth access token with a signed JWT
+		String payLoad ="grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=" + createOAuthJWT(oai);
+		String reply = postURLEncoded(sepiaSealingUrl + "/REST/oauth/v5/token", payLoad);
+		oai.access_token = getDelimitedValue(reply, "\"access_token\":\"", "\",\"scope");
+		System.out.println("Access token : " + oai.access_token);
+
+		reply = getJson(sepiaSealingUrl + "/REST/electronicSignature/v1/certificates?enterpriseNumber=" + oai.enterpriseNumber, "Bearer " + oai.access_token);
+		String [] certs = reply.split("\\\\n-----END CERTIFICATE-----\\\\n-----BEGIN CERTIFICATE-----\\\\n");
+		certs[0] = certs[0].replaceAll("\\{\"certificateChain\":\"-----BEGIN CERTIFICATE-----\\\\n", "");
+		oai.rawAlias = getDelimitedValue(reply, "\"alias\":\"", "\"");
+		certs[certs.length - 1] = certs[certs.length - 1].replaceAll("\\\\n-----END CERTIFICATE-----.*", "");
+		int i = certs.length;
+		while(i-- != 0) certs[i] = "\"" + certs[i] + "\"";
+		return certs;
+	}
+
+	private static String createOAuthJWT(OAuthInfo oai) throws Exception {
 		// Create the JWS header,
 		long now = new Date().getTime() / 1000;
 		String jwtPayload = "{ \"jti\": \"" + now + "\"," +
-				"\"iss\": \"" + si.sepiaClientId + "\"," +
-				"\"sub\": \"" + si.sepiaClientId + "\"," +
-				"\"aud\": \"https://oauth-v5.acc.socialsecurity.be\"," +
+				"\"iss\": \"" + oai.clientId + "\"," +
+				"\"sub\": \"" + oai.clientId + "\"," +
+				"\"aud\": \"" + oai.audience + "\"," +
 				"\"exp\":" + (now + 1000) + "," +
 				"\"nbf\":" + (now - 100) + "," +
 				"\"iat\":" + now +
 				"}";
-		JWSObject jwsObject = new JWSObject(
-				new JWSHeader.Builder(JWSAlgorithm.RS256).build(),
-				new Payload(jwtPayload));
+		JWSHeader.Builder jwtHdr = new JWSHeader.Builder(oai.algo);
+		String kid = oai.signer.getKid();
+		if (kid != null) jwtHdr.keyID(kid);
+		JWSObject jwsObject = new JWSObject(jwtHdr.build(), new Payload(jwtPayload));
 
 		// Sign the JWS
-		KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-		PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(si.privateKey);
-
-		jwsObject.sign(new RSASSASigner(keyFactory.generatePrivate(keySpec)));
+		oai.signer.sign(jwsObject);
 
         return jwsObject.serialize();
 	}
