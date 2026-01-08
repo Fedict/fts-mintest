@@ -10,6 +10,7 @@ import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.MessageDigest;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.*;
 
 import static com.bosa.testfps.Main.*;
@@ -231,13 +232,25 @@ public class Tools {
 		return str.substring(pos, endPos);
 	}
 
-	static byte[] buildPkcs8KeyFromPkcs1Key(byte[] innerKey) {
+	static PKCS8EncodedKeySpec buildPkcs8KeyspecFromPkcs1Key(byte[] innerKey) {
 		byte result[] = new byte[innerKey.length + 26];
 		System.arraycopy(Base64.getDecoder().decode("MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKY="), 0, result, 0, 26);
 		System.arraycopy(BigInteger.valueOf(result.length - 4).toByteArray(), 0, result, 2, 2);
 		System.arraycopy(BigInteger.valueOf(innerKey.length).toByteArray(), 0, result, 24, 2);
 		System.arraycopy(innerKey, 0, result, 26, innerKey.length);
-		return result;
+		return new PKCS8EncodedKeySpec(result);
+	}
+
+	static PKCS8EncodedKeySpec pemToPKCS8KeySpec(byte[] sec1Bytes) {
+		byte[] pkcs8Prefix = {
+				0x30, 0x77, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2a, (byte)0x86, 0x48,
+				(byte)0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, (byte)0x86, 0x48, (byte)0xce,
+				0x3d, 0x03, 0x01, 0x07, 0x04, 0x5d
+		};
+		byte[] pkcs8Bytes = new byte[pkcs8Prefix.length + sec1Bytes.length];
+		System.arraycopy(pkcs8Prefix, 0, pkcs8Bytes, 0, pkcs8Prefix.length);
+		System.arraycopy(sec1Bytes, 0, pkcs8Bytes, pkcs8Prefix.length, sec1Bytes.length);
+		return new PKCS8EncodedKeySpec(pkcs8Bytes);
 	}
 
 	static String getToken(String json, String tokenName) {
@@ -271,8 +284,13 @@ public class Tools {
 		}
 	}
 
-	static  String sanitize(String path) {
-		return path.replaceAll("[()<>/\\\\]", "");
+	static  String sanitize(String rawString) {
+		String sanitized =  null;
+		if (rawString != null) {
+			sanitized = rawString.replaceAll("[^a-zA-Z0-9_.~]", "");
+			if (!sanitized.equals(rawString)) System.out.println("Sanitized : " + sanitized);
+		}
+        return sanitized;
 	}
 
 	static  String calcHash(String URL, String algo) {
