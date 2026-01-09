@@ -175,7 +175,7 @@ public class Main implements HttpHandler {
 		startService(port);
 	}
 
-	private static String getConfigValue(String def, String name) {
+	private static String getConfigValue(String name, String def) {
 		String value	= config.getProperty(name);
 		return value == null ? def : value;
 	}
