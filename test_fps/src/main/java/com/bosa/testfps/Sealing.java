@@ -153,9 +153,10 @@ oP27WXTf5CnkKvWH0JYI55Wns2KXcLIhvg==
 				oai = FSPAuth;
 				String fspAccessToken = getFSPAccessToken(oai,"service", null);
 				payLoad = """
-					{ "certificates":"chain","certInfo":true,"onlyValid":true,"credentialInfo":true}
+					{ "certificates":"chain","certInfo":true,"credentialInfo":true}
 				""";
-				reply = postJson(fspSealingUrl + "v2/credentials/list", payLoad, Map.of("Authorization", "Bearer " + fspAccessToken, "BelGov-Trace-Id", "RANDOM"));
+				reply = postJson(fspSealingUrl + "v2/credentials/list", payLoad,
+						Map.of("Authorization", "Bearer " + fspAccessToken, "BelGov-Trace-Id", "RANDOM", "X-Message-Priority", "4", "X-SSL-Client-CN", "smoketest", "X-UsageType", "SEALING"));
 				oai.signerId = getDelimitedValue(reply, "\"credentialIDs\":[\"", "\"],");
 				certs = getDelimitedValue(reply, "\"certificates\":[", "],").split(",");
 			} else {
@@ -187,8 +188,8 @@ oP27WXTf5CnkKvWH0JYI55Wns2KXcLIhvg==
 				String authDetails = "[{\"type\":\"credential\",\"credentialID\": \"" + oai.signerId + "\",\"hashAlgorithmOID\":\"2.16.840.1.101.3.4.2.1\", \"documentDigests\":[{\"hash\":\"" + hashToSign + "\"}]}]";
 				String fspAccessToken = getFSPAccessToken(oai,"credential", authDetails);
 				payLoad = "{\"credentialID\":\"" + oai.signerId + "\",\"hashes\":[\"" + hashToSign + "\"],\"signAlgo\": \"1.2.840.10045.4.3.2\"}";
-				reply = postJson(fspSealingUrl + "v2/signatures/signHash", payLoad, Map.of("Authorization", "Bearer " + fspAccessToken, "BelGov-Trace-Id", "RANDOM", "X-UsageType", "SEALING"));
-
+				reply = postJson(fspSealingUrl + "v2/signatures/signHash", payLoad,
+						Map.of("Authorization", "Bearer " + fspAccessToken, "BelGov-Trace-Id", "RANDOM", "X-Message-Priority", "4", "X-SSL-Client-CN", "smoketest", "X-UsageType", "SEALING"));
 				signedHash = getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
 			} else {
 				Digest digest = new Digest();
