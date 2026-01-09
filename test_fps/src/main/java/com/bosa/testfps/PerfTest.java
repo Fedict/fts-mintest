@@ -69,7 +69,7 @@ public class PerfTest {
 			json += "]}";
 
 			long time = System.currentTimeMillis();
-			String token = postJson(signValidationSvcUrl + "/signing/getTokenForDocuments", json, null);
+			String token = postJson(signValidationSvcUrl + "/signing/getTokenForDocuments", json);
 			appendToPerfTest("<TR><TD>getTokenForDocuments for " + count + " PDFs (with psfC).</TD><TD>" + (System.currentTimeMillis() - time) +  "ms</TD></TR>");
 
 			OAuthInfo oai = FTSSepia;
@@ -81,7 +81,7 @@ public class PerfTest {
 			for(int i = 0; i < count; i++) {
 				String payLoad = "{\"token\":\"" + token + "\",\"fileIdToSign\":" + i + ",\"clientSignatureParameters\":{\"pdfSigParams\": {}," + certificateParameters;
 				time = System.currentTimeMillis();
-				String reply = postJson(signValidationSvcUrl + "/signing/getDataToSignForToken", payLoad + "}}", null);
+				String reply = postJson(signValidationSvcUrl + "/signing/getDataToSignForToken", payLoad + "}}");
 				getDataToSignTime += System.currentTimeMillis() - time;
 				String signingDate = getDelimitedValue(reply,"\"signingDate\" : \"", "\"");
 				String hashToSign = getDelimitedValue(reply, "\"digest\" : \"", "\",");
@@ -90,13 +90,13 @@ public class PerfTest {
 				time = System.currentTimeMillis();
 				reply = postJson(sepiaSealingUrl + "/REST/electronicSignature/v1/sign",
 						"{ \"signatureLevel\":\"RAW\", \"digest\":\"" + hashToSign + "\", \"digestAlgorithm\":\"" + digestAlgo +
-								"\", \"signer\":{\"enterpriseNumber\": " + oai.enterpriseNumber + ",\"certificateAlias\":\"" + oai.rawAlias + "\"}}",
+								"\", \"signer\":{\"enterpriseNumber\": " + oai.enterpriseNumber + ",\"certificateAlias\":\"" + oai.signerId + "\"}}",
 						"Bearer " + oai.access_token);
 				sealingTime += System.currentTimeMillis() - time;
 				String signedHash = getDelimitedValue(reply, "\"signature\":\"", "\"}");
 
 				time = System.currentTimeMillis();
-				reply = postJson(signValidationSvcUrl + "/signing/signDocumentForToken", payLoad + ",\"signingDate\":\"" + signingDate + "\" }, \"signatureValue\":\"" + signedHash + "\"}", null);
+				reply = postJson(signValidationSvcUrl + "/signing/signDocumentForToken", payLoad + ",\"signingDate\":\"" + signingDate + "\" }, \"signatureValue\":\"" + signedHash + "\"}");
 				signDocumentTime += System.currentTimeMillis() - time;
 			}
 			appendToPerfTest("<TR><TD>getDataToSign</TD><TD>" + getDataToSignTime + " ms</TD></TR><TR><TD>sealing</TD><TD>" + sealingTime + " ms</TD></TR><TR><TD>signDocument</TD><TD>" + signDocumentTime + " ms</TD></TR>");
@@ -120,7 +120,7 @@ public class PerfTest {
 				payLoad += "],\"token\":\"" + System.currentTimeMillis() + "\",\"signingProfileId\":\"XADES_MINTEST_MULTIFILE_SEALING\",\"clientSignatureParameters\":{\"pdfSigParams\": {}," + certificateParameters;
 
 				time = System.currentTimeMillis();
-				String reply = postJson(signValidationSvcUrl + "/signing/getDataToSignMultiple", payLoad + "}}", null);
+				String reply = postJson(signValidationSvcUrl + "/signing/getDataToSignMultiple", payLoad + "}}");
 				getDataToSignTime += System.currentTimeMillis() - time;
 				String signingDate = getDelimitedValue(reply,"\"signingDate\" : \"", "\"");
 				String dataToSign = getDelimitedValue(reply, "\"digest\" : \"", "\",");
@@ -129,13 +129,13 @@ public class PerfTest {
 				time = System.currentTimeMillis();
 				reply = postJson(sepiaSealingUrl + "/REST/electronicSignature/v1/sign",
 						"{ \"signatureLevel\":\"RAW\", \"digest\":\"" + dataToSign + "\", \"digestAlgorithm\":\"" + digestAlgo +
-								"\", \"signer\":{\"enterpriseNumber\": " + oai.enterpriseNumber + ",\"certificateAlias\":\"" + oai.rawAlias + "\"}}",
+								"\", \"signer\":{\"enterpriseNumber\": " + oai.enterpriseNumber + ",\"certificateAlias\":\"" + oai.signerId + "\"}}",
 						"Bearer " + oai.access_token);
 				sealingTime += System.currentTimeMillis() - time;
 				String signedData = getDelimitedValue(reply, "\"signature\":\"", "\"}");
 
 				time = System.currentTimeMillis();
-				reply = postJson(signValidationSvcUrl + "/signing/signDocumentMultiple", payLoad + ",\"signingDate\":\"" + signingDate + "\" }, \"signatureValue\":\"" + signedData + "\"}", null);
+				reply = postJson(signValidationSvcUrl + "/signing/signDocumentMultiple", payLoad + ",\"signingDate\":\"" + signingDate + "\" }, \"signatureValue\":\"" + signedData + "\"}");
 				signDocumentTime += System.currentTimeMillis() - time;
 			}
 

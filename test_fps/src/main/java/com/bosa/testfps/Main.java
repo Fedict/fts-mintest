@@ -140,7 +140,8 @@ public class Main implements HttpHandler {
 
 		esealingUrl		= config.getProperty("easealingUrl");
 		sepiaSealingUrl	= config.getProperty("sepiaSealingUrl");
-		fspSealingUrl	= config.getProperty("fspSealingUrl");
+
+//		fspSealingUrl	= config.getProperty("fspSealingUrl");
 
 
 
@@ -365,7 +366,7 @@ public class Main implements HttpHandler {
 
 		if (json.endsWith(",")) json = json.substring(0, json.length() -1);
 		json += "} }";
-		String reply = postJson(validationUrl + "/validation/validateSignature", json, null);
+		String reply = postJson(validationUrl + "/validation/validateSignature", json);
 		respond(httpExch, 200, "text/plain", reply.getBytes());
 	}
 
@@ -539,7 +540,7 @@ public class Main implements HttpHandler {
 
 	private void createTokenAndRedirect(String url, String json, String out, String filesToDelete, Map<String, String> queryParams, HttpExchange httpExch) throws Exception {
 		System.out.println("JSON for the getToken call:\n" + json);
-		String token = postJson(url, json, null);
+		String token = postJson(url, json);
 
 		System.out.println("  DONE, received token = " + token);
 

@@ -9,7 +9,7 @@ public class OAuthInfo {
     final JWTSigner signer;
     final JWSAlgorithm algo;
     String access_token;
-    String rawAlias;
+    String signerId;
 
     public OAuthInfo(String enterpriseNumber, String clientId, String audience, JWSAlgorithm algo, JWTSigner signer) {
         this.enterpriseNumber = enterpriseNumber;

@@ -5,47 +5,60 @@ import io.minio.*;
 import org.json.JSONObject;
 
 import java.io.*;
-import java.math.BigInteger;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.MessageDigest;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.*;
 
 import static com.bosa.testfps.Main.*;
+import static org.bouncycastle.asn1.cms.CMSAttributes.contentType;
 
 public class Tools {
 	// HTTP *******************************************************************************************
 
+	private static final Map<String, String> urlEncoded = Map.of("Content-Type", "application/x-www-form-urlencoded");
+	private static final Map<String, String> jsonEncoded = Map.of("Content-Type", "application/json; utf-8");
+
 	/** Do an HTTP POST of a json (a REST call) */
 	static  String postURLEncoded(String urlStr, String json) throws IOException {
-		return postRaw(false, urlStr, json, null, "application/x-www-form-urlencoded");
+		return httpRaw(false, urlStr, json, urlEncoded);
+	}
+
+	static  String postJson(String urlStr, String json) throws IOException {
+		return httpRaw(false, urlStr, json, jsonEncoded);
 	}
 
 	static  String postJson(String urlStr, String json, String authorization) throws IOException {
-		return postRaw(false, urlStr, json, authorization, null);
+		return httpRaw(false, urlStr, json, Map.of("Authorization", authorization, "Content-Type", "application/json; utf-8"));
+	}
+
+	static String postJson(String urlStr, String json, Map<String, String> headers) throws IOException {
+		Map<String, String> hdrs = new HashMap<>();
+		hdrs.put("Content-Type", "application/json; utf-8");
+		hdrs.putAll(headers);
+		return httpRaw(false, urlStr, json, hdrs);
 	}
 
 	static  String getJson(String urlStr, String authorization) throws IOException {
-		return postRaw(true, urlStr, null, authorization, null);
+		return httpRaw(true, urlStr, null, Map.of("Authorization", authorization));
 	}
 
-	static  String postRaw(boolean isGet, String urlStr, String json, String authorization, String contentType) throws IOException {
-		System.out.println("Request from " + urlStr + " :" + json);
+	static  String httpRaw(boolean isGet, String urlStr, String data, Map<String, String> headers) throws IOException {
+		System.out.println("Request from " + urlStr + " :" + data);
 		HttpURLConnection urlConn = null;
 		try {
 			URL url = new URL(urlStr);
 
 			urlConn = (HttpURLConnection) url.openConnection();
 			urlConn.setRequestMethod(isGet ? "GET" : "POST");
-			if (authorization != null) urlConn.setRequestProperty("Authorization", authorization);
-
-			urlConn.setRequestProperty("Content-Type", contentType == null ? "application/json; utf-8" : contentType);
+			for(Map.Entry<String, String> header : headers.entrySet()) {
+				urlConn.setRequestProperty(header.getKey(), header.getValue());
+			}
 			if (!isGet) {
 				urlConn.setDoOutput(true);
 				OutputStream os = urlConn.getOutputStream();
-				os.write(json.getBytes(StandardCharsets.UTF_8));
+				os.write(data.getBytes(StandardCharsets.UTF_8));
 			}
 
 			String reply = streamToString(urlConn.getInputStream());
@@ -230,15 +243,6 @@ public class Tools {
 		int endPos = str.indexOf(endMark, pos);
 		if (endPos < 0) throw new Exception("No "+ endMark + " after " + beginMark + " ?");
 		return str.substring(pos, endPos);
-	}
-
-	static byte[] buildPkcs8KeyFromPkcs1Key(byte[] innerKey) {
-		byte result[] = new byte[innerKey.length + 26];
-		System.arraycopy(Base64.getDecoder().decode("MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKY="), 0, result, 0, 26);
-		System.arraycopy(BigInteger.valueOf(result.length - 4).toByteArray(), 0, result, 2, 2);
-		System.arraycopy(BigInteger.valueOf(innerKey.length).toByteArray(), 0, result, 24, 2);
-		System.arraycopy(innerKey, 0, result, 26, innerKey.length);
-		return result;
 	}
 
 	static String getToken(String json, String tokenName) {
