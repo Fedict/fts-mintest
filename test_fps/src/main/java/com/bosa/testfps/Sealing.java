@@ -6,7 +6,7 @@ import com.nimbusds.jose.crypto.*;
 
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
+import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.*;
@@ -21,6 +21,7 @@ import org.json.JSONObject;
 
 import static com.bosa.testfps.Main.*;
 import static com.bosa.testfps.Tools.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class Sealing {
 	private static final JWTSigner ftsSealSigner = new RSAJWTSigner("""
@@ -233,7 +234,7 @@ YsTM+MgdZlTY4GPhDhcwjQhg9n5+Ccw=
 		String payLoad = "grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer" +
 				"&client_assertion=" + createOAuthJWT(oai) +
 				"&scope=" + scope;
-		if (authorizationDetails != null) payLoad += "&authorization_details=" + authorizationDetails;
+		if (authorizationDetails != null) payLoad += "&authorization_details=" + URLEncoder.encode(authorizationDetails, UTF_8);
 		String reply = postURLEncoded(fspAuthUrl + "token", payLoad);
 
 		String accToken = getDelimitedValue(reply, "\"access_token\":\"", "\",");
@@ -328,7 +329,7 @@ YsTM+MgdZlTY4GPhDhcwjQhg9n5+Ccw=
 
 			reply = getDelimitedValue(reply, "\"credentialIDs\":[", "]").replaceAll("\"", "");
 			System.out.println("Esealing credentials : " + reply);
-			response = reply.getBytes(StandardCharsets.UTF_8);
+			response = reply.getBytes(UTF_8);
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.out.println("No esealing credential found");
