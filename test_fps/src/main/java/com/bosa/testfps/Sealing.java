@@ -104,32 +104,7 @@ J5i7yfBAGEkksbaoD+R59wuJsai5yHhdDuVjjUmnbf6/BLT8q4qkB6v7T8ZTv327
 YsTM+MgdZlTY4GPhDhcwjQhg9n5+Ccw=
 					""", false);
 
-	private static JWTSigner zetesSignerRobrecht;
-	private static JWTSigner zetesSignerTa;
-    static {
-        try {
-			zetesSignerTa = new ECJWTSignerFromPrivateKey("""
------BEGIN PRIVATE KEY-----
-MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCAnCKSYqJqyyO9RlVOn
-BpwV5TntwOnuu2g0GOQTxqaeiw==
------END PRIVATE KEY-----
-					""");
-
-			/*
-			zetesSignerRobrecht = new ECJWTPEMKeypairSigner("""
------BEGIN PRIVATE KEY-----
-MHcCAQEEIFIzfpEmVMne4xFeRBX6RPc/JFlDZYFJDnubDKW9g0zgoAoGCCqGSM49
-AwEHoUQDQgAEJrzF5mbAPwDGq9F06ztRCC3Qkf6CEhHrW3E5BP8Ak14TIjmD7aua
-oP27WXTf5CnkKvWH0JYI55Wns2KXcLIhvg==
------END PRIVATE KEY-----
-					""");
-			 */
-        } catch (IOException | NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    static OAuthInfo FSPAuth = new OAuthInfo(null, fspClientId, fspAuthAudience, JWSAlgorithm.ES256, zetesSignerTa);
+    static OAuthInfo FSPAuth = new OAuthInfo(null, fspClientId, fspAuthAudience, JWSAlgorithm.ES256, zetesSealingSigner);
 	static OAuthInfo FTSSepia = new OAuthInfo("671516647", "fts:bosa:sepia:client:confidential", "https://oauth-v5.acc.socialsecurity.be", JWSAlgorithm.RS256, ftsSealSigner);
 	static OAuthInfo JusticeSepia = new OAuthInfo("308357753", "spf-justice:justact:client:confidential", "https://oauth-v5.acc.socialsecurity.be", JWSAlgorithm.RS256, justiceSigner);
 

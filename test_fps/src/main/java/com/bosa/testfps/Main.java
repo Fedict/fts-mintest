@@ -65,6 +65,7 @@ public class Main implements HttpHandler {
 	static String fspSealingUrl;
 	static String fspAuthUrl;
 	static String fspAuthAudience;
+	static String fspSealingKey;
 
 	static String sadKeyFile;
 	static String sadKeyPwd;
@@ -78,6 +79,7 @@ public class Main implements HttpHandler {
 	static String localUrl;
 
 	static MinioClient minioClient;
+	static JWTSigner zetesSealingSigner;
 
 	static Properties config;
 
@@ -144,6 +146,7 @@ public class Main implements HttpHandler {
 		fspAuthUrl		= getConfigValue("fspAuthUrl", "https://rsign.fsp.services.ta.belgium.be/api/seal/oauth2/");
 		fspSealingUrl	= getConfigValue("fspSealingUrl", "https://rsign.fsp.services.ta.belgium.be/api/seal/v1/");
 		fspAuthAudience	= getConfigValue("fspAuthAudience", "https://keycloak.qa2.bosa.be.zetes.internal/realms/RSSPSEALING");
+		fspSealingKey	= config.getProperty("fspSealingKey");
 
 		signValidationSvcUrl =  config.getProperty("getTokenUrl").replace("/signing/getTokenForDocument", "");
 		signUrl			= config.getProperty("signUrl");
@@ -170,6 +173,8 @@ public class Main implements HttpHandler {
 
 		String padesProfile = config.getProperty("padesProfile");
 		sigProfiles.put("application/pdf", (null == padesProfile) ? PADES_DEF_PROFILE : padesProfile);
+
+		zetesSealingSigner = new ECJWTSignerFromPrivateKey(fspSealingKey);
 
 		// Start the HTTP server
 		startService(port);
