@@ -174,7 +174,7 @@ public class Main implements HttpHandler {
 		String padesProfile = config.getProperty("padesProfile");
 		sigProfiles.put("application/pdf", (null == padesProfile) ? PADES_DEF_PROFILE : padesProfile);
 
-		zetesSealingSigner = new ECJWTSignerFromPrivateKey(fspSealingKey);
+		zetesSealingSigner = new ECJWTSignerFromPem(fspSealingKey);
 
 		// Start the HTTP server
 		startService(port);
