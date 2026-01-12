@@ -22,7 +22,7 @@ public class ECJWTSignerFromPem extends JWTSigner {
         Object parsed = new PEMParser(new StringReader(pem)).readObject();
         if (parsed instanceof PEMKeyPair) {
             privateKey = (ECPrivateKey) new JcaPEMKeyConverter().getPrivateKey(((PEMKeyPair) parsed).getPrivateKeyInfo());
-        } else if (parsed instanceof ECPrivateKey) privateKey = (ECPrivateKey) new JcaPEMKeyConverter().getPrivateKey((PrivateKeyInfo)parsed);
+        } else if (parsed instanceof PrivateKeyInfo) privateKey = (ECPrivateKey) new JcaPEMKeyConverter().getPrivateKey((PrivateKeyInfo)parsed);
         else privateKey = null;
     }
 

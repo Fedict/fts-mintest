@@ -57,5 +57,5 @@ fspClientId = dfb0b573-9186-437b-a384-28f6d81f0c14
 fspAuthUrl = https://rsign.fsp.services.ta.belgium.be/api/seal/oauth2/
 fspSealingUrl = https://rsign.fsp.services.ta.belgium.be/api/seal/v1/
 fspAuthAudience	= https://keycloak.qa2.bosa.be.zetes.internal/realms/RSSPSEALING
-fspSealingKey = -----BEGIN PRIVATE KEY-----\nMEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCAnCKSYqJqyyO9RlVOn\nBpwV5TntwOnuu2g0GOQTxqaeiw==\n-----END PRIVATE KEY-----
+fspSealingKey = -----BEGIN PRIVATE KEY-----\nMEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCAnCKSYqJqyyO9RlVOn\nBpwV5TntwOnuu2g0GOQTxqaeiw==\n-----END PRIVATE KEY-----\n
 
