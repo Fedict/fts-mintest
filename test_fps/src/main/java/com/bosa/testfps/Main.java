@@ -557,23 +557,25 @@ public class Main implements HttpHandler {
 		// 3. Do a redirect to the BOSA DSS front-end
 		// Format: https://{host:port}/sign/{token}?redirectURL={callbackURL}&language={language}&name={name}
 
+		boolean noRedirect = queryParams.get("noRedirect") != null && "true".compareTo(queryParams.get("noRedirect")) == 0;
+
 		System.out.println("\n3. Redirect to the BOSA DSS front-end");
 		String callbackURL = localUrl + "/callback?out=" + out + "&toDelete=" + filesToDelete;
 		System.out.println("  Callback: " + callbackURL);
-		String redirectUrl = (tokenRemoteSign ? remoteSignTokenURL : bosaGuiSign) + "/sign/" + URLEncoder.encode(token) +
-				"?redirectUrl=" + URLEncoder.encode(callbackURL);
-		redirectUrl += "&HookURL=" + URLEncoder.encode(localUrl + "/hook");
+		String redirectUrl = (tokenRemoteSign ? remoteSignTokenURL : bosaGuiSign) + "/sign/" + URLEncoder.encode(token) + "?";
+		if (!noRedirect) redirectUrl += "redirectUrl=" + URLEncoder.encode(callbackURL) + "&";
+		redirectUrl += "HookURL=" + URLEncoder.encode(localUrl + "/hook");
         if (tokenRemoteSign) redirectUrl += "&logging=DEBUG";           // Activate debug log for gui-remotesign
 
 		for(String key : queryParams.keySet()) {
-			if (!key.equals("json")) redirectUrl += "&" + key + "=" + queryParams.get(key);
+			if (!key.equals("json") && !key.equals("noRedirect")) redirectUrl += "&" + key + "=" + queryParams.get(key);
 		}
 
 		System.out.println("  URL: " + redirectUrl);
 		httpExch.getResponseHeaders().add("Location", redirectUrl);
 		httpExch.sendResponseHeaders(303, 0);
 		httpExch.close();
-		System.out.println("  DONE, now waiting till we get a callback...");
+		System.out.println(noRedirect ? "Done, no callback expected..." : "  DONE, now waiting till we get a callback...");
 	}
 
 	/**
