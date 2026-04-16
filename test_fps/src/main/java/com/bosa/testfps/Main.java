@@ -74,7 +74,7 @@ public class Main implements HttpHandler {
 
 	static String bosaGuiSign;
 	static String remoteSignTokenURL;
-	boolean tokenRemoteSign = false;
+	boolean tokenRemoteSign = true;
 
 	static String localUrl;
 
@@ -254,9 +254,15 @@ public class Main implements HttpHandler {
 				randomTest(httpExch);
 			} else if (uri.startsWith("/jumpToRemoteSign")) {
 				jumpToRemoteSign(httpExch);
-			} else if (uri.startsWith("/switchUI")) {
-				tokenRemoteSign = !tokenRemoteSign;
-				respond(httpExch, 200, "text/plain", (tokenRemoteSign ? "RemoteSign Active" : "GUI Sign Active").getBytes());
+			} else if (uri.startsWith("/remoteSign")) {
+				if (!uri.endsWith("GET")) {
+					tokenRemoteSign = !tokenRemoteSign;
+					httpExch.getResponseHeaders().add("Location", "/");
+					httpExch.sendResponseHeaders(303, 0);
+					httpExch.close();
+
+				}
+				else respond(httpExch, 200, "text/plain", (tokenRemoteSign ? "ON" : "OFF").getBytes());
 			} else {
 				handleStatic(httpExch, uri);
 			}

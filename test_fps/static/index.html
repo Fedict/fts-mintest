@@ -6,8 +6,8 @@
     <!-- Files copied locally following pentest -->
     <script src="/static/react@17.0.2/umd/react.development.js" crossorigin></script>
     <script src="/static/react-dom@17.0.2/umd/react-dom.development.js" crossorigin></script>
-    <script src="/static/babel-standalone@6.26.0/babel.min.js">
-    </script><script src="/static/form.js"></script>
+    <script src="/static/babel-standalone@6.26.0/babel.min.js"></script>
+    <script src="/static/form.js"></script>
     <style>
         input {
             width : 200px;
@@ -22,17 +22,12 @@
     </style>
 </head>
 <body>
-<h1>FPS test signing service</h1>
-<div style="display: flex">
+<h1>FPS test signing service (<a id="mode" href="/remoteSign" ></a>)</h1>
+<div style="display: flex, flex-direction: columns">
+    <div style="display: flex">
     <div style="padding: 30px">
-        <p>Create your own test case:</p>
-        <div id="form_container"></div>
-        <script>ReactDOM.render(React.createElement(NameForm), document.querySelector('#form_container'));</script>
-    </div>
-    <div style="padding: 30px">
-        <p>Select a sign test case (<a href="/swagger?to=signval">SWAGGER api</a>):</p>
+        <p>Select a sign test case (<a href="/swagger?to=signval">SWAGGER api</a>)</p>
         <ul>
-            <li><a href="/switchUI">Switch to Remote sign / Gui Sign</a></li>
             <li><a href="/sign?json=@o'in'@s'nd_test.pdf'@S'noDownload'@s'true'@S'out'@s'signed_nd_test.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&name=Justice&language=fr">PDF (download disabled)</a></li>
             <li><a href="/sign?json=@o'in'@s'psf0_visible_sigfields~signature_1.pdf'@S'psfN'@s'signature_1'@S'out'@s'signed_psf0_visible_sigfields.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&name=Law&name_fr=Loi&language=fr">PDF visible signature field named 'signature_1' (no PSP)</a></li>
             <li><a href="/sign?json=@o'in'@s'psf1_test.pdf'@S'psp'@s'test1.psp'@S'psfC'@s'1%2C30%2C20%2C180%2C60'@S'out'@s'signed_psf1_test.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&language=en">PDF visible signature field coords '1,30,20,180,60' and profile 'test1.psp'</a></li>
@@ -98,11 +93,32 @@
         <p>Miscelaneous :</p>
         <ul>
             <p>Remote sign (<a href="/swagger?to=rsign">SWAGGER api</a>):</p>
-            <li><a href="/jumpToRemoteSign?uri=onboarding&uiLanguage=fr&requestId=123456789A&logging=DEBUG&leavingURI=http%3A%2F%2Fwww.google.com">Remote sign onboarding</a></li>
-            <li><a href="/jumpToRemoteSign?uri=account&logging=DEBUG">Direct User Settings</a></li>
-            <li><a href="/jumpToRemoteSign?logging=DEBUG">new FTS</a></li>
+            <li><a href="/jumpToRemoteSign?uri=onboarding&uiLanguage=en&requestId=123456789A&logging=DEBUG&leavingURI=http%3A%2F%2Fwww.google.com">Remote sign onboarding</a></li>
+            <li><a href="/jumpToRemoteSign?uri=account&uiLanguage=nl&logging=DEBUG">Direct User Settings</a></li>
+            <li><a href="/jumpToRemoteSign?uri=&logging=DEBUG&uiLanguage=fr">new FTS</a></li>
+            <li><a href="/jumpToRemoteSign?uri=docs/privacynotice&logging=DEBUG&uiLanguage=de">Privacy Notice</a></li>
+            <li><a href="/jumpToRemoteSign?uri=docs/termsandconditions&logging=DEBUG&uiLanguage=fr">Terms and Conditions</a></li>
+            <li><a href="/jumpToRemoteSign?uri=docs/cookiepolicy&logging=DEBUG&uiLanguage=en">Cookie Policy</a></li>
+            <li><a href="/jumpToRemoteSign?uri=docs/accessibility&logging=DEBUG&uiLanguage=nl">Accessibility</a></li>
         </ul>
     </div>
+    </div>
+    <div style="padding: 30px">
+        <p>Create your own test case:</p>
+        <div id="form_container"></div>
+        <script>ReactDOM.render(React.createElement(NameForm), document.querySelector('#form_container'));</script>
+    </div>
 </div>
+<script>
+    window.onload = function() {
+        fetch('/remoteSignGET')
+          .then(response => response.text()) // ou .json() si l'API renvoie du JSON
+          .then(data => {
+            const onOff = data.trim();
+            document.body.style.backgroundColor = onOff === "OFF" ? "lightgray" : "white";
+            document.getElementById("mode").textContent = onOff === "OFF" ? "Switch to REMOTE sign" : "Switch to LEGACY gusign";
+          })
+    }
+</script>
 </body>
 </html>
