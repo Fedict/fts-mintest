@@ -21,15 +21,15 @@ public class Tools {
 	private static final Map<String, String> jsonEncoded = Map.of("Content-Type", "application/json; utf-8");
 
 	/** Do an HTTP POST of a json (a REST call) */
-	static  String postURLEncoded(String urlStr, String json) throws IOException {
+	static String postURLEncoded(String urlStr, String json) throws IOException {
 		return httpRaw(false, urlStr, json, urlEncoded);
 	}
 
-	static  String postJson(String urlStr, String json) throws IOException {
+	static String postJson(String urlStr, String json) throws IOException {
 		return httpRaw(false, urlStr, json, jsonEncoded);
 	}
 
-	static  String postJson(String urlStr, String json, String authorization) throws IOException {
+	static String postJson(String urlStr, String json, String authorization) throws IOException {
 		return httpRaw(false, urlStr, json, Map.of("Authorization", authorization, "Content-Type", "application/json; utf-8"));
 	}
 

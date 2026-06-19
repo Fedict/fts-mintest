@@ -241,7 +241,7 @@ public class Main implements HttpHandler {
 			} else if (uri.startsWith("/seal?")) {
 				Sealing.handleJsonSealing(httpExch, queryParams);
 			} else if (uri.startsWith("/getSealingCredentials")) {
-				Sealing.getCredentials(httpExch);
+				FTSSealer.getCredentials(httpExch);
 			} else if (uri.startsWith("/idp_")) {
 				handleIdp(httpExch, uri, queryParams);
 			} else if (uri.startsWith("/getFile")) {

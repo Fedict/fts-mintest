@@ -6,6 +6,8 @@ import java.util.Base64;
 
 import static com.bosa.testfps.Main.*;
 import static com.bosa.testfps.Sealing.*;
+import static com.bosa.testfps.SepiaSealer.FTSSepia;
+import static com.bosa.testfps.SepiaSealer.getSepiaCerts;
 import static com.bosa.testfps.Tools.*;
 
 public class PerfTest {
