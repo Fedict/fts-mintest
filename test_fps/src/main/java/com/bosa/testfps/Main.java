@@ -537,7 +537,7 @@ public class Main implements HttpHandler {
 		System.out.println("\n3. Redirect to the BOSA DSS front-end");
 		String callbackURL = config.getProperty("mintestURL") + "/callback?out=" + out + "&toDelete=" + filesToDelete;
 		System.out.println("  Callback: " + callbackURL);
-		String redirectUrl = (config.getProperty(tokenRemoteSign ? "guiRemoteSignURL" : "guiSignURL")) + "/sign/" + URLEncoder.encode(token) + "?";
+		String redirectUrl = (config.getProperty(tokenRemoteSign ? "guiRemoteTokenSignURL" : "guiSignURL")) + "/sign/" + URLEncoder.encode(token) + "?";
 		if (!noRedirect) redirectUrl += "redirectUrl=" + URLEncoder.encode(callbackURL) + "&";
 		redirectUrl += "HookURL=" + URLEncoder.encode(config.getProperty("mintestURL") + "/hook");
         if (tokenRemoteSign) redirectUrl += "&logging=DEBUG";           // Activate debug log for gui-remotesign
