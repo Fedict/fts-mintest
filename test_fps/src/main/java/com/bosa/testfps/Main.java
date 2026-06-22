@@ -46,7 +46,6 @@ public class Main implements HttpHandler {
 
 	static Boolean cleanupTempFiles;
 	static String s3Url;
-	static String dpS3Url;
 	static String s3UserName;
 	static String s3Passwd;
 
@@ -120,7 +119,6 @@ public class Main implements HttpHandler {
 		s3UserName		= config.getProperty("s3UserName");
 		s3Passwd		= config.getProperty("s3Passwd");
 		s3Url			= config.getProperty("s3Url");
-		dpS3Url			= config.getProperty("dps3Url");
 
 		sadKeyFile		= config.getProperty("sadKeyFile");
 		sadKeyPwd		= config.getProperty("sadKeyPwd");

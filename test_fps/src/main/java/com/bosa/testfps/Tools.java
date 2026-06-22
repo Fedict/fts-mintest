@@ -137,7 +137,7 @@ public class Tools {
 		if (null == minioClient) {
 			// Create client
 			minioClient = MinioClient.builder()
-					.endpoint(isDocker ? s3Url : dpS3Url)
+					.endpoint(isDocker ? s3Url : config.getProperty("dps3Url"))
 					.credentials(s3UserName, s3Passwd)
 					.build();
 		}
