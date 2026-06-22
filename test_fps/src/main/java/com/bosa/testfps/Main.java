@@ -54,13 +54,6 @@ public class Main implements HttpHandler {
 	static File inFilesDir;
 	static File outFilesDir;
 	static String signValidationSvcUrl;
-	static String validationUrl;
-	static String signUrl;
-	static String sealingSignUrl;
-	static String idpGuiUrl;
-	static String idpUrl;
-	static String esealingUrl;
-	static String sepiaSealingUrl;
 	static String fspClientId;
 	static String fspSealingUrl;
 	static String fspAuthUrl;
@@ -133,14 +126,9 @@ public class Main implements HttpHandler {
 		s3Passwd		= config.getProperty("s3Passwd");
 		s3Url			= config.getProperty("s3Url");
 		dpS3Url			= config.getProperty("dps3Url");
-		idpGuiUrl		= config.getProperty("idpGuiUrl");
-		idpUrl			= config.getProperty("idpUrl");
 
 		sadKeyFile		= config.getProperty("sadKeyFile");
 		sadKeyPwd		= config.getProperty("sadKeyPwd");
-
-		esealingUrl		= config.getProperty("easealingUrl");
-		sepiaSealingUrl	= config.getProperty("sepiaSealingUrl");
 
 		fspClientId		= getConfigValue("fspClientId", "dfb0b573-9186-437b-a384-28f6d81f0c14");
 		fspAuthUrl		= getConfigValue("fspAuthUrl", "https://rsign.fsp.services.ta.belgium.be/api/seal/oauth2/");
@@ -149,11 +137,6 @@ public class Main implements HttpHandler {
 		fspSealingKey	= config.getProperty("fspSealingKey");
 
 		signValidationSvcUrl =  config.getProperty("getTokenUrl").replace("/signing/getTokenForDocument", "");
-		signUrl			= config.getProperty("signUrl");
-		sealingSignUrl =  config.getProperty("sealingSignUrl");
-		if (sealingSignUrl == null) sealingSignUrl = signUrl;
-		validationUrl	= config.getProperty("validationUrl");
-		if (validationUrl == null) validationUrl = signUrl;
 
 		filesDir		= new File(config.getProperty("fileDir"));
 		inFilesDir		= new File(filesDir, UNSIGNED_DIR);
@@ -308,13 +291,13 @@ public class Main implements HttpHandler {
 		String URL = "";
 		switch(queryParams.get("to")) {
 			case "signval":
-				URL = signUrl;
+				URL = config.getProperty("signAPI");
 				break;
 			case "idp":
-				URL = idpUrl;
+				URL = config.getProperty("idpAPI");
 				break;
 			case "seal":
-				URL = esealingUrl;
+				URL = config.getProperty("ftsSealerAPI");
 				break;
 			case "rsign":
 				URL = config.getProperty("remoteSignBoxSrvURL");
@@ -328,7 +311,7 @@ public class Main implements HttpHandler {
 	private void handleIdp(HttpExchange httpExch, String uri, Map<String, String> queryParams) throws Exception {
 
 		if (uri.startsWith("/idp_jump")) {
-			String redirectUrl = idpGuiUrl + "?redirect_uri=" + URLEncoder.encode(localUrl + "/idp_land", StandardCharsets.UTF_8.name()) + "&client_id=" + queryParams.get("client_id") + "&scope=" + URLEncoder.encode(queryParams.get("scope"));
+			String redirectUrl = config.getProperty("idpGuiUrl") + "?redirect_uri=" + URLEncoder.encode(localUrl + "/idp_land", StandardCharsets.UTF_8.name()) + "&client_id=" + queryParams.get("client_id") + "&scope=" + URLEncoder.encode(queryParams.get("scope"));
 
 			System.out.println("  URL: " + redirectUrl);
 			httpExch.getResponseHeaders().add("Location", redirectUrl);
@@ -382,7 +365,7 @@ public class Main implements HttpHandler {
 
 		if (json.endsWith(",")) json = json.substring(0, json.length() -1);
 		json += "} }";
-		String reply = postJson(validationUrl + "/validation/validateSignature", json);
+		String reply = postJson(config.getProperty("validationUrl") + "/validation/validateSignature", json);
 		respond(httpExch, 200, "text/plain", reply.getBytes());
 	}
 

@@ -37,7 +37,7 @@ public class FTSSealer extends Sealer {
     String[] getCertificates() throws Exception {
         String payLoad = "{\"requestID\":\"11668786643409505247592754000\",\"credentialID\":\"" + cred +
                 "\",\"lang\":\"" + lang + "\",\"returnCertificates\":\"chain\",\"certInfo\":true,\"authInfo\":true,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/credentialinfoprotocol#\"}";
-        String reply = postJson(esealingUrl + "/credentials/info", payLoad, AUTHORIZATION);
+        String reply = postJson(config.getProperty("ftsSealerURL") + "/credentials/info", payLoad, AUTHORIZATION);
 
         return getDelimitedValue(reply, "\"certificates\":[", "]").split(",");
     }
@@ -55,7 +55,7 @@ public class FTSSealer extends Sealer {
                 "\"numSignatures\":1,\"policy\":null,\"signaturePolicyID\":null,\"signAlgo\":\"1.2.840.10045.4.3.2\",\"signAlgoParams\":null,\"response_uri\":null,\"documentDigests\":{\"hashes\":[\"" + hashToSign +
                 "\"],\"hashAlgorithmOID\":\"" + digestAlgo.oid + "\"},\"sad\":\"" + sad + "\"}";
 
-        String reply = postJson(esealingUrl + "/signatures/signHash", payLoad, AUTHORIZATION);
+        String reply = postJson(config.getProperty("ftsSealerURL") + "/signatures/signHash", payLoad, AUTHORIZATION);
 
         return getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
     }
@@ -106,7 +106,7 @@ public class FTSSealer extends Sealer {
         try {
             String json = "{\"requestID\":\"11668764926004483530182899800\",\"lang\":\"en\",\"certificates\":\"chain\",\"certInfo\":false,\"authInfo\":false,\"profile\":\"http://uri.etsi.org/19432/v1.1.1/certificateslistprotocol#\",\"signerIdentity\":null}";
 
-            String reply = postJson(esealingUrl + "/credentials/list", json, AUTHORIZATION);
+            String reply = postJson(config.getProperty("ftsSealerURL") + "/credentials/list", json, AUTHORIZATION);
 
             reply = getDelimitedValue(reply, "\"credentialIDs\":[", "]").replaceAll("\"", "");
             System.out.println("Esealing credentials : " + reply);

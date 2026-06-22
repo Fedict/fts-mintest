@@ -90,7 +90,7 @@ public class PerfTest {
 				DigestAlgorithm digestAlgo = DigestAlgorithm.valueOf(getDelimitedValue(reply, "digestAlgorithm\" : \"", "\","));
 
 				time = System.currentTimeMillis();
-				reply = postJson(sepiaSealingUrl + "/REST/electronicSignature/v1/sign",
+				reply = postJson(config.getProperty("sepiaSealingUrl") + "/REST/electronicSignature/v1/sign",
 						"{ \"signatureLevel\":\"RAW\", \"digest\":\"" + hashToSign + "\", \"digestAlgorithm\":\"" + digestAlgo +
 								"\", \"signer\":{\"enterpriseNumber\": " + oai.enterpriseNumber + ",\"certificateAlias\":\"" + oai.signerId + "\"}}",
 						"Bearer " + oai.access_token);
@@ -129,7 +129,7 @@ public class PerfTest {
 				DigestAlgorithm digestAlgo = DigestAlgorithm.valueOf(getDelimitedValue(reply, "digestAlgorithm\" : \"", "\","));
 
 				time = System.currentTimeMillis();
-				reply = postJson(sepiaSealingUrl + "/REST/electronicSignature/v1/sign",
+				reply = postJson(config.getProperty("sepiaSealingUrl") + "/REST/electronicSignature/v1/sign",
 						"{ \"signatureLevel\":\"RAW\", \"digest\":\"" + dataToSign + "\", \"digestAlgorithm\":\"" + digestAlgo +
 								"\", \"signer\":{\"enterpriseNumber\": " + oai.enterpriseNumber + ",\"certificateAlias\":\"" + oai.signerId + "\"}}",
 						"Bearer " + oai.access_token);
