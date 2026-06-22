@@ -102,18 +102,18 @@ YsTM+MgdZlTY4GPhDhcwjQhg9n5+Ccw=
     @Override
     String signHash(String hashToSign, DigestAlgorithm digestAlgo) throws Exception {
         String payLoad = "{ \"signatureLevel\":\"RAW\", \"digest\":\"" + hashToSign + "\", \"digestAlgorithm\":\"" + digestAlgo + "\", \"signer\":{\"enterpriseNumber\": " + oai.enterpriseNumber + ",\"certificateAlias\":\"" + oai.signerId + "\"}}";
-        String reply = postJson(config.getProperty("sepiaSealingUrl") + "/REST/electronicSignature/v1/sign", payLoad, "Bearer " + oai.access_token);
+        String reply = postJson(config.getProperty("sepiaSealerURL") + "/REST/electronicSignature/v1/sign", payLoad, "Bearer " + oai.access_token);
         return getDelimitedValue(reply, "\"signature\":\"", "\"}");
     }
 
     static String[] getSepiaCerts(OAuthInfo oai) throws Exception {
         // Get OAuth access token with a signed JWT
         String payLoad ="grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=" + createOAuthJWT(oai);
-        String reply = postURLEncoded(config.getProperty("sepiaSealingUrl") + "/REST/oauth/v5/token", payLoad);
+        String reply = postURLEncoded(config.getProperty("sepiaSealerURL") + "/REST/oauth/v5/token", payLoad);
         oai.access_token = getDelimitedValue(reply, "\"access_token\":\"", "\",\"scope");
         System.out.println("Access token : " + oai.access_token);
 
-        reply = getJson(config.getProperty("sepiaSealingUrl") + "/REST/electronicSignature/v1/certificates?enterpriseNumber=" + oai.enterpriseNumber, "Bearer " + oai.access_token);
+        reply = getJson(config.getProperty("sepiaSealerURL") + "/REST/electronicSignature/v1/certificates?enterpriseNumber=" + oai.enterpriseNumber, "Bearer " + oai.access_token);
         String [] certs = reply.split("\\\\n-----END CERTIFICATE-----\\\\n-----BEGIN CERTIFICATE-----\\\\n");
         certs[0] = certs[0].replaceAll("\\{\"certificateChain\":\"-----BEGIN CERTIFICATE-----\\\\n", "");
         oai.signerId = getDelimitedValue(reply, "\"alias\":\"", "\"");

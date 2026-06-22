@@ -53,7 +53,6 @@ public class Main implements HttpHandler {
 	static File filesDir;
 	static File inFilesDir;
 	static File outFilesDir;
-	static String signValidationSvcUrl;
 	static String fspClientId;
 	static String fspSealingUrl;
 	static String fspAuthUrl;
@@ -65,11 +64,7 @@ public class Main implements HttpHandler {
 	static boolean showSealing;
 	static boolean showIDP;
 
-	static String bosaGuiSign;
-	static String remoteSignTokenURL;
 	boolean tokenRemoteSign = true;
-
-	static String localUrl;
 
 	static MinioClient minioClient;
 	static JWTSigner zetesSealingSigner;
@@ -136,17 +131,10 @@ public class Main implements HttpHandler {
 		fspAuthAudience	= getConfigValue("fspAuthAudience", "https://keycloak.qa2.bosa.be.zetes.internal/realms/RSSPSEALING");
 		fspSealingKey	= config.getProperty("fspSealingKey");
 
-		signValidationSvcUrl =  config.getProperty("getTokenUrl").replace("/signing/getTokenForDocument", "");
-
 		filesDir		= new File(config.getProperty("fileDir"));
 		inFilesDir		= new File(filesDir, UNSIGNED_DIR);
 		String tmp		= config.getProperty("outFileDir");
 		outFilesDir		= (null == tmp) ? new File(filesDir, SIGNED_DIR) : new File(tmp);
-
-		bosaGuiSign		= config.getProperty("bosaDssFrontend");
-		remoteSignTokenURL = config.getProperty("remoteSignTokenURL");
-
-		localUrl		= config.getProperty("localUrl");
 
 		showSealing = "true".equals(config.getProperty("showSealing"));
 		showIDP			= "true".equals(config.getProperty("showIDP"));
@@ -275,7 +263,7 @@ public class Main implements HttpHandler {
 			}
 		}
 
-		String redirectURL = config.getProperty("remoteSignBoxURL") + "/" + uri;
+		String redirectURL = config.getProperty("guiRemoteSignURL") + "/" + uri;
 		if (!query.isEmpty()) redirectURL += "?" + query;
 		System.out.println("Redirect to : " + redirectURL);
 		httpExch.getResponseHeaders().add("Location", redirectURL);
@@ -300,7 +288,7 @@ public class Main implements HttpHandler {
 				URL = config.getProperty("ftsSealerAPI");
 				break;
 			case "rsign":
-				URL = config.getProperty("remoteSignBoxSrvURL");
+				URL = config.getProperty("remoteSignAPI");
 				break;
 		}
 		httpExch.getResponseHeaders().add("Location", URL + "/swagger-ui/index.html");
@@ -311,7 +299,7 @@ public class Main implements HttpHandler {
 	private void handleIdp(HttpExchange httpExch, String uri, Map<String, String> queryParams) throws Exception {
 
 		if (uri.startsWith("/idp_jump")) {
-			String redirectUrl = config.getProperty("idpGuiUrl") + "?redirect_uri=" + URLEncoder.encode(localUrl + "/idp_land", StandardCharsets.UTF_8.name()) + "&client_id=" + queryParams.get("client_id") + "&scope=" + URLEncoder.encode(queryParams.get("scope"));
+			String redirectUrl = config.getProperty("idpGuiUrl") + "?redirect_uri=" + URLEncoder.encode(config.getProperty("mintestURL") + "/idp_land", StandardCharsets.UTF_8.name()) + "&client_id=" + queryParams.get("client_id") + "&scope=" + URLEncoder.encode(queryParams.get("scope"));
 
 			System.out.println("  URL: " + redirectUrl);
 			httpExch.getResponseHeaders().add("Location", redirectUrl);
@@ -365,7 +353,7 @@ public class Main implements HttpHandler {
 
 		if (json.endsWith(",")) json = json.substring(0, json.length() -1);
 		json += "} }";
-		String reply = postJson(config.getProperty("validationUrl") + "/validation/validateSignature", json);
+		String reply = postJson(config.getProperty("validationSvcURL") + "/validation/validateSignature", json);
 		respond(httpExch, 200, "text/plain", reply.getBytes());
 	}
 
@@ -534,7 +522,7 @@ public class Main implements HttpHandler {
 
 		System.out.println("Out file(s) : " + outFiles);
 
-		createTokenAndRedirect(signValidationSvcUrl + "/signing/getTokenForDocument" + (multidoc ? "s" : ""), json, outFiles, String.join(",", filesToUpload), queryParams, httpExch);
+		createTokenAndRedirect(config.getProperty("signValSvcURL") + "/signing/getTokenForDocument" + (multidoc ? "s" : ""), json, outFiles, String.join(",", filesToUpload), queryParams, httpExch);
 	}
 
 	private void createTokenAndRedirect(String url, String json, String out, String filesToDelete, Map<String, String> queryParams, HttpExchange httpExch) throws Exception {
@@ -549,11 +537,11 @@ public class Main implements HttpHandler {
 		boolean noRedirect = queryParams.get("noRedirect") != null && "true".compareTo(queryParams.get("noRedirect")) == 0;
 
 		System.out.println("\n3. Redirect to the BOSA DSS front-end");
-		String callbackURL = localUrl + "/callback?out=" + out + "&toDelete=" + filesToDelete;
+		String callbackURL = config.getProperty("mintestURL") + "/callback?out=" + out + "&toDelete=" + filesToDelete;
 		System.out.println("  Callback: " + callbackURL);
-		String redirectUrl = (tokenRemoteSign ? remoteSignTokenURL : bosaGuiSign) + "/sign/" + URLEncoder.encode(token) + "?";
+		String redirectUrl = (config.getProperty(tokenRemoteSign ? "guiRemoteSignURL" : "guiSignURL")) + "/sign/" + URLEncoder.encode(token) + "?";
 		if (!noRedirect) redirectUrl += "redirectUrl=" + URLEncoder.encode(callbackURL) + "&";
-		redirectUrl += "HookURL=" + URLEncoder.encode(localUrl + "/hook");
+		redirectUrl += "HookURL=" + URLEncoder.encode(config.getProperty("mintestURL") + "/hook");
         if (tokenRemoteSign) redirectUrl += "&logging=DEBUG";           // Activate debug log for gui-remotesign
 
 		for(String key : queryParams.keySet()) {

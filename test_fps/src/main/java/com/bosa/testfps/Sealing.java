@@ -39,7 +39,7 @@ public class Sealing {
 		payLoad = "{\"clientSignatureParameters\":{" + certificateParameters + "},\"signingProfileId\":\"" + queryParams.get("profile") +
 				"\",\"toSignDocument\":{\"bytes\":\"" + document + "\"}}";
 
-		reply = postJson(config.getProperty("sealingSignUrl") + "/signing/getDataToSign", payLoad);
+		reply = postJson(config.getProperty("sealingSignSvcURL") + "/signing/getDataToSign", payLoad);
 
 		String hashToSign = getDelimitedValue(reply, "\"digest\" : \"", "\",");
 		String signingDate = getDelimitedValue(reply,"\"signingDate\" : \"", "\"");
@@ -53,7 +53,7 @@ public class Sealing {
 				"\",\"clientSignatureParameters\":{" + certificateParameters + ",\"detachedContents\":null,\"signingDate\":\"" + signingDate +
 				"\"},\"signatureValue\":\"" + signedHash + "\"}\n";
 
-		reply = postJson(config.getProperty("sealingSignUrl") + "/signing/signDocument", payLoad);
+		reply = postJson(config.getProperty("sealingSignSvcURL") + "/signing/signDocument", payLoad);
 
 		byte[] outDoc = Base64.getDecoder().decode(getDelimitedValue(reply, "\"bytes\" : \"", "\","));
 		String outDocString = new String(outDoc);
