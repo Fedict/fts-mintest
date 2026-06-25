@@ -3,6 +3,7 @@ package com.bosa.testfps;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.crypto.ECDSASigner;
+import lombok.Getter;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.jce.interfaces.ECPublicKey;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -15,21 +16,27 @@ import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.interfaces.ECPrivateKey;
+import java.util.Base64;
 
 
 public class ECJWTSignerFromPem extends JWTSigner {
-    final ECPrivateKey privateKey;
+    private ECPrivateKey privateKey;
+    private ECPublicKey publicKey;
+
+    @Getter
+    private String kid;
 
     ECJWTSignerFromPem(String pem) throws IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
         Security.addProvider(new BouncyCastleProvider());
         Object parsed = new PEMParser(new StringReader(pem)).readObject();
         if (parsed instanceof PEMKeyPair) {
             privateKey = (ECPrivateKey) new JcaPEMKeyConverter().getPrivateKey(((PEMKeyPair) parsed).getPrivateKeyInfo());
+            publicKey = (ECPublicKey) new JcaPEMKeyConverter().getPublicKey(((PEMKeyPair) parsed).getPublicKeyInfo());
 
-            testKeypair(privateKey, (ECPublicKey) new JcaPEMKeyConverter().getPublicKey(((PEMKeyPair) parsed).getPublicKeyInfo()));
+            testKeypair(privateKey, publicKey);
 
+            kid = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(publicKey.getEncoded()));
         } else if (parsed instanceof PrivateKeyInfo) privateKey = (ECPrivateKey) new JcaPEMKeyConverter().getPrivateKey((PrivateKeyInfo)parsed);
-        else privateKey = null;
     }
 
     private void testKeypair(ECPrivateKey privateKey, ECPublicKey publicKey) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
@@ -52,5 +59,4 @@ public class ECJWTSignerFromPem extends JWTSigner {
     public void sign(JWSObject jwsObject) throws JOSEException {
         jwsObject.sign(new ECDSASigner(privateKey));
     }
-}
-;
+};
