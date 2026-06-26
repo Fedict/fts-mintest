@@ -11,19 +11,16 @@ import static com.bosa.testfps.Tools.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class ZetesSealer extends Sealer {
+    private OAuthInfo FSPAuth;
 
-    static OAuthInfo FSPAuth;
+    public ZetesSealer() throws Exception {
+        System.out.println("ZetesSealer()");
 
-    static {
-        try {
-            FSPAuth = new OAuthInfo(null,
-                    config.getProperty("fspClientId"),
-                    config.getProperty("fspAuthAudience"),
-                    JWSAlgorithm.ES256,
-                    new ECJWTSignerFromPem(config.getProperty("fspSealingKey")));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        FSPAuth = new OAuthInfo(null,
+                config.getProperty("fspClientId"),
+                config.getProperty("fspAuthAudience"),
+                JWSAlgorithm.ES256,
+                new ECJWTSignerFromPem(config.getProperty("fspSealingKey")));
     }
 
     @Override
@@ -48,8 +45,6 @@ public class ZetesSealer extends Sealer {
         return getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
     }
 
-
-
     private static String getFSPAccessToken(OAuthInfo oai, String scope, String authorizationDetails) throws Exception {
         String payLoad = "grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer" +
                 "&client_assertion=" + createOAuthJWT(oai) +
@@ -61,5 +56,4 @@ public class ZetesSealer extends Sealer {
         System.out.println("Access token : " + accToken);
         return accToken;
     }
-
 }

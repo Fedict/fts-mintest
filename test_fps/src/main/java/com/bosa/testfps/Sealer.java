@@ -5,7 +5,7 @@ import java.util.Map;
 import static com.bosa.testfps.Tools.*;
 
 public abstract class Sealer {
-    public static Sealer create(Map<String, String> queryParams) {
+    public static Sealer create(Map<String, String> queryParams) throws Exception {
         String cred = sanitize(queryParams.get("cred"));
 
         if (cred == null) return new SepiaSealer();

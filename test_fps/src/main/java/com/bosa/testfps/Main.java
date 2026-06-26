@@ -61,7 +61,6 @@ public class Main implements HttpHandler {
 	boolean tokenRemoteSign = true;
 
 	static MinioClient minioClient;
-	static JWTSigner zetesSealingSigner;
 
 	static Properties config;
 
