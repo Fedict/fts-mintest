@@ -34,7 +34,7 @@ public class ECJWTSignerFromPem extends JWTSigner {
 
         testKeypair(privateKey, publicKey);
 
-        kid = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(publicKey.getEncoded()));
+        kid = Base64.getEncoder().withoutPadding().encodeToString(MessageDigest.getInstance("SHA-256").digest(publicKey.getEncoded()));
 
         System.out.println("Private Key : " + Base64.getEncoder().encodeToString(privateKey.getEncoded()));
         System.out.println("Public Key : " + Base64.getEncoder().encodeToString(publicKey.getEncoded()));

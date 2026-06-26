@@ -102,6 +102,7 @@ public class Sealing {
 		JWSHeader.Builder jwtHdr = new JWSHeader.Builder(oai.algo);
 		String kid = oai.signer.getKid();
 		if (kid != null) jwtHdr.keyID(kid);
+		jwtHdr.type(JOSEObjectType.JWT);
 		JWSObject jwsObject = new JWSObject(jwtHdr.build(), new Payload(jwtPayload));
 
 		// Sign the JWS
