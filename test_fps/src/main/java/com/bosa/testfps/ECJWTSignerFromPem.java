@@ -16,6 +16,7 @@ import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.interfaces.ECPrivateKey;
+import java.util.Arrays;
 import java.util.Base64;
 
 
@@ -36,13 +37,18 @@ public class ECJWTSignerFromPem extends JWTSigner {
             testKeypair(privateKey, publicKey);
 
             kid = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(publicKey.getEncoded()));
+
+            System.out.println("Private Key : " + Base64.getEncoder().encodeToString(privateKey.getEncoded()));
+            System.out.println("Public Key : " + Base64.getEncoder().encodeToString(publicKey.getEncoded()));
+            System.out.println("Kid : " + kid);
+
         } else if (parsed instanceof PrivateKeyInfo) privateKey = (ECPrivateKey) new JcaPEMKeyConverter().getPrivateKey((PrivateKeyInfo)parsed);
     }
 
     private void testKeypair(ECPrivateKey privateKey, ECPublicKey publicKey) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
         Signature ecdsaSign = Signature.getInstance("SHA256withECDSA");
         ecdsaSign.initSign(privateKey);
-        byte[] data = "Message à signer".getBytes(StandardCharsets.UTF_8);
+        byte[] data = "Data to sign".getBytes();
         ecdsaSign.update(data);
 
         byte[] signature = ecdsaSign.sign();
