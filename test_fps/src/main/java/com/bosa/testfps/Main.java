@@ -52,11 +52,6 @@ public class Main implements HttpHandler {
 	static File filesDir;
 	static File inFilesDir;
 	static File outFilesDir;
-	static String fspClientId;
-	static String fspSealingUrl;
-	static String fspAuthUrl;
-	static String fspAuthAudience;
-	static String fspSealingKey;
 
 	static String sadKeyFile;
 	static String sadKeyPwd;
@@ -123,12 +118,6 @@ public class Main implements HttpHandler {
 		sadKeyFile		= config.getProperty("sadKeyFile");
 		sadKeyPwd		= config.getProperty("sadKeyPwd");
 
-		fspClientId		= getConfigValue("fspClientId", "dfb0b573-9186-437b-a384-28f6d81f0c14");
-		fspAuthUrl		= getConfigValue("fspAuthUrl", "https://rsign.fsp.services.ta.belgium.be/api/seal/oauth2/");
-		fspSealingUrl	= getConfigValue("fspSealingUrl", "https://rsign.fsp.services.ta.belgium.be/api/seal/v1/");
-		fspAuthAudience	= getConfigValue("fspAuthAudience", "https://keycloak.qa2.bosa.be.zetes.internal/realms/RSSPSEALING");
-		fspSealingKey	= config.getProperty("fspSealingKey");
-
 		filesDir		= new File(config.getProperty("fileDir"));
 		inFilesDir		= new File(filesDir, UNSIGNED_DIR);
 		String tmp		= config.getProperty("outFileDir");
@@ -142,8 +131,6 @@ public class Main implements HttpHandler {
 
 		String padesProfile = config.getProperty("padesProfile");
 		sigProfiles.put("application/pdf", (null == padesProfile) ? PADES_DEF_PROFILE : padesProfile);
-
-		if (fspSealingKey != null) zetesSealingSigner = new ECJWTSignerFromPem(fspSealingKey);
 
 		// Start the HTTP server
 		startService(port);

@@ -6,15 +6,25 @@ import java.net.URLEncoder;
 import java.util.Map;
 
 import static com.bosa.testfps.Main.*;
-import static com.bosa.testfps.Main.fspAuthAudience;
-import static com.bosa.testfps.Main.zetesSealingSigner;
 import static com.bosa.testfps.Sealing.createOAuthJWT;
 import static com.bosa.testfps.Tools.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class ZetesSealer extends Sealer {
 
-    static OAuthInfo FSPAuth = new OAuthInfo(null, fspClientId, fspAuthAudience, JWSAlgorithm.ES256, zetesSealingSigner);
+    static OAuthInfo FSPAuth;
+
+    static {
+        try {
+            FSPAuth = new OAuthInfo(null,
+                    config.getProperty("fspClientId"),
+                    config.getProperty("fspAuthAudience"),
+                    JWSAlgorithm.ES256,
+                    new ECJWTSignerFromPem(config.getProperty("fspSealingKey")));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     @Override
     String[] getCertificates() throws Exception {
@@ -22,7 +32,7 @@ public class ZetesSealer extends Sealer {
         String payLoad = """
 					{ "certificates":"chain","certInfo":true,"credentialInfo":true}
 				""";
-        String reply = postJson(fspSealingUrl + "v2/credentials/list", payLoad,
+        String reply = postJson(config.getProperty("fspSealingUrl") + "v2/credentials/list", payLoad,
                 Map.of("Authorization", "Bearer " + fspAccessToken, "BelGov-Trace-Id", "RANDOM", "X-Message-Priority", "4", "X-SSL-Client-CN", "smoketest", "X-UsageType", "SEALING"));
         FSPAuth.signerId = getDelimitedValue(reply, "\"credentialIDs\":[\"", "\"],");
         return getDelimitedValue(reply, "\"certificates\":[", "],").split(",");
@@ -33,7 +43,7 @@ public class ZetesSealer extends Sealer {
         String authDetails = "[{\"type\":\"credential\",\"credentialID\": \"" + FSPAuth.signerId + "\",\"hashAlgorithmOID\":\"2.16.840.1.101.3.4.2.1\", \"documentDigests\":[{\"hash\":\"" + hashToSign + "\"}]}]";
         String fspAccessToken = getFSPAccessToken(FSPAuth,"credential", authDetails);
         String payLoad = "{\"credentialID\":\"" + FSPAuth.signerId + "\",\"hashes\":[\"" + hashToSign + "\"],\"signAlgo\": \"1.2.840.10045.4.3.2\"}";
-        String reply = postJson(fspSealingUrl + "v2/signatures/signHash", payLoad,
+        String reply = postJson(config.getProperty("fspSealingUrl") + "v2/signatures/signHash", payLoad,
                 Map.of("Authorization", "Bearer " + fspAccessToken, "BelGov-Trace-Id", "RANDOM", "X-Message-Priority", "4", "X-SSL-Client-CN", "smoketest", "X-UsageType", "SEALING"));
         return getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
     }
@@ -45,7 +55,7 @@ public class ZetesSealer extends Sealer {
                 "&client_assertion=" + createOAuthJWT(oai) +
                 "&scope=" + scope;
         if (authorizationDetails != null) payLoad += "&authorization_details=" + URLEncoder.encode(authorizationDetails, UTF_8);
-        String reply = postURLEncoded(fspAuthUrl + "token", payLoad);
+        String reply = postURLEncoded(config.getProperty("fspAuthUrl") + "token", payLoad);
 
         String accToken = getDelimitedValue(reply, "\"access_token\":\"", "\",");
         System.out.println("Access token : " + accToken);
