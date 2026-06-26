@@ -14,7 +14,7 @@ public class ZetesSealer extends Sealer {
     private OAuthInfo FSPAuth;
 
     public ZetesSealer() throws Exception {
-        System.out.println("ZetesSealer()");
+        System.out.println("ZetesSealer");
 
         FSPAuth = new OAuthInfo(null,
                 config.getProperty("fspClientId"),
