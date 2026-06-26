@@ -4,19 +4,15 @@ import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jose.crypto.ECDSASigner;
 import lombok.Getter;
-import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.jce.interfaces.ECPublicKey;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMKeyPair;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 
-import java.io.IOException;
 import java.io.StringReader;
-import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.interfaces.ECPrivateKey;
-import java.util.Arrays;
 import java.util.Base64;
 
 
@@ -27,22 +23,22 @@ public class ECJWTSignerFromPem extends JWTSigner {
     @Getter
     private String kid;
 
-    ECJWTSignerFromPem(String pem) throws IOException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+    ECJWTSignerFromPem(String pem) throws Exception {
         Security.addProvider(new BouncyCastleProvider());
         Object parsed = new PEMParser(new StringReader(pem)).readObject();
-        if (parsed instanceof PEMKeyPair) {
-            privateKey = (ECPrivateKey) new JcaPEMKeyConverter().getPrivateKey(((PEMKeyPair) parsed).getPrivateKeyInfo());
-            publicKey = (ECPublicKey) new JcaPEMKeyConverter().getPublicKey(((PEMKeyPair) parsed).getPublicKeyInfo());
+        JcaPEMKeyConverter converter = new JcaPEMKeyConverter();
+        if (parsed  instanceof PEMKeyPair) {
+            privateKey = (ECPrivateKey) converter.getPrivateKey(((PEMKeyPair) parsed).getPrivateKeyInfo());
+            publicKey = (ECPublicKey) converter.getPublicKey(((PEMKeyPair) parsed).getPublicKeyInfo());
+        } else throw new Exception("PEM Issue");
 
-            testKeypair(privateKey, publicKey);
+        testKeypair(privateKey, publicKey);
 
-            kid = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(publicKey.getEncoded()));
+        kid = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(publicKey.getEncoded()));
 
-            System.out.println("Private Key : " + Base64.getEncoder().encodeToString(privateKey.getEncoded()));
-            System.out.println("Public Key : " + Base64.getEncoder().encodeToString(publicKey.getEncoded()));
-            System.out.println("Kid : " + kid);
-
-        } else if (parsed instanceof PrivateKeyInfo) privateKey = (ECPrivateKey) new JcaPEMKeyConverter().getPrivateKey((PrivateKeyInfo)parsed);
+        System.out.println("Private Key : " + Base64.getEncoder().encodeToString(privateKey.getEncoded()));
+        System.out.println("Public Key : " + Base64.getEncoder().encodeToString(publicKey.getEncoded()));
+        System.out.println("Kid : " + kid);
     }
 
     private void testKeypair(ECPrivateKey privateKey, ECPublicKey publicKey) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
