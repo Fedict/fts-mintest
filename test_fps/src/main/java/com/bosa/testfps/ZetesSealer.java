@@ -3,6 +3,8 @@ package com.bosa.testfps;
 import com.nimbusds.jose.JWSAlgorithm;
 
 import java.net.URLEncoder;
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Map;
 
 import static com.bosa.testfps.Main.*;
@@ -11,10 +13,15 @@ import static com.bosa.testfps.Tools.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class ZetesSealer extends Sealer {
-    private OAuthInfo FSPAuth;
+    private final OAuthInfo FSPAuth;
+    private final String random;
 
     public ZetesSealer() throws Exception {
         System.out.println("ZetesSealer");
+
+        byte[] randomBytes = new byte[16];
+        new SecureRandom().nextBytes(randomBytes);
+        random = Base64.getEncoder().encodeToString(randomBytes);
 
         FSPAuth = new OAuthInfo(null,
                 config.getProperty("fspClientId"),
@@ -30,7 +37,7 @@ public class ZetesSealer extends Sealer {
 					{ "certificates":"chain","certInfo":true,"credentialInfo":true}
 				""";
         String reply = postJson(config.getProperty("fspSealingUrl") + "v2/credentials/list", payLoad,
-                Map.of("Authorization", "Bearer " + fspAccessToken, "BelGov-Trace-Id", "RANDOM", "X-Message-Priority", "4", "X-SSL-Client-CN", "smoketest", "X-UsageType", "SEALING"));
+                Map.of("Authorization", "Bearer " + fspAccessToken, "BelGov-Trace-Id", random, "X-UsageType", "SEALING"));
         FSPAuth.signerId = getDelimitedValue(reply, "\"credentialIDs\":[\"", "\"],");
         return getDelimitedValue(reply, "\"certificates\":[", "],").split(",");
     }
@@ -41,7 +48,7 @@ public class ZetesSealer extends Sealer {
         String fspAccessToken = getFSPAccessToken(FSPAuth,"credential", authDetails);
         String payLoad = "{\"credentialID\":\"" + FSPAuth.signerId + "\",\"hashes\":[\"" + hashToSign + "\"],\"signAlgo\": \"1.2.840.10045.4.3.2\"}";
         String reply = postJson(config.getProperty("fspSealingUrl") + "v2/signatures/signHash", payLoad,
-                Map.of("Authorization", "Bearer " + fspAccessToken, "BelGov-Trace-Id", "RANDOM", "X-Message-Priority", "4", "X-SSL-Client-CN", "smoketest", "X-UsageType", "SEALING"));
+                Map.of("Authorization", "Bearer " + fspAccessToken, "BelGov-Trace-Id", random, "X-UsageType", "SEALING"));
         return getDelimitedValue(reply, "\"signatures\":[\"", "\"]}");
     }
 
