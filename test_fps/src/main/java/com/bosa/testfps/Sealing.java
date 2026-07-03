@@ -15,7 +15,6 @@ import org.json.JSONObject;
 
 import static com.bosa.testfps.Main.*;
 import static com.bosa.testfps.Tools.*;
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class Sealing {
 
