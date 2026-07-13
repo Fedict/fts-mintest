@@ -2,40 +2,31 @@
 port = 8081
 
 # Base URL of this service
-localUrl = http://localhost:8081
-
-
-# Info to connect to the BOSA S3 server
-#s3Url = dp.qa.fts.bosa.belgium.be
-#s3UserName = USERNAME_HERE
-#s3Passwd = PASSWORD_HERE
+mintestURL = http://localhost:8081
 
 s3Url = http://127.0.0.1:9000
 dps3Url = http://127.0.0.1:9000
 s3UserName = 0qtp70go8n3gcxosz88z
 s3Passwd = Vt3e9QATFLYqfq42UFasOrlB9PXHYnILv2WAHfI3
 
-
 # Where to get the unsigned files and to put the signed files
 fileDir = files
 
-
-# The URL for the getToken request
-#getTokenUrl = https://validate.qa.fts.bosa.belgium.be/signandvalidation/signing/getTokenForDocument
-
 idpGuiUrl = http://localhost:3001
-idpUrl = http://localhost:8753
+idpAPI = http://localhost:8753
 
-easealingUrl = http://localhost:8752
-easealingSvcUrl = http://localhost:8752
+#Localhost
+ftsSealerSvcURL = http://localhost:8752
+ftsSealerAPI = http://localhost:8752
 
-sepiaSealingUrl = https://services-acpt.socialsecurity.be
+sepiaSealerURL = https://services-acpt.socialsecurity.be
 
 sadKeyFile = src/main/resources/sealing_sad.p12
 sadKeyPwd = 123456
 
-getTokenUrl = http://localhost:8751/signing/getTokenForDocument
-signUrl = http://localhost:8751
+#Local
+signAPI = http://localhost:8751
+signValSvcURL = http://localhost:8751
 
 # Options: XADES_1, XADES_2, XADES_LTA, XADES_TLA_EXP_ALLOW
 xadesProfile = XADES_LTA
@@ -47,15 +38,9 @@ showSealing=true
 showIDP=true
 
 # The redirect URL to the BOSA DSS front-ends
-#bosaDssFrontend = https://sign.qa.fts.bosa.belgium.be
-bosaDssFrontend = http://localhost:3000
-remoteSignTokenURL = http://localhost:3002
-remoteSignBoxURL = http://localhost:3002
-remoteSignBoxSrvURL = http://localhost:8754
+guiSignURL = http://localhost:3000
+guiRemoteSignURL = http://localhost:3002
+guiRemoteTokenSignURL = http://localhost:3002
+remoteSignAPI = http://localhost:8754
 
-fspClientId = dfb0b573-9186-437b-a384-28f6d81f0c14
-fspAuthUrl = https://rsign.fsp.services.ta.belgium.be/api/seal/oauth2/
-fspSealingUrl = https://rsign.fsp.services.ta.belgium.be/api/seal/v1/
-fspAuthAudience	= https://keycloak.qa2.bosa.be.zetes.internal/realms/RSSPSEALING
-fspSealingKey = -----BEGIN PRIVATE KEY-----\nMEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCAnCKSYqJqyyO9RlVOn\nBpwV5TntwOnuu2g0GOQTxqaeiw==\n-----END PRIVATE KEY-----\n
-
+guiMinioUrl = http://localhost:9001
