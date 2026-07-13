@@ -209,6 +209,8 @@ public class Main implements HttpHandler {
 				randomTest(httpExch);
 			} else if (uri.startsWith("/jumpToRemoteSign")) {
 				jumpToRemoteSign(httpExch);
+			} else if (uri.startsWith("/gotoMinio")) {
+				redirectToURL(httpExch, config.getProperty("guiMinioUrl"));
 			} else if (uri.startsWith("/remoteSign")) {
 				if (!uri.endsWith("GET")) {
 					tokenRemoteSign = !tokenRemoteSign;
@@ -234,6 +236,13 @@ public class Main implements HttpHandler {
 		}
 	}
 
+	private void redirectToURL(HttpExchange httpExch, String redirectURL) throws IOException {
+		System.out.println("Redirect to : " + redirectURL);
+		httpExch.getResponseHeaders().add("Location", redirectURL);
+		httpExch.sendResponseHeaders(303, 0);
+		httpExch.close();
+	}
+
 	private void jumpToRemoteSign(HttpExchange httpExch) throws IOException {
 		String query = httpExch.getRequestURI().getQuery();
 		if (query == null) query = "";
@@ -249,10 +258,7 @@ public class Main implements HttpHandler {
 
 		String redirectURL = config.getProperty("guiRemoteSignURL") + "/" + uri;
 		if (!query.isEmpty()) redirectURL += "?" + query;
-		System.out.println("Redirect to : " + redirectURL);
-		httpExch.getResponseHeaders().add("Location", redirectURL);
-		httpExch.sendResponseHeaders(303, 0);
-		httpExch.close();
+		redirectToURL(httpExch, redirectURL);
 	}
 
 	private void randomTest(HttpExchange httpExch) {
@@ -260,35 +266,30 @@ public class Main implements HttpHandler {
 	}
 
 	private void handleSwagger(Map<String, String> queryParams, HttpExchange httpExch) throws IOException {
-		String URL = "";
+		String propName = "";
 		switch(queryParams.get("to")) {
 			case "signval":
-				URL = config.getProperty("signAPI");
+				propName = "signAPI";
 				break;
 			case "idp":
-				URL = config.getProperty("idpAPI");
+				propName = "idpAPI";
 				break;
 			case "seal":
-				URL = config.getProperty("ftsSealerAPI");
+				propName = "ftsSealerAPI";
 				break;
 			case "rsign":
-				URL = config.getProperty("remoteSignAPI");
+				propName = "remoteSignAPI";
 				break;
 		}
-		httpExch.getResponseHeaders().add("Location", URL + "/swagger-ui/index.html");
-		httpExch.sendResponseHeaders(303, 0);
-		httpExch.close();
+
+		redirectToURL(httpExch, config.getProperty(propName) + "/swagger-ui/index.html");
 	}
 
 	private void handleIdp(HttpExchange httpExch, String uri, Map<String, String> queryParams) throws Exception {
 
 		if (uri.startsWith("/idp_jump")) {
 			String redirectUrl = config.getProperty("idpGuiUrl") + "?redirect_uri=" + URLEncoder.encode(config.getProperty("mintestURL") + "/idp_land", StandardCharsets.UTF_8.name()) + "&client_id=" + queryParams.get("client_id") + "&scope=" + URLEncoder.encode(queryParams.get("scope"));
-
-			System.out.println("  URL: " + redirectUrl);
-			httpExch.getResponseHeaders().add("Location", redirectUrl);
-			httpExch.sendResponseHeaders(303, 0);
-			httpExch.close();
+			redirectToURL(httpExch, redirectUrl);
 		} else {
 			String response = queryParams.get("error");
 			if (response == null) {
@@ -532,10 +533,7 @@ public class Main implements HttpHandler {
 			if (!key.equals("json") && !key.equals("noRedirect")) redirectUrl += "&" + key + "=" + queryParams.get(key);
 		}
 
-		System.out.println("  URL: " + redirectUrl);
-		httpExch.getResponseHeaders().add("Location", redirectUrl);
-		httpExch.sendResponseHeaders(303, 0);
-		httpExch.close();
+		redirectToURL(httpExch, redirectUrl);
 		System.out.println(noRedirect ? "Done, no callback expected..." : "  DONE, now waiting till we get a callback...");
 	}
 
