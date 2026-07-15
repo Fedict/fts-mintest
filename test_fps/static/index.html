@@ -28,7 +28,7 @@
     <div style="padding: 30px">
         <p>Select a sign test case (<a href="/swagger?to=signval">SWAGGER api</a>)</p>
         <ul>
-            <li><a href="/gotoMinio">Goto MINIO</a></li>
+            <li><a href="/gotoMinio" target="minio">Goto MINIO</a></li>
             <li><a href="/sign?json=@o'in'@s'nd_test.pdf'@S'noDownload'@s'true'@S'out'@s'signed_nd_test.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&name=Justice&language=fr">PDF (download disabled)</a></li>
             <li><a href="/sign?json=@o'in'@s'psf0_visible_sigfields~signature_1.pdf'@S'psfN'@s'signature_1'@S'out'@s'signed_psf0_visible_sigfields.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&name=Law&name_fr=Loi&language=fr">PDF visible signature field named 'signature_1' (no PSP)</a></li>
             <li><a href="/sign?json=@o'in'@s'psf1_test.pdf'@S'psp'@s'test1.psp'@S'psfC'@s'1%2C30%2C20%2C180%2C60'@S'out'@s'signed_psf1_test.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&language=en">PDF visible signature field coords '1,30,20,180,60' and profile 'test1.psp'</a></li>
@@ -95,14 +95,14 @@
         <p>Miscelaneous :</p>
         <ul>
             <p>Remote sign (<a href="/swagger?to=rsign">SWAGGER api</a>):</p>
-            <li><a href="/jumpToRemoteSign?uri=onboarding&uiLanguage=en&requestId=123456789A&logging=DEBUG&leavingURI=http%3A%2F%2Fwww.google.com">Remote sign onboarding</a></li>
-            <li><a href="/jumpToRemoteSign?uri=account&uiLanguage=nl&logging=DEBUG">Direct User Settings</a></li>
-            <li><a href="/jumpToRemoteSign?uri=&logging=DEBUG&uiLanguage=fr">new FTS</a></li>
-            <li><a href="/jumpToRemoteSign?uri=&logging=DEBUG&uiLanguage=fr&clearSession">new FTS with cleared Session</a></li>
-            <li><a href="/jumpToRemoteSign?uri=docs/privacynotice&logging=DEBUG&uiLanguage=de">Privacy Notice</a></li>
-            <li><a href="/jumpToRemoteSign?uri=docs/termsandconditions&logging=DEBUG&uiLanguage=fr">Terms and Conditions</a></li>
-            <li><a href="/jumpToRemoteSign?uri=docs/cookiepolicy&logging=DEBUG&uiLanguage=en">Cookie Policy</a></li>
-            <li><a href="/jumpToRemoteSign?uri=docs/accessibility&logging=DEBUG&uiLanguage=nl">Accessibility</a></li>
+            <li><a href="/jumpToRemoteSign?uri=onboarding&uiLanguage=en&requestId=123456789A&logging=DEBUG&leavingURI=http%3A%2F%2Fwww.google.com" target="onboard">Remote sign onboarding</a></li>
+            <li><a href="/jumpToRemoteSign?uri=account&uiLanguage=nl&logging=DEBUG" target="settings">Direct User Settings</a></li>
+            <li><a href="/jumpToRemoteSign?uri=&logging=DEBUG&uiLanguage=fr" target="fts">new FTS</a></li>
+            <li><a href="/jumpToRemoteSign?uri=&logging=DEBUG&uiLanguage=fr&clearSession" target="fts">new FTS with cleared Session</a></li>
+            <li><a href="/jumpToRemoteSign?uri=docs/privacynotice&logging=DEBUG&uiLanguage=de" target="pp">Privacy Notice</a></li>
+            <li><a href="/jumpToRemoteSign?uri=docs/termsandconditions&logging=DEBUG&uiLanguage=fr" target="tandc">Terms and Conditions</a></li>
+            <li><a href="/jumpToRemoteSign?uri=docs/cookiepolicy&logging=DEBUG&uiLanguage=en" target="cookies">Cookie Policy</a></li>
+            <li><a href="/jumpToRemoteSign?uri=docs/accessibility&logging=DEBUG&uiLanguage=nl" target="access">Accessibility</a></li>
         </ul>
     </div>
     </div>
