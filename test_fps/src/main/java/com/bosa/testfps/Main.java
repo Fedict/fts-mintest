@@ -209,6 +209,8 @@ public class Main implements HttpHandler {
 				randomTest(httpExch);
 			} else if (uri.startsWith("/jumpToRemoteSign")) {
 				jumpToRemoteSign(httpExch);
+			} else if (uri.startsWith("/jumpToJwkUri")) {
+				redirectToURL(httpExch, config.getProperty("remoteTokenSignAPI") + "/oauth2/jwk_uri");
 			} else if (uri.startsWith("/gotoMinio")) {
 				redirectToURL(httpExch, config.getProperty("guiMinioUrl"));
 			} else if (uri.startsWith("/remoteSign")) {
