@@ -10,8 +10,12 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.*;
+import java.security.cert.*;
 import java.util.*;
 import java.util.List;
+import java.util.Base64;
+
 
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpHandler;
@@ -90,6 +94,7 @@ public class Main implements HttpHandler {
 	/** Start of the program */
 	public static void main(String[] args) throws Exception {
 
+		//testSignature();
 		//calcPolicyHashes();
 
 		Properties properties = System.getProperties();
@@ -628,4 +633,47 @@ public class Main implements HttpHandler {
 		calcHash("https://epolicies.just.fgov.be/justact/eseal-policy/JustAct_Anna_SipENv1.1.pdf", "SHA512");
 		calcHash("https://justact-acc.just.fgov.be/en/legal-documents/justact/eseal-policy/JustAct_Anna_Test_SipENv1.1.pdf", "SHA512");
 	}
+
+	public static void testSignature() throws Exception {
+
+			// 1. The certificate (base64 DER, no PEM headers needed)
+			String certB64 = "MIIFCTCCBI+gAwIBAgIUQGSjAtK1JSImhNnAcuxufUGktYMwCgYIKoZIzj0EAwMwgfoxCzAJBgNVBAYTAkJFMREwDwYDVQQHDAhCcnVzc2VsczEwMC4GA1UECgwnS2luZ2RvbSBvZiBCZWxnaXVtIC0gRmVkZXJhbCBHb3Zlcm5tZW50MT0wOwYDVQQLDDRDQS9SQTogRlBTIEhvbWUgQWZmYWlycyAtIEJJSy1HQ0kgKE5UUkJFLTAzNjI0NzU1MzgpMT8wPQYDVQQLDDZRVFNQOiBGUFMgUG9saWN5IGFuZCBTdXBwb3J0IC0gQk9TQSAoTlRSQkUtMDY3MTUxNjY0NykxDzANBgNVBAUTBjIwMjUwMTEVMBMGA1UEAwwMZVNpZ24gQ0EgZUlEMB4XDTI2MDgxMjEyMzkxMFoXDTI2MDgxMzEyMzkwOVoweTELMAkGA1UEBhMCQkUxEDAOBgNVBAQMB1BlZXJlbnMxGzAZBgNVBCoMEkNocmlzdG9waGUgUGF0cmljazEUMBIGA1UEBRMLNzEwMzMxNDE1NzAxJTAjBgNVBAMMHFRFU1QgVVNFUiBDaHJpc3RvcGhlIFBlZXJlbnMwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQUHCaB5XAdSUsLPfW/6JjeVSv3ipxLeq3KsRwqYnw4bhdV68ArLY0StxJ0QZx5RGIELQMvtK0IpdYXafHnMXtho4ICcTCCAm0wHwYDVR0jBBgwFoAUM16/vgdjCLyVwrWVVE4Ngbm5sYowUgYIKwYBBQUHAQEERjBEMEIGCCsGAQUFBzAChjZodHRwOi8vY3J0LnBraWFjYy50c3AuemV0ZXMuY29tL2VpZC9lc2lnbmVpZDIwMjUwMS5jcnQwggEzBgNVHSAEggEqMIIBJjAJBgcEAIvsQAECMIIBFwYIYDgNBgUBh2gwggEJMDcGCCsGAQUFBwIBFitodHRwczovL3JlcG9zaXRvcnkucGtpYWNjLnRzcC56ZXRlcy5jb20vZWlkMIHNBggrBgEFBQcCAjCBwAyBvURlIEdla3dhbGlmaWNlZXJkZSB2ZXJsZW5lciB2YW4gdmVydHJvdXdlbnNkaWVuc3RlbiBpcyBGT0QgQk9TQSAvIExlIHByZXN0YXRhaXJlIGRlIHNlcnZpY2VzIGRlIGNvbmZpYW5jZSBxdWFsaWZpw6kgZXN0IFNQRiBCT1NBIC8gRGVuIHF1YWxpZml6aWVydGVuIFZlcnRyYXVlbnNkaWVuc3RlYW5iaWV0ZXIgaXN0IEbDlkQgQk9TQTB2BggrBgEFBQcBAwRqMGgwCAYGBACORgEBMAgGBgQAjkYBBDATBgYEAI5GAQYwCQYHBACORgEGATA9BgYEAI5GAQUwMzAxFitodHRwczovL3JlcG9zaXRvcnkucGtpYWNjLnRzcC56ZXRlcy5jb20vZWlkEwJlbjAdBgNVHQ4EFgQUvFZu/23h2FhcNz9qx2cIIFnsPFIwDgYDVR0PAQH/BAQDAgZAMAkGA1UdOAQCBQAwDQYHBACL7EkCAQQCBQAwCgYIKoZIzj0EAwMDaAAwZQIxAPSMOdDW/fppLQX9z7cIFaaElVoWyRrFKz11Hpo88UQKXAGTJG27nKW9XcDI51YonAIwNEiDNMHyeOS1a6BiAAI9bd6PkLBk6Hx7LjHym1RzOF1zXW64pvN4FI2v0Qi4QGfD";
+
+			// 2. The digest that was signed (base64, raw hash bytes — SHA-256, per hashAlgorithmOID 2.16.840.1.101.3.4.2.1)
+			String digestB64 = "ujBSAlSDwtlkE8RyILmAyLA2aN4kolvG6/se41xnWMw=";
+
+			// 3. The signature to verify (base64, DER-encoded ECDSA signature, per signAlgo 1.2.840.10045.4.3.2 = ecdsa-with-SHA256)
+			String signatureB64 = "MEQCIHUbKOKwrmXnmqQ4Hi80+oEpkONiTZ32UHSNLEAU+KUOAiBC6L3gerhz59TiYgq+rWG8BNYpKvECP2UeADDTANcA/g==";
+
+			// --- Load the certificate and extract the public key ---
+			CertificateFactory cf = CertificateFactory.getInstance("X.509");
+			X509Certificate cert = (X509Certificate) cf.generateCertificate(
+					new ByteArrayInputStream(Base64.getDecoder().decode(certB64)));
+			PublicKey publicKey = cert.getPublicKey();
+
+			System.out.println("Certificate Subject : " + cert.getSubjectX500Principal());
+			System.out.println("Public Key Algorithm: " + publicKey.getAlgorithm());
+
+			// --- Decode inputs ---
+			byte[] digestBytes = Base64.getDecoder().decode(digestB64);
+			byte[] signatureBytes = Base64.getDecoder().decode(signatureB64);
+
+			// --- Verify: NONEwithECDSA because we already have the SHA-256 digest, ---
+			// --- not the original message (the JCE won't hash it again for us).    ---
+			Signature verifier = Signature.getInstance("NONEwithECDSA");
+			verifier.initVerify(publicKey);
+			verifier.update(digestBytes);
+
+			boolean valid = verifier.verify(signatureBytes);
+
+			System.out.println("Signature valid: " + valid);
+
+			// Optional sanity check: is the certificate itself currently valid (not expired)?
+			try {
+				cert.checkValidity();
+				System.out.println("Certificate is within its validity period.");
+			} catch (CertificateExpiredException | CertificateNotYetValidException e) {
+				System.out.println("Certificate validity check failed: " + e.getMessage());
+			}
+		}
 }

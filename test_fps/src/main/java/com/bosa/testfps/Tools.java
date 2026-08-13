@@ -12,7 +12,6 @@ import java.security.MessageDigest;
 import java.util.*;
 
 import static com.bosa.testfps.Main.*;
-import static org.bouncycastle.asn1.cms.CMSAttributes.contentType;
 
 public class Tools {
 	// HTTP *******************************************************************************************
