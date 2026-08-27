@@ -51,9 +51,12 @@ public class Tools {
 
 			urlConn = (HttpURLConnection) url.openConnection();
 			urlConn.setRequestMethod(isGet ? "GET" : "POST");
-			for(Map.Entry<String, String> header : headers.entrySet()) {
-				urlConn.setRequestProperty(header.getKey(), header.getValue());
+			if (headers != null) {
+				for(Map.Entry<String, String> header : headers.entrySet()) {
+					urlConn.setRequestProperty(header.getKey(), header.getValue());
+				}
 			}
+
 			if (!isGet) {
 				urlConn.setDoOutput(true);
 				OutputStream os = urlConn.getOutputStream();

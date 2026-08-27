@@ -6,12 +6,22 @@ import com.nimbusds.jose.JWSObject;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 
 public class JWTSigner {
     public void sign(JWSObject jwsObject) throws NoSuchAlgorithmException, InvalidKeySpecException, JOSEException, NoSuchProviderException, IOException {}
 
     public String getKid() {
+        return null;
+    }
+
+    public PrivateKey getPrivateKey() {
+        return null;
+    }
+
+    public PublicKey getPublicKey() {
         return null;
     }
 }

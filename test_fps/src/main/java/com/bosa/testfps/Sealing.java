@@ -5,6 +5,7 @@ import com.nimbusds.jose.crypto.*;
 
 
 import java.io.*;
+import java.net.URLEncoder;
 import java.security.*;
 import java.util.*;
 
@@ -15,6 +16,7 @@ import org.json.JSONObject;
 
 import static com.bosa.testfps.Main.*;
 import static com.bosa.testfps.Tools.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class Sealing {
 
@@ -109,6 +111,17 @@ public class Sealing {
 
         return jwsObject.serialize();
 	}
+
+	public static String getAccessToken(OAuthInfo oai, String scope, String authorizationDetails, String URL) throws Exception {
+		String payLoad = "grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer" +
+				"&client_assertion=" + createOAuthJWT(oai);
+		if (scope != null) payLoad += "&scope=" + scope;
+		if (authorizationDetails != null) payLoad += "&authorization_details=" + URLEncoder.encode(authorizationDetails, UTF_8);
+
+		return postURLEncoded(URL, payLoad);
+	}
+
+
 
 	private JSONObject decodeJWTToken(String jwtToken) throws Exception {
 		JWEObject jweObject = JWEObject.parse(jwtToken);

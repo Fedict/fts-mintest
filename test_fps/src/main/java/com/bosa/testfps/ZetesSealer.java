@@ -2,15 +2,13 @@ package com.bosa.testfps;
 
 import com.nimbusds.jose.JWSAlgorithm;
 
-import java.net.URLEncoder;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Map;
 
 import static com.bosa.testfps.Main.*;
-import static com.bosa.testfps.Sealing.createOAuthJWT;
+import static com.bosa.testfps.Sealing.getAccessToken;
 import static com.bosa.testfps.Tools.*;
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class ZetesSealer extends Sealer {
     private final OAuthInfo FSPAuth;
@@ -53,14 +51,12 @@ public class ZetesSealer extends Sealer {
     }
 
     private static String getFSPAccessToken(OAuthInfo oai, String scope, String authorizationDetails) throws Exception {
-        String payLoad = "grant_type=client_credentials&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer" +
-                "&client_assertion=" + createOAuthJWT(oai) +
-                "&scope=" + scope;
-        if (authorizationDetails != null) payLoad += "&authorization_details=" + URLEncoder.encode(authorizationDetails, UTF_8);
-        String reply = postURLEncoded(config.getProperty("fspAuthUrl") + "token", payLoad);
+        String reply = getAccessToken(oai, scope, authorizationDetails, config.getProperty("fspAuthUrl"));
 
         String accToken = getDelimitedValue(reply, "\"access_token\":\"", "\",");
         System.out.println("Access token : " + accToken);
+
         return accToken;
     }
+
 }

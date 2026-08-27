@@ -16,11 +16,10 @@ import java.security.interfaces.ECPrivateKey;
 import java.util.Base64;
 
 
+@Getter
 public class ECJWTSignerFromPem extends JWTSigner {
     private ECPrivateKey privateKey;
     private ECPublicKey publicKey;
-
-    @Getter
     private String kid;
 
     ECJWTSignerFromPem(String pem) throws Exception {
