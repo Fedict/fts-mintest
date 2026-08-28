@@ -147,6 +147,18 @@ public class Tools {
 	// *************************************************************************************************
 
 	private static MinioClient minioClient;
+	private static String minioAccessToken;
+	private static Integer minioExpiration;
+
+	// *************************************************************************************************
+
+	public static String getClientAuthentication() {
+		String s3KeyPair = config.getProperty("oauthKeyPair");
+		return s3KeyPair == null ? "\"password\":\"" + s3Passwd + "\"," :
+			"\"accessToken\":\"" + minioAccessToken + "\", \"expiration\": " + minioExpiration + ",";
+	}
+
+	// *************************************************************************************************
 
 	/** Get the client for the S3 server */
 	static MinioClient getClient() throws Exception {
@@ -166,9 +178,10 @@ public class Tools {
 				OAuthInfo fspAuth = new OAuthInfo(null, s3UserName, minioAudienceAndHost, JWSAlgorithm.ES256, signer);
 				String body = getAccessToken(fspAuth, null, null, minioAudienceAndHost);
 
-				builder.credentialsProvider(new ClientGrantsProvider(() ->
-						new Jwt(body.replaceAll(".*\"access_token\":\"([^\"]+)\".*", "$1"),
-								Integer.parseInt(body.replaceAll(".*\"expires_in\":(\\d+).*", "$1"))),
+				minioAccessToken = body.replaceAll(".*\"access_token\":\"([^\"]+)\".*", "$1");
+				minioExpiration = Integer.parseInt(body.replaceAll(".*\"expires_in\":(\\d+).*", "$1"));
+
+                builder.credentialsProvider(new ClientGrantsProvider(() -> new Jwt(minioAccessToken, minioExpiration),
 						minioUrl, null, null, null)
 				);
 			}
