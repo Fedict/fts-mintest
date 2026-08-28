@@ -50,7 +50,7 @@ import static com.bosa.testfps.Tools.*;
 public class Main implements HttpHandler {
 
 	static Boolean cleanupTempFiles;
-	static String s3Url;
+
 	static String s3UserName;
 	static String s3Passwd;
 
@@ -64,8 +64,6 @@ public class Main implements HttpHandler {
 	static boolean showIDP;
 
 	boolean tokenRemoteSign = true;
-
-	static MinioClient minioClient;
 
 	static Properties config;
 
@@ -119,7 +117,6 @@ public class Main implements HttpHandler {
 
 		s3UserName		= config.getProperty("s3UserName");
 		s3Passwd		= config.getProperty("s3Passwd");
-		s3Url			= config.getProperty("s3Url");
 
 		sadKeyFile		= config.getProperty("sadKeyFile");
 		sadKeyPwd		= config.getProperty("sadKeyPwd");
@@ -569,10 +566,8 @@ public class Main implements HttpHandler {
 
 			for(String out : outFiles.split(",")) {
 				System.out.println("  Trying to downloading file " + out + " from the S3 server");
-				MinioClient minioClient = getClient();
-
 				try {
-					InputStream stream = minioClient.getObject(GetObjectArgs.builder().bucket(s3UserName).object(out).build());
+					InputStream stream = getClient().getObject(GetObjectArgs.builder().bucket(s3UserName).object(out).build());
 					if (!outFilesDir.exists()) outFilesDir.mkdirs();
 
 					File f = new File(outFilesDir, sanitize(out));
@@ -599,8 +594,6 @@ public class Main implements HttpHandler {
 		}
 
 		// Delete everything the S3 server
-		MinioClient minioClient = getClient();
-
 		if (cleanupTempFiles) {
 			String filesToDelete = queryParams.get("toDelete");
 			if (!filesToDelete.equals("")) {

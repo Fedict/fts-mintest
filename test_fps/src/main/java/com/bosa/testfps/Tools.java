@@ -1,7 +1,10 @@
 package com.bosa.testfps;
 
+import com.nimbusds.jose.JWSAlgorithm;
 import com.sun.net.httpserver.HttpExchange;
 import io.minio.*;
+import io.minio.credentials.ClientGrantsProvider;
+import io.minio.credentials.Jwt;
 import org.json.JSONObject;
 
 import java.io.*;
@@ -12,6 +15,7 @@ import java.security.MessageDigest;
 import java.util.*;
 
 import static com.bosa.testfps.Main.*;
+import static com.bosa.testfps.Sealing.getAccessToken;
 
 public class Tools {
 	// HTTP *******************************************************************************************
@@ -110,9 +114,13 @@ public class Tools {
 		minioClient.removeObject(RemoveObjectArgs.builder().bucket(s3UserName).object(fileToDelete).build());
 	}
 
+	// *************************************************************************************************
+
 	static void uploadFiles(List<String> filePaths) throws Exception {
 		for(String filePath : filePaths) uploadFile(filePath);
 	}
+
+	// *************************************************************************************************
 
 	static void uploadFile(String fileName) throws Exception {
 
@@ -129,22 +137,47 @@ public class Tools {
 						.build());
 	}
 
+	// *************************************************************************************************
+
 	static void setMinioClientURL(boolean isDocker) {
 		Main.isDocker = isDocker;
-		Object minioClient = null;
+		minioClient = null;
 	}
+
+	// *************************************************************************************************
+
+	private static MinioClient minioClient;
 
 	/** Get the client for the S3 server */
 	static MinioClient getClient() throws Exception {
 		if (null == minioClient) {
-			// Create client
-			minioClient = MinioClient.builder()
-					.endpoint(isDocker ? s3Url : config.getProperty("dps3Url"))
-					.credentials(s3UserName, s3Passwd)
-					.build();
+			String minioUrl = config.getProperty(isDocker ? "s3Url" : "dps3Url");
+			String s3KeyPair = config.getProperty("oauthKeyPair");
+			MinioClient.Builder builder = MinioClient.builder().endpoint(minioUrl);
+			if (s3KeyPair == null) {
+				// Create client with user/password
+				builder.credentials(s3UserName, s3Passwd);
+			} else {
+				// Create client with keyPair
+
+				// Get access token from oauth server (Keycloak)
+				JWTSigner signer = new ECJWTSignerFromPem(s3KeyPair);
+				final String minioAudienceAndHost = config.getProperty("oauthAudienceAndHost");
+				OAuthInfo fspAuth = new OAuthInfo(null, s3UserName, minioAudienceAndHost, JWSAlgorithm.ES256, signer);
+				String body = getAccessToken(fspAuth, null, null, minioAudienceAndHost);
+
+				builder.credentialsProvider(new ClientGrantsProvider(() ->
+						new Jwt(body.replaceAll(".*\"access_token\":\"([^\"]+)\".*", "$1"),
+								Integer.parseInt(body.replaceAll(".*\"expires_in\":(\\d+).*", "$1"))),
+						minioUrl, null, null, null)
+				);
+			}
+			minioClient = builder.build();
 		}
 		return minioClient;
 	}
+
+	// *************************************************************************************************
 
 	static void fileToMinio(String fileName, byte [] fileData) throws Exception {
 		getClient().putObject(
@@ -155,6 +188,8 @@ public class Tools {
 						.build());
 	}
 
+	// *************************************************************************************************
+
 	static byte[] fileFromMinio(String fileName) throws Exception {
 		InputStream inStream = getClient().getObject(GetObjectArgs.builder().bucket(s3UserName).object(fileName).build());
 		ByteArrayOutputStream outStream = new ByteArrayOutputStream(8192);
@@ -163,6 +198,8 @@ public class Tools {
 		inStream.close();
 		return outStream.toByteArray();
 	}
+
+	// *************************************************************************************************
 
 	static void deleteMinioFile(String fileName) throws Exception {
 		getClient().removeObject(RemoveObjectArgs.builder().bucket(s3UserName).object(fileName).build());
