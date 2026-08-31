@@ -72,10 +72,13 @@ public class Tools {
 			return reply;
 		}
 		catch(Exception e) {
-			e.printStackTrace();
 			if (urlConn != null && urlConn.getErrorStream() != null) {
-				throw new IOException(streamToString(urlConn.getErrorStream()));
+                String errorString = streamToString(urlConn.getErrorStream());
+                System.out.println("Error :" + errorString);
+				e.printStackTrace();
+				throw new IOException(errorString);
 			}
+			e.printStackTrace();
 		}
 		return null;
 	}
