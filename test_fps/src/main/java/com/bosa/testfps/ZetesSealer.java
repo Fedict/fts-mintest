@@ -51,8 +51,7 @@ public class ZetesSealer extends Sealer {
     }
 
     private static String getFSPAccessToken(OAuthInfo oai, String scope, String authorizationDetails) throws Exception {
-        String reply = getAccessToken(oai, scope, authorizationDetails, config.getProperty("fspAuthUrl"));
-
+        String reply = getAccessToken(oai, scope, authorizationDetails, config.getProperty("fspAuthUrl") + "token");
         String accToken = getDelimitedValue(reply, "\"access_token\":\"", "\",");
         System.out.println("Access token : " + accToken);
 
