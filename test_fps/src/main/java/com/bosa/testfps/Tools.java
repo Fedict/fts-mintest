@@ -152,51 +152,48 @@ public class Tools {
 	private static MinioClient minioClient;
 	private static String minioAccessToken;
 	private static Integer minioExpiration;
+	private static boolean oAuthActive;
 
 	// *************************************************************************************************
 
 	public static String getClientAuthentication() {
-		String s3KeyPair = config.getProperty("oauthKeyPair");
-		return s3KeyPair == null ? "\"password\":\"" + s3Passwd + "\"," :
+		return !oAuthActive ? "\"password\":\"" + s3Passwd + "\"," :
 			"\"accessToken\":\"" + minioAccessToken + "\", \"expiration\": " + minioExpiration + ",";
 	}
 
 	// *************************************************************************************************
 
-	public static void getNewClient() throws Exception {
-		minioClient = null;
-		getClient();
+	public static MinioClient getClient() throws Exception {
+		return minioClient;
 	}
 
 	// *************************************************************************************************
 
-	/** Get the client for the S3 server */
-	static MinioClient getClient() throws Exception {
-		if (null == minioClient) {
-			String minioUrl = config.getProperty(isDocker ? "s3Url" : "dps3Url");
-			String s3KeyPair = config.getProperty("oauthKeyPair");
-			MinioClient.Builder builder = MinioClient.builder().endpoint(minioUrl);
-			if (s3KeyPair == null) {
-				// Create client with user/password
-				builder.credentials(s3UserName, s3Passwd);
-			} else {
-				// Create client with keyPair
+	/**
+	 * Get the client for the S3 server
+	 */
+	public static void getNewClient(boolean allowOAuth) throws Exception {
+		oAuthActive = allowOAuth && oAuthMode;
+		String minioUrl = config.getProperty(isDocker ? "s3Url" : "dps3Url");
+		MinioClient.Builder builder = MinioClient.builder().endpoint(minioUrl);
+		if (!oAuthActive) {
+			// Create client with user/password
+			builder.credentials(s3UserName, s3Passwd);
+		} else {
+			// Create client with keyPair
+			// Get access token from oauth server (Keycloak)
+			JWTSigner signer = new ECJWTSignerFromPem(config.getProperty("oauthKeyPair"));
+			OAuthInfo fspAuth = new OAuthInfo(null, s3UserName, config.getProperty("oauthAudience"), JWSAlgorithm.ES256, signer);
+			String body = getAccessToken(fspAuth, null, null, config.getProperty("oauthHost"));
 
-				// Get access token from oauth server (Keycloak)
-				JWTSigner signer = new ECJWTSignerFromPem(s3KeyPair);
-				OAuthInfo fspAuth = new OAuthInfo(null, s3UserName, config.getProperty("oauthAudience"), JWSAlgorithm.ES256, signer);
-				String body = getAccessToken(fspAuth, null, null, config.getProperty("oauthHost"));
+			minioAccessToken = body.replaceAll(".*\"access_token\":\"([^\"]+)\".*", "$1");
+			minioExpiration = Integer.parseInt(body.replaceAll(".*\"expires_in\":(\\d+).*", "$1"));
 
-				minioAccessToken = body.replaceAll(".*\"access_token\":\"([^\"]+)\".*", "$1");
-				minioExpiration = Integer.parseInt(body.replaceAll(".*\"expires_in\":(\\d+).*", "$1"));
-
-                builder.credentialsProvider(new ClientGrantsProvider(() -> new Jwt(minioAccessToken, minioExpiration),
-						minioUrl, null, null, null)
-				);
-			}
-			minioClient = builder.build();
+			builder.credentialsProvider(new ClientGrantsProvider(() -> new Jwt(minioAccessToken, minioExpiration),
+					minioUrl, null, null, null)
+			);
 		}
-		return minioClient;
+		minioClient = builder.build();
 	}
 
 	// *************************************************************************************************

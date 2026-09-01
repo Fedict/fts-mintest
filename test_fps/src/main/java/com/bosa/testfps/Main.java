@@ -10,8 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.*;
-import java.security.cert.*;
 import java.util.*;
 import java.util.List;
 import java.util.Base64;
@@ -64,6 +62,7 @@ public class Main implements HttpHandler {
 	static boolean showIDP;
 
 	boolean tokenRemoteSign = true;
+	public static boolean oAuthMode = true;
 
 	static Properties config;
 
@@ -99,7 +98,7 @@ public class Main implements HttpHandler {
 
 		//testSignature();
 		//calcPolicyHashes();
-		oauthTest();
+		//oauthTest();
 
 		Properties properties = System.getProperties();
 		System.out.println("************************* System Properties *****************************************");
@@ -218,14 +217,18 @@ public class Main implements HttpHandler {
 			} else if (uri.startsWith("/gotoMinio")) {
 				redirectToURL(httpExch, config.getProperty("guiMinioUrl"));
 			} else if (uri.startsWith("/remoteSign")) {
-				if (!uri.endsWith("GET")) {
-					tokenRemoteSign = !tokenRemoteSign;
+				respond(httpExch, 200, "text/plain", (tokenRemoteSign ? "ON" : "OFF").getBytes());
+			} else if (uri.startsWith("/status")) {
+				if (uri.endsWith("Set")) {
+					if (uri.endsWith("RemoteSet")) tokenRemoteSign = !tokenRemoteSign;
+					else if (uri.endsWith("OAuthSet")) oAuthMode = !oAuthMode;
 					httpExch.getResponseHeaders().add("Location", "/");
 					httpExch.sendResponseHeaders(303, 0);
 					httpExch.close();
-
+				} else {
+					String status = "{ \"remoteSign\": " + tokenRemoteSign + ", \"oauth\": " + oAuthMode + "}";
+					respond(httpExch, 200, "application/json", status.getBytes());
 				}
-				else respond(httpExch, 200, "text/plain", (tokenRemoteSign ? "ON" : "OFF").getBytes());
 			} else {
 				handleStatic(httpExch, uri);
 			}
@@ -475,9 +478,9 @@ public class Main implements HttpHandler {
 		List<String> filesToUpload = new ArrayList<String>();
 		String outFiles;
 		boolean multidoc = json.contains("inputs");
+		getNewClient(multidoc);
 		if (multidoc) {
 			System.out.println("Multifile");
-			getNewClient();
 			json = json.replaceFirst("\\{", "{\n\"bucket\":\"" +s3UserName + "\",\n" + getClientAuthentication());
 
 			outFiles = getToken(json, "outFilePath");

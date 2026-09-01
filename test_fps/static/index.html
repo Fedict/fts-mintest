@@ -22,7 +22,8 @@
     </style>
 </head>
 <body>
-<h1>FPS test signing service (<a id="mode" href="/remoteSign" ></a>)</h1>
+<h1>FPS test signing service (<a id="mode" href="/statusRemoteSet" ></a>)</h1>
+oAuth for Minio (<a id="oauth" href="/statusOAuthSet" ></a>)
 <div style="display: flex, flex-direction: columns">
     <div style="display: flex">
     <div style="padding: 30px">
@@ -115,12 +116,12 @@
 </div>
 <script>
     window.onload = function() {
-        fetch('/remoteSignGET')
-          .then(response => response.text()) // ou .json() si l'API renvoie du JSON
+        fetch('/status')
+          .then(response => response.json())
           .then(data => {
-            const onOff = data.trim();
-            document.body.style.backgroundColor = onOff === "OFF" ? "lightgray" : "white";
-            document.getElementById("mode").textContent = onOff === "OFF" ? "Switch to REMOTE sign" : "Switch to LEGACY guisign";
+            document.body.style.backgroundColor = data.remoteSign ? "white" : "lightgray";
+              document.getElementById("mode").textContent = data.remoteSign ? "Switch to LEGACY guisign" : "Switch to REMOTE sign";
+              document.getElementById("oauth").textContent = data.oauth ? "Switch to User / Password" : "Switch to Private Key";
           })
     }
 </script>
