@@ -477,6 +477,7 @@ public class Main implements HttpHandler {
 		boolean multidoc = json.contains("inputs");
 		if (multidoc) {
 			System.out.println("Multifile");
+			getNewClient();
 			json = json.replaceFirst("\\{", "{\n\"bucket\":\"" +s3UserName + "\",\n" + getClientAuthentication());
 
 			outFiles = getToken(json, "outFilePath");
