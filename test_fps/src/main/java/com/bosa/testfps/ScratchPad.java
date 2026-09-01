@@ -88,12 +88,11 @@ public class ScratchPad {
 		final String bucket = config.getProperty("s3UserName");
 
 		final String minioEndpoint = config.getProperty("dps3Url");
-		final String oauthAudienceAndHost = config.getProperty("oauthAudienceAndHost");
 
 		JWTSigner signer = new ECJWTSignerFromPem(config.getProperty("oauthKeyPair"));
-        OAuthInfo fspAuth = new OAuthInfo(null, bucket, oauthAudienceAndHost, JWSAlgorithm.ES256, signer);
+        OAuthInfo fspAuth = new OAuthInfo(null, bucket, config.getProperty("oauthAudience"), JWSAlgorithm.ES256, signer);
 
-		String body = getAccessToken(fspAuth, null, null, oauthAudienceAndHost);
+		String body = getAccessToken(fspAuth, null, null, config.getProperty("oauthHost"));
 		String accessToken = body.replaceAll(".*\"access_token\":\"([^\"]+)\".*", "$1");
 		String expiresIn = body.replaceAll(".*\"expires_in\":(\\d+).*", "$1");
 

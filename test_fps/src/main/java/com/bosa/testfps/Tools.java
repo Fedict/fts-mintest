@@ -177,9 +177,8 @@ public class Tools {
 
 				// Get access token from oauth server (Keycloak)
 				JWTSigner signer = new ECJWTSignerFromPem(s3KeyPair);
-				final String minioAudienceAndHost = config.getProperty("oauthAudienceAndHost");
-				OAuthInfo fspAuth = new OAuthInfo(null, s3UserName, minioAudienceAndHost, JWSAlgorithm.ES256, signer);
-				String body = getAccessToken(fspAuth, null, null, minioAudienceAndHost);
+				OAuthInfo fspAuth = new OAuthInfo(null, s3UserName, config.getProperty("oauthAudience"), JWSAlgorithm.ES256, signer);
+				String body = getAccessToken(fspAuth, null, null, config.getProperty("oauthHost"));
 
 				minioAccessToken = body.replaceAll(".*\"access_token\":\"([^\"]+)\".*", "$1");
 				minioExpiration = Integer.parseInt(body.replaceAll(".*\"expires_in\":(\\d+).*", "$1"));
