@@ -163,6 +163,13 @@ public class Tools {
 
 	// *************************************************************************************************
 
+	public static void getNewClient() throws Exception {
+		minioClient = null;
+		getClient();
+	}
+
+	// *************************************************************************************************
+
 	/** Get the client for the S3 server */
 	static MinioClient getClient() throws Exception {
 		if (null == minioClient) {
