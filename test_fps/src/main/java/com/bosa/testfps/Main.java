@@ -214,8 +214,10 @@ public class Main implements HttpHandler {
 				jumpToRemoteSign(httpExch);
 			} else if (uri.startsWith("/jumpToJwkUri")) {
 				redirectToURL(httpExch, config.getProperty("remoteTokenSignAPI") + "/oauth2/jwk_uri");
-			} else if (uri.startsWith("/gotoMinio")) {
-				redirectToURL(httpExch, config.getProperty("guiMinioUrl"));
+			} else if (uri.startsWith("/goto")) {
+				String prop = "guiMinioUrl";
+				if (uri.endsWith("Keycloak")) prop = "keyCloakAdminUrl";
+				redirectToURL(httpExch, config.getProperty(prop));
 			} else if (uri.startsWith("/remoteSign")) {
 				respond(httpExch, 200, "text/plain", (tokenRemoteSign ? "ON" : "OFF").getBytes());
 			} else if (uri.startsWith("/status")) {
