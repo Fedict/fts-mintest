@@ -152,12 +152,11 @@ public class Tools {
 	private static MinioClient minioClient;
 	private static String minioAccessToken;
 	private static Integer minioExpiration;
-	private static boolean oAuthActive;
 
 	// *************************************************************************************************
 
 	public static String getClientAuthentication() {
-		return !oAuthActive ? "\"password\":\"" + s3Passwd + "\"," :
+		return !oAuthMode ? "\"password\":\"" + s3Passwd + "\"," :
 			"\"accessToken\":\"" + minioAccessToken + "\", \"expiration\": " + minioExpiration + ",";
 	}
 
@@ -172,11 +171,10 @@ public class Tools {
 	/**
 	 * Get the client for the S3 server
 	 */
-	public static void getNewClient(boolean allowOAuth) throws Exception {
-		oAuthActive = allowOAuth && oAuthMode;
+	public static void getNewClient() throws Exception {
 		String minioUrl = config.getProperty(isDocker ? "s3Url" : "dps3Url");
 		MinioClient.Builder builder = MinioClient.builder().endpoint(minioUrl);
-		if (!oAuthActive) {
+		if (!oAuthMode) {
 			// Create client with user/password
 			builder.credentials(s3UserName, s3Passwd);
 		} else {

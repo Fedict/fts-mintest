@@ -473,12 +473,12 @@ public class Main implements HttpHandler {
 	}
 
 	private void handleJsonSign(HttpExchange httpExch, Map<String, String> queryParams) throws Exception {
+		getNewClient();
 		String json = makeJson(queryParams.get("json"));
 
-		List<String> filesToUpload = new ArrayList<String>();
+		List<String> filesToUpload = new ArrayList<>();
 		String outFiles;
 		boolean multidoc = json.contains("inputs");
-		getNewClient(multidoc);
 		if (multidoc) {
 			System.out.println("Multifile");
 			json = json.replaceFirst("\\{", "{\n\"bucket\":\"" +s3UserName + "\",\n" + getClientAuthentication());
