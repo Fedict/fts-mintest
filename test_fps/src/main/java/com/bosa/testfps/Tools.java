@@ -155,9 +155,8 @@ public class Tools {
 
 	// *************************************************************************************************
 
-	public static String getClientAuthentication() {
-		return !oAuthMode ? "\"password\":\"" + s3Passwd + "\"," :
-			"\"accessToken\":\"" + minioAccessToken + "\", \"expiration\": " + minioExpiration + ",";
+	public static String getOAuthCreds() {
+		return "\"accessToken\":\"" + minioAccessToken + "\", \"expiration\": " + minioExpiration + ",";
 	}
 
 	// *************************************************************************************************

@@ -481,7 +481,7 @@ public class Main implements HttpHandler {
 		boolean multidoc = json.contains("inputs");
 		if (multidoc) {
 			System.out.println("Multifile");
-			json = json.replaceFirst("\\{", "{\n\"bucket\":\"" +s3UserName + "\",\n" + getClientAuthentication());
+			json = json.replaceFirst("\\{", "{\n\"bucket\":\"" +s3UserName + "\",\n" + (oAuthMode ? getOAuthCreds() : "\"password\":\"" + s3Passwd + "\","));
 
 			outFiles = getToken(json, "outFilePath");
 			if (outFiles != null && outFiles.isEmpty()) outFiles = null;
@@ -500,8 +500,7 @@ public class Main implements HttpHandler {
 
 		} else {
 			System.out.println("Singlefile");
-			json = json.replaceFirst("\\{", "{\n\"name\":\"" +s3UserName + "\",\n" +
-					"\"pwd\":\"" + s3Passwd + "\",");
+			json = json.replaceFirst("\\{", "{\n\"name\":\"" +s3UserName + "\",\n" + (oAuthMode ? getOAuthCreds() : "\"pwd\":\"" + s3Passwd + "\","));
 
 			addTokens(json, "psp", filesToUpload);
 			addTokens(json, "xslt", filesToUpload);
