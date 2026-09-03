@@ -23,14 +23,13 @@
 </head>
 <body>
 <h1>FPS test signing service (<a id="mode" href="/statusRemoteSet" ></a>)</h1>
-oAuth for Minio (<a id="oauth" href="/statusOAuthSet" ></a>)
 <div style="display: flex, flex-direction: columns">
     <div style="display: flex">
     <div style="padding: 30px">
         <p>Select a sign test case (<a href="/swagger?to=signval">SWAGGER api</a>)</p>
         <ul>
             <li><a href="/gotoMinio" target="minio">Goto MINIO</a></li>
-            <li><a href="/gotoKeycloak" target="keycloak">Goto Keycloak</a></li>
+            <li><a href="/gotoKeycloak" target="keycloak">Goto Keycloak</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a id="oauth" href="/statusOAuthSet"></a>)</li>
             <li><a href="/sign?json=@o'in'@s'nd_test.pdf'@S'noDownload'@s'true'@S'out'@s'signed_nd_test.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&name=Justice&language=fr">PDF (download disabled)</a></li>
             <li><a href="/sign?json=@o'in'@s'psf0_visible_sigfields~signature_1.pdf'@S'psfN'@s'signature_1'@S'out'@s'signed_psf0_visible_sigfields.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&name=Law&name_fr=Loi&language=fr">PDF visible signature field named 'signature_1' (no PSP)</a></li>
             <li><a href="/sign?json=@o'in'@s'psf1_test.pdf'@S'psp'@s'test1.psp'@S'psfC'@s'1%2C30%2C20%2C180%2C60'@S'out'@s'signed_psf1_test.pdf'@S'lang'@s'en'@S'prof'@s'PADES_1'@S'signTimeout'@s9999@c&language=en">PDF visible signature field coords '1,30,20,180,60' and profile 'test1.psp'</a></li>
@@ -122,7 +121,7 @@ oAuth for Minio (<a id="oauth" href="/statusOAuthSet" ></a>)
           .then(data => {
             document.body.style.backgroundColor = data.remoteSign ? "white" : "lightgray";
               document.getElementById("mode").textContent = data.remoteSign ? "Switch to LEGACY guisign" : "Switch to REMOTE sign";
-              document.getElementById("oauth").textContent = data.oauth ? "Switch to User / Password" : "Switch to Private Key";
+              document.getElementById("oauth").textContent = data.oauth ? "Switch to User / Password" : "Switch to oAuth";
           })
     }
 </script>
